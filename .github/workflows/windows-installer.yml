@@ -20,14 +20,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out source archive
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Extract app source
         shell: pwsh
         run: Expand-Archive -Path AIClipping-code-for-AI.zip -DestinationPath build-source -Force
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -42,7 +42,7 @@ jobs:
         run: npm run dist:win
 
       - name: Upload installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Clipwright-Studio-Windows-x64-unsigned
           path: 'build-source/dist/Clipwright Studio-*-setup-x64.exe'
