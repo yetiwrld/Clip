@@ -30,7 +30,7 @@ jobs:
           if ($env:REQUESTED_TAG) {
             $tag = $env:REQUESTED_TAG
           } else {
-            $match = [regex]::Match($env:TRIGGER_REF_NAME, '^repair-(v\d+\.\d+\.\d+)$')
+            $match = [regex]::Match($env:TRIGGER_REF_NAME, '^repair-(v\d+\.\d+\.\d+)(?:-\d+)?$')
             if (-not $match.Success) { throw "Unexpected repair trigger tag: $($env:TRIGGER_REF_NAME)" }
             $tag = $match.Groups[1].Value
           }
@@ -114,5 +114,55 @@ jobs:
           $metadataPath = Join-Path (Resolve-Path dist) 'latest.yml'
           [System.IO.File]::WriteAllText($metadataPath, $metadata.TrimStart(), [System.Text.UTF8Encoding]::new($false))
 
-          gh release upload $env:RELEASE_TAG $assetPath $blockmapPath $metadataPath --clobber
-          if ($LASTEXITCODE -ne 0) { throw 'Uploading the release assets failed.' }
+          # Resolve GitHub's actual latest release object explicitly. A tag can have multiple
+          # release records, and `gh release upload <tag>` may select a different one.
+          $repository = $env:GITHUB_REPOSITORY
+          $releaseJson = gh api "repos/$repository/releases/latest" | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the latest GitHub release.' }
+          $release = $releaseJson | ConvertFrom-Json
+          if ($release.tag_name -ne $env:RELEASE_TAG) {
+            throw "Latest release tag $($release.tag_name) does not match $($env:RELEASE_TAG)."
+          }
+
+          $expectedAssetNames = @($assetName, "$assetName.blockmap", 'latest.yml')
+          foreach ($existingAsset in $release.assets) {
+            if ($expectedAssetNames -contains $existingAsset.name) {
+              gh api "repos/$repository/releases/assets/$($existingAsset.id)" --method DELETE --silent
+              if ($LASTEXITCODE -ne 0) { throw "Could not replace release asset $($existingAsset.name)." }
+            }
+          }
+
+          $uploadUrl = "https://uploads.github.com/repos/$repository/releases/$($release.id)/assets"
+          foreach ($file in @($assetPath, $blockmapPath, $metadataPath)) {
+            $name = [System.IO.Path]::GetFileName($file)
+            $encodedName = [uri]::EscapeDataString($name)
+            $curlArgs = @(
+              '--fail-with-body', '--silent', '--show-error', '--request', 'POST',
+              '--header', 'Accept: application/vnd.github+json',
+              '--header', "Authorization: Bearer $env:GH_TOKEN",
+              '--header', 'X-GitHub-Api-Version: 2022-11-28',
+              '--header', 'Content-Type: application/octet-stream',
+              '--data-binary', "@$file",
+              "$uploadUrl?name=$encodedName"
+            )
+            & curl.exe @curlArgs | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "Uploading release asset $name failed." }
+          }
+
+          $verifiedJson = gh api "repos/$repository/releases/latest" | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify the updated latest release.' }
+          $verifiedRelease = $verifiedJson | ConvertFrom-Json
+          if ($verifiedRelease.id -ne $release.id -or $verifiedRelease.tag_name -ne $env:RELEASE_TAG) {
+            throw 'The updated release is no longer the repository latest release.'
+          }
+          $expectedSizes = @{}
+          $expectedSizes[$assetName] = [long]$size
+          $expectedSizes["$assetName.blockmap"] = [long](Get-Item $blockmapPath).Length
+          $expectedSizes['latest.yml'] = [long](Get-Item $metadataPath).Length
+          foreach ($expectedName in $expectedSizes.Keys) {
+            $uploaded = $verifiedRelease.assets | Where-Object name -eq $expectedName | Select-Object -First 1
+            if (-not $uploaded -or [long]$uploaded.size -ne $expectedSizes[$expectedName]) {
+              throw "Latest release asset $expectedName is missing or has an unexpected size."
+            }
+          }
+          Write-Host "Verified $($verifiedRelease.tag_name) on latest release $($verifiedRelease.id): $assetName, $($assetName).blockmap, latest.yml; $size bytes; SHA-512 $sha512"
