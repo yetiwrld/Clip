@@ -1,6 +1,9 @@
 name: Repair Windows release assets
 
 on:
+  push:
+    tags:
+      - 'repair-v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -17,10 +20,26 @@ jobs:
     name: Build and upload updater assets
     runs-on: windows-latest
     steps:
+      - name: Determine the release tag to repair
+        id: release
+        shell: pwsh
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+          TRIGGER_REF_NAME: ${{ github.ref_name }}
+        run: |
+          if ($env:REQUESTED_TAG) {
+            $tag = $env:REQUESTED_TAG
+          } else {
+            $match = [regex]::Match($env:TRIGGER_REF_NAME, '^repair-(v\d+\.\d+\.\d+)$')
+            if (-not $match.Success) { throw "Unexpected repair trigger tag: $($env:TRIGGER_REF_NAME)" }
+            $tag = $match.Groups[1].Value
+          }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
       - name: Check out the tagged source
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.sha }}
 
       - name: Extract app source
         shell: pwsh
@@ -37,7 +56,7 @@ jobs:
         shell: pwsh
         working-directory: build-source
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           $package = Get-Content package.json -Raw | ConvertFrom-Json
           if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$' -or $env:RELEASE_TAG -ne "v$($package.version)") {
@@ -57,7 +76,7 @@ jobs:
         working-directory: build-source
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           $package = Get-Content package.json -Raw | ConvertFrom-Json
           $version = $package.version
