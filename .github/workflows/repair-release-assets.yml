@@ -1,0 +1,99 @@
+name: Repair Windows release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published release tag to populate (for example v0.0.4)
+        required: true
+        type: string
+        default: v0.0.4
+
+permissions:
+  contents: write
+
+jobs:
+  repair-windows-assets:
+    name: Build and upload updater assets
+    runs-on: windows-latest
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Extract app source
+        shell: pwsh
+        run: Expand-Archive -Path AIClipping-code-for-AI.zip -DestinationPath build-source -Force
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: build-source/package-lock.json
+
+      - name: Validate existing release tag
+        shell: pwsh
+        working-directory: build-source
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$' -or $env:RELEASE_TAG -ne "v$($package.version)") {
+            throw "Tag $($env:RELEASE_TAG) does not match app version $($package.version)."
+          }
+
+      - name: Install build dependencies
+        working-directory: build-source
+        run: npm ci
+
+      - name: Build installer without publishing
+        working-directory: build-source
+        run: npm run dist:win -- --publish never
+
+      - name: Generate matching update metadata and upload all assets
+        shell: pwsh
+        working-directory: build-source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $version = $package.version
+          $installer = Get-ChildItem dist -File -Filter "*-$version-setup-x64.exe" | Select-Object -First 1
+          if (-not $installer) { throw "No x64 NSIS installer was produced for $version." }
+          $blockmap = Get-Item "$($installer.FullName).blockmap" -ErrorAction SilentlyContinue
+          if (-not $blockmap) { throw "The installer blockmap was not produced: $($installer.Name).blockmap" }
+
+          # Normalize the uploaded asset name to match electron-builder's GitHub Releases naming.
+          $assetName = $installer.Name -replace ' ', '-'
+          $assetPath = Join-Path $installer.DirectoryName $assetName
+          $blockmapPath = "$assetPath.blockmap"
+          if ($assetPath -ne $installer.FullName) { Copy-Item $installer.FullName $assetPath -Force }
+          if ($blockmap.FullName -ne $blockmapPath) { Copy-Item $blockmap.FullName $blockmapPath -Force }
+
+          $stream = [System.IO.File]::OpenRead($assetPath)
+          try {
+            $hasher = [System.Security.Cryptography.SHA512]::Create()
+            try { $sha512 = [Convert]::ToBase64String($hasher.ComputeHash($stream)) }
+            finally { $hasher.Dispose() }
+          }
+          finally { $stream.Dispose() }
+          $size = (Get-Item $assetPath).Length
+          $releaseDate = [DateTime]::UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'")
+          $metadata = @"
+          version: $version
+          files:
+            - url: $assetName
+              sha512: $sha512
+              size: $size
+          path: $assetName
+          sha512: $sha512
+          releaseDate: '$releaseDate'
+          "@
+          $metadataPath = Join-Path (Resolve-Path dist) 'latest.yml'
+          [System.IO.File]::WriteAllText($metadataPath, $metadata.TrimStart(), [System.Text.UTF8Encoding]::new($false))
+
+          gh release upload $env:RELEASE_TAG $assetPath $blockmapPath $metadataPath --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Uploading the release assets failed.' }
