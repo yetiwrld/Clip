@@ -17,6 +17,10 @@ cloud processing is not used. Thumbnail creation remains out of scope.
   v0.0.3 GitHub Release. The update/install cycle is still unverified.
 - Refreshed source archive: `AIClipping-code-for-AI.zip` (171 files, 3.75 MB).
   Original `build/icon.png` and `build/icon.ico` were restored and retained.
+- Windows Actions run [37000108649](https://github.com/yetiwrld/Clip/actions/runs/37000108649)
+  successfully built the unsigned v0.0.3 installer (artifact 11223801205,
+  159,315,104 bytes). The v0.0.3 GitHub Release/update feed and a real Windows
+  install/update cycle have not yet been verified.
 
 The sections below preserve the 2026-10-01 audit as historical context.
 
