@@ -114,45 +114,26 @@ jobs:
           $metadataPath = Join-Path (Resolve-Path dist) 'latest.yml'
           [System.IO.File]::WriteAllText($metadataPath, $metadata.TrimStart(), [System.Text.UTF8Encoding]::new($false))
 
-          # Resolve GitHub's actual latest release object explicitly. A tag can have multiple
-          # release records, and `gh release upload <tag>` may select a different one.
+          # Require the tag lookup and latest release to point to the same record before
+          # overwriting assets. This prevents repairing a duplicate, non-latest release.
           $repository = $env:GITHUB_REPOSITORY
-          $releaseJson = gh api "repos/$repository/releases/latest" | Out-String
+          $latestJson = gh api "repos/$repository/releases/latest" | Out-String
           if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the latest GitHub release.' }
-          $release = $releaseJson | ConvertFrom-Json
-          if ($release.tag_name -ne $env:RELEASE_TAG) {
-            throw "Latest release tag $($release.tag_name) does not match $($env:RELEASE_TAG)."
+          $latestRelease = $latestJson | ConvertFrom-Json
+          $tagReleaseJson = gh api "repos/$repository/releases/tags/$($env:RELEASE_TAG)" | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "Could not resolve release tag $($env:RELEASE_TAG)." }
+          $tagRelease = $tagReleaseJson | ConvertFrom-Json
+          if ($latestRelease.id -ne $tagRelease.id -or $latestRelease.tag_name -ne $env:RELEASE_TAG) {
+            throw 'The requested release is not the repository latest release; refusing to overwrite assets.'
           }
 
-          $expectedAssetNames = @($assetName, "$assetName.blockmap", 'latest.yml')
-          foreach ($existingAsset in $release.assets) {
-            if ($expectedAssetNames -contains $existingAsset.name) {
-              gh api "repos/$repository/releases/assets/$($existingAsset.id)" --method DELETE --silent
-              if ($LASTEXITCODE -ne 0) { throw "Could not replace release asset $($existingAsset.name)." }
-            }
-          }
-
-          $uploadUrl = "https://uploads.github.com/repos/$repository/releases/$($release.id)/assets"
-          foreach ($file in @($assetPath, $blockmapPath, $metadataPath)) {
-            $name = [System.IO.Path]::GetFileName($file)
-            $encodedName = [uri]::EscapeDataString($name)
-            $curlArgs = @(
-              '--fail-with-body', '--silent', '--show-error', '--request', 'POST',
-              '--header', 'Accept: application/vnd.github+json',
-              '--header', "Authorization: Bearer $env:GH_TOKEN",
-              '--header', 'X-GitHub-Api-Version: 2022-11-28',
-              '--header', 'Content-Type: application/octet-stream',
-              '--data-binary', "@$file",
-              "$uploadUrl?name=$encodedName"
-            )
-            & curl.exe @curlArgs | Out-Host
-            if ($LASTEXITCODE -ne 0) { throw "Uploading release asset $name failed." }
-          }
+          gh release upload $env:RELEASE_TAG $assetPath $blockmapPath $metadataPath --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Uploading the release assets failed.' }
 
           $verifiedJson = gh api "repos/$repository/releases/latest" | Out-String
           if ($LASTEXITCODE -ne 0) { throw 'Could not verify the updated latest release.' }
           $verifiedRelease = $verifiedJson | ConvertFrom-Json
-          if ($verifiedRelease.id -ne $release.id -or $verifiedRelease.tag_name -ne $env:RELEASE_TAG) {
+          if ($verifiedRelease.id -ne $latestRelease.id -or $verifiedRelease.tag_name -ne $env:RELEASE_TAG) {
             throw 'The updated release is no longer the repository latest release.'
           }
           $expectedSizes = @{}
