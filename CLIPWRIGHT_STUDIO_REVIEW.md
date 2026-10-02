@@ -12,15 +12,18 @@ cloud processing is not used. Thumbnail creation remains out of scope.
   across 32 files** pass. The optional local diarization helper passes Python
   syntax compilation; the resemblyzer model itself and desktop/Windows update
   flow were not run in this environment.
-- The updater remains opt-in (ask before download). To observe a real update,
-  install an updater-enabled v0.0.2 build and publish/install the higher-version
-  v0.0.3 GitHub Release. The update/install cycle is still unverified.
+- The updater remains opt-in (ask before download). The [v0.0.3 GitHub
+  Release](https://github.com/yetiwrld/Clip/releases/tag/v0.0.3) is published
+  with its installer, `latest.yml`, and blockmap. To observe it, manually install
+  the updater-enabled v0.0.2 build from [Actions run
+  36994716385](https://github.com/yetiwrld/Clip/actions/runs/36994716385). No
+  Windows update/install cycle has been run in this Linux environment.
 - Refreshed source archive: `AIClipping-code-for-AI.zip` (171 files, 3.75 MB).
   Original `build/icon.png` and `build/icon.ico` were restored and retained.
 - Windows Actions run [37000108649](https://github.com/yetiwrld/Clip/actions/runs/37000108649)
   successfully built the unsigned v0.0.3 installer (artifact 11223801205,
-  159,315,104 bytes). The v0.0.3 GitHub Release/update feed and a real Windows
-  install/update cycle have not yet been verified.
+  159,315,104 bytes). The v0.0.3 GitHub Release/update feed is now published; a real Windows
+  install/update cycle has not yet been verified.
 
 The sections below preserve the 2026-10-01 audit as historical context.
 
