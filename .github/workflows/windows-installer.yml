@@ -1,0 +1,52 @@
+name: Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AIClipping-code-for-AI.zip'
+      - '.github/workflows/windows-installer.yml'
+  pull_request:
+    paths:
+      - 'AIClipping-code-for-AI.zip'
+      - '.github/workflows/windows-installer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    name: Build unsigned x64 NSIS installer
+    runs-on: windows-latest
+    steps:
+      - name: Check out source archive
+        uses: actions/checkout@v7
+
+      - name: Extract app source
+        shell: pwsh
+        run: Expand-Archive -Path AIClipping-code-for-AI.zip -DestinationPath build-source -Force
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: build-source/package-lock.json
+
+      - name: Install build dependencies
+        working-directory: build-source
+        run: npm ci
+
+      - name: Build self-contained installer
+        working-directory: build-source
+        # This workflow creates a downloadable Actions artifact, not a GitHub Release.
+        # Keep publishing disabled here; the tag-triggered release workflow owns the update feed.
+        run: npm run dist:win -- --publish never
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: Clipwright-Studio-Windows-x64-unsigned
+          path: 'build-source/dist/Clipwright Studio-*-setup-x64.exe'
+          if-no-files-found: error
+          retention-days: 30

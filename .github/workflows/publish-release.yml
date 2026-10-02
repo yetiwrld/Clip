@@ -1,0 +1,50 @@
+name: Publish Windows release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-windows:
+    name: Publish Windows x64 update feed
+    runs-on: windows-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+
+      - name: Extract app source
+        shell: pwsh
+        run: Expand-Archive -Path AIClipping-code-for-AI.zip -DestinationPath build-source -Force
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: build-source/package-lock.json
+
+      - name: Install build dependencies
+        working-directory: build-source
+        run: npm ci
+
+      - name: Ensure tag matches app version
+        shell: pwsh
+        working-directory: build-source
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $expected = "v$($package.version)"
+          if ($env:RELEASE_TAG -ne $expected) {
+            throw "Tag $($env:RELEASE_TAG) does not match package version $($package.version) (expected $expected)."
+          }
+
+      - name: Build and publish installer plus update metadata
+        working-directory: build-source
+        run: npm run dist:win -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
