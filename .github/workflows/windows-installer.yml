@@ -39,7 +39,9 @@ jobs:
 
       - name: Build self-contained installer
         working-directory: build-source
-        run: npm run dist:win
+        # This workflow creates a downloadable Actions artifact, not a GitHub Release.
+        # Keep publishing disabled here; the tag-triggered release workflow owns the update feed.
+        run: npm run dist:win -- --publish never
 
       - name: Upload installer
         uses: actions/upload-artifact@v7
