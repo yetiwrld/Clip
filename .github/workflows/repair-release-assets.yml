@@ -114,8 +114,10 @@ jobs:
           $metadataPath = Join-Path (Resolve-Path dist) 'latest.yml'
           [System.IO.File]::WriteAllText($metadataPath, $metadata.TrimStart(), [System.Text.UTF8Encoding]::new($false))
 
-          # Require the tag lookup and latest release to point to the same record before
-          # overwriting assets. This prevents repairing a duplicate, non-latest release.
+          # The tag-triggered electron-builder publish can race parallel asset
+          # uploads and create duplicate release records for one tag. Keep the
+          # repository's latest record, but only consolidate when both lookups
+          # name the requested latest tag; never delete a different release.
           $repository = $env:GITHUB_REPOSITORY
           $latestJson = gh api "repos/$repository/releases/latest" | Out-String
           if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the latest GitHub release.' }
@@ -123,8 +125,19 @@ jobs:
           $tagReleaseJson = gh api "repos/$repository/releases/tags/$($env:RELEASE_TAG)" | Out-String
           if ($LASTEXITCODE -ne 0) { throw "Could not resolve release tag $($env:RELEASE_TAG)." }
           $tagRelease = $tagReleaseJson | ConvertFrom-Json
-          if ($latestRelease.id -ne $tagRelease.id -or $latestRelease.tag_name -ne $env:RELEASE_TAG) {
+          if ($latestRelease.tag_name -ne $env:RELEASE_TAG -or $tagRelease.tag_name -ne $env:RELEASE_TAG) {
             throw 'The requested release is not the repository latest release; refusing to overwrite assets.'
+          }
+          if ($latestRelease.id -ne $tagRelease.id) {
+            Write-Host "Consolidating duplicate $($env:RELEASE_TAG) release record $($tagRelease.id) into latest record $($latestRelease.id)."
+            gh api --method DELETE "repos/$repository/releases/$($tagRelease.id)"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not remove the duplicate release record.' }
+            $tagReleaseJson = gh api "repos/$repository/releases/tags/$($env:RELEASE_TAG)" | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "Could not re-resolve release tag $($env:RELEASE_TAG) after consolidation." }
+            $tagRelease = $tagReleaseJson | ConvertFrom-Json
+            if ($tagRelease.id -ne $latestRelease.id) {
+              throw 'The requested tag does not resolve to the repository latest release after consolidation.'
+            }
           }
 
           gh release upload $env:RELEASE_TAG $assetPath $blockmapPath $metadataPath --clobber
