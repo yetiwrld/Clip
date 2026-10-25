@@ -1,6 +1,10 @@
 # The two real CapCut projects — what they actually contain
 
 **Received:** `1022.zip` on 2026-10-25 (on `main`, commit `18bc254`).
+**Update:** the finished export of 1022 also arrived — measured in
+[`CAPCUT_EXPORT_1022.md`](CAPCUT_EXPORT_1022.md). Where the draft and the video disagree, the
+video wins, and it gave exact numbers for the label (centre 0.499 × 0.151, cap height 3.4%,
+outline ~13% of cap height, no animation).
 **Read with:** `rea-lab/tools/capcut-digest.py` — run it yourself on any draft folder.
 **Copied here:** the `draft_content.json`, `draft_meta_info.json`, `draft_settings` and cover
 image of each project, in [`reference/`](reference/). The caches and media were left out.
@@ -132,6 +136,8 @@ not you, say so and they stay on the list, just behind your own workflow.
 These are not opinions. Each is a specific line in our source that blocks a technique you use.
 
 ### 5.1 Text layers have no outline — so "Level 1" is impossible
+*(confirmed against the export: the label's outline is ~2 px at 480p, i.e. ~13% of cap height,
+and our text path cannot produce any outline at all)*
 
 `src/shared/captions/text-ass.ts` writes the outline colour as *the same colour as the text*, and
 sets outline width to `0` unless the layer has a background box:
@@ -176,7 +182,12 @@ against real use rather than assumed.
 
 ## 6. Revised Tier 1 (what I would build first now)
 
-1. **Text layer outline + shadow + a "Level label" preset** — half a day. Unblocks your main look.
+**Updated after measuring the export** — the label needs no animation and no keyframes, which
+removes work from item 1. Numbers are now known instead of estimated.
+
+1. **Text layer outline + a saved "Bold Top Label" preset** — the preset is the measured recipe:
+   white, bold, centre 0.499 × 0.151, cap height 3.4% of frame height, outline ~13% of cap
+   height, no animation. Half a day. Unblocks your main look.
 2. **Volume range fix (0–4)** — minutes. Stops losing +6 dB on export.
 3. **Crossfade transitions, "Slow Fade" first** — the only transition you use. Needs the
    canvas-per-track change, but only for tracks that have a transition; hard-cut tracks keep
