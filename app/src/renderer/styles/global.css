@@ -2323,6 +2323,8 @@ details.error-details pre {
   border-left: 1px solid var(--border);
   background: var(--surface);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   min-height: 0;
 }
 
@@ -3727,12 +3729,10 @@ details.error-details pre {
 /* ----------------------------------------------------------- inspector -- */
 
 .inspector-context-heading {
-  position: sticky;
-  top: 0;
-  z-index: 3;
   gap: 3px;
   padding: 12px 14px 11px;
   background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .inspector-context-heading span {
@@ -3960,4 +3960,157 @@ details.error-details pre {
   .stage-head {
     padding: 0 6px 0 10px;
   }
+}
+
+/* ============================================================
+   CAPTION PROPERTIES — calm pass
+   The panel used to be one flat column: 50 template cards, then
+   every control at once, then the cue list. Now it reads as
+   gallery → typeface → layout → colour → cues, with the two
+   least-used groups collapsed and every list in its own
+   bounded scroller.
+   ============================================================ */
+
+.cap-panel {
+  padding: 10px 12px 18px;
+}
+
+/* One row of category chips that scrolls sideways instead of
+   wrapping into three rows of pills. */
+.cap-category-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding-bottom: 5px;
+  scrollbar-width: none;
+}
+
+.cap-category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.cap-category-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.cap-search-row {
+  gap: 6px;
+  margin: 0 0 8px;
+  flex-wrap: nowrap;
+}
+
+.cap-search-row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cap-search-row .select {
+  flex: 0 0 104px;
+  min-width: 0;
+}
+
+/* Gallery: its own scroll area, so the panel stops being a
+   two-thousand-pixel wall of cards. */
+.cap-gallery {
+  max-height: 244px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 1px 2px 1px 1px;
+  margin-bottom: 8px;
+}
+
+.cap-gallery .cap-templates {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cap-gallery .cap-preview {
+  height: 40px;
+  margin-bottom: 3px;
+}
+
+.cap-gallery .cap-template-animation {
+  display: none;
+}
+
+.cap-style-hint {
+  margin: 0 0 6px;
+}
+
+/* Nested groups line up with the panel padding instead of
+   stepping further in on every level. */
+.cap-panel .inspector-section > summary {
+  padding: 11px 2px;
+}
+
+.cap-panel .inspector-section > .inspector-body {
+  padding: 0 0 12px;
+}
+
+.cap-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cap-group-head {
+  margin: 14px 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.cap-group .divider,
+.cap-panel .divider {
+  display: none;
+}
+
+/* Cue list: own bounded scroller, no chaining into the inspector. */
+.cap-cue-list {
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
+}
+
+/* Seven little buttons per cue is what made the list feel busy.
+   The space stays reserved (no layout shift), the buttons fade in. */
+.cue-row .cue-actions {
+  opacity: 0;
+  transition: opacity var(--speed);
+}
+
+.cue-row:hover .cue-actions,
+.cue-row:focus-within .cue-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .cue-row .cue-actions {
+    opacity: 1;
+  }
+}
+
+/* With a cue selected, the words come first: the cue editor is moved to the
+   top of the panel and the style gallery follows it. */
+.cap-panel.has-cue {
+  display: flex;
+  flex-direction: column;
+}
+
+.cap-panel.has-cue .cap-cue-group {
+  order: -1;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cap-panel.has-cue .cap-cue-group .cap-group-head {
+  margin-top: 0;
 }

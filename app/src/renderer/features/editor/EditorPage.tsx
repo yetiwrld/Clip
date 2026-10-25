@@ -1710,8 +1710,10 @@ export function EditorPage() {
               onSelect={(layer) => { setSelectedTextLayerId(layer.id); seekTo(layer.startTime) }} onChange={updateTextLayer} onDelete={deleteSelectedTextLayer} onAddKeyframe={addTextKeyframe} onSeek={seekTo} />
           </> : selectedCueKey ? <>
             <div className="inspector-context-heading"><span>Caption properties</span><strong>{cues.find((cue) => cue.key === selectedCueKey)?.text ?? 'Caption'}</strong></div>
-            <CaptionsPanel clip={clip} cues={cues} updateClip={updateClip} selectedCueKey={selectedCueKey} currentTime={currentTime}
-              onSelectCue={(cue) => { setSelectedCueKey(cue.key); seekTo(cue.startTime) }} />
+            <div className={`cap-panel${selectedCueKey ? ' has-cue' : ''}`}>
+              <CaptionsPanel clip={clip} cues={cues} updateClip={updateClip} selectedCueKey={selectedCueKey} currentTime={currentTime}
+                onSelectCue={(cue) => { setSelectedCueKey(cue.key); seekTo(cue.startTime) }} />
+            </div>
           </> : selectedMoment ? <div className="inspector-moment-details"><div className="inspector-context-heading"><span>AI moment</span><strong>{selectedMoment.title}</strong></div>
             <p>{selectedMoment.reason}</p><p>{selectedMoment.transcriptExcerpt}</p><div className="inspector-moment-meta">{formatClock(selectedMoment.startTime, true)} – {formatClock(selectedMoment.endTime, true)} · Score {Math.round(selectedMoment.overallScore ?? 0)}</div>
           </div> : <div className="inspector-empty"><Film size={24} /><strong>Select a clip to edit</strong><span>Choose a media item, text, caption, or moment to see its controls here.</span></div>}
@@ -2481,12 +2483,12 @@ function CaptionsPanel(props: {
   const baseStyle = getCaptionStyle(clip.captionStyleId)
   const style = { ...baseStyle, ...overrides, fontFile: overrides.fontFile ?? baseStyle.fontFile }
 
-  const visibleStyles = [...CAPTION_STYLES, ...savedPresets].filter((s) => {
+  const visibleStyles = useMemo(() => [...CAPTION_STYLES, ...savedPresets].filter((s) => {
     const categoryMatch = category === 'all' || (category === 'favorites' ? favoriteIds.includes(s.id) : category === 'recent' ? recentIds.includes(s.id) : s.category === category)
     const queryMatch = `${s.label} ${s.description} ${s.fontFamily ?? ''} ${s.animationIn ?? ''} ${s.wordAnimation ?? ''} ${s.emphasisBehavior ?? ''} ${s.category}`.toLowerCase().includes(templateSearch.toLowerCase())
     const filterMatch = presetFilter === 'all' || (presetFilter === 'animated' ? (s.animationIn ?? 'none') !== 'none' || (s.wordAnimation ?? 'none') !== 'none' : presetFilter === 'static' ? (s.animationIn ?? 'none') === 'none' && (s.wordAnimation ?? 'none') === 'none' : presetFilter === 'speaker' ? s.id.includes('speaker') || s.id === 'multi-speaker' : presetFilter === 'emoji' ? s.emojiBehavior !== 'off' : s.category === presetFilter)
     return categoryMatch && queryMatch && filterMatch
-  })
+  }), [category, templateSearch, presetFilter, favoriteIds, recentIds, savedPresets])
 
   function applyTemplate(s: import('@shared/constants').CaptionStylePreset) {
     const face = CAPTION_FONTS.find((f) => f.file === s.fontFile) ?? CAPTION_FONTS.find((f) => f.family === (s.fontFamily ?? 'Inter') && f.weight === (s.fontWeight ?? 600))
@@ -2544,7 +2546,9 @@ function CaptionsPanel(props: {
 
   return (
     <>
-      <div className="cap-category-tabs">
+      <div className="cap-category-tabs" role="tablist" aria-label="Caption style categories">
+        <button role="tab" aria-selected={category === 'favorites'} className={`cap-category-tab ${category === 'favorites' ? 'active' : ''}`} onClick={() => setCategory('favorites')}>Favorites</button>
+        <button role="tab" aria-selected={category === 'recent'} className={`cap-category-tab ${category === 'recent' ? 'active' : ''}`} onClick={() => setCategory('recent')}>Recent</button>
         {CAPTION_CATEGORIES.map((c) => (
           <button
             key={c.id}
@@ -2555,18 +2559,58 @@ function CaptionsPanel(props: {
           </button>
         ))}
       </div>
-      <div className="row" style={{ gap: 8, margin: '6px 0' }}>
-        <button className={`btn sm ${category === 'favorites' ? 'primary' : ''}`} onClick={() => setCategory('favorites')}><Star size={12} /> Favorites</button>
-        <button className={`btn sm ${category === 'recent' ? 'primary' : ''}`} onClick={() => setCategory('recent')}>Recently Used</button>
+
+      <div className="row cap-search-row">
+        <input className="input" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} placeholder="Search styles" aria-label="Search caption styles" />
         <select className="select" value={presetFilter} onChange={(e) => setPresetFilter(e.target.value)} aria-label="Filter caption presets">
-          <option value="all">All types</option><option value="animated">Animated</option><option value="static">Static</option>
-          <option value="podcast">Podcast</option><option value="meme">Meme</option><option value="professional">Professional</option>
-          <option value="high-energy">High Energy</option><option value="minimal">Minimal</option><option value="speaker">Speaker</option><option value="emoji">Emoji</option>
-        </select>
+                  <option value="all">All types</option><option value="animated">Animated</option><option value="static">Static</option>
+                  <option value="podcast">Podcast</option><option value="meme">Meme</option><option value="professional">Professional</option>
+                  <option value="high-energy">High Energy</option><option value="minimal">Minimal</option><option value="speaker">Speaker</option><option value="emoji">Emoji</option>
+                </select>
       </div>
 
-      <div className="stack sm" style={{ margin: '8px 0' }}>
-        <input className="input" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} placeholder="Search caption templates" aria-label="Search caption templates" />
+      <div className="cap-gallery">
+      <div className="cap-templates">
+        {([
+          ...visibleStyles,
+          { id: 'none', label: 'Off', description: 'Render without captions' }
+        ] as Array<{ id: string; label: string; description?: string }>).map((s) =>
+          s.id === 'none' ? (
+            <button
+              key="none"
+              className={`btn sm ${clip.captionStyleId === 'none' ? 'primary' : ''}`}
+              style={{ flexDirection: 'column', padding: '6px 4px', height: 68, gap: 2 }}
+              onClick={() => props.updateClip({ captionStyleId: 'none' })}
+              title="Render without captions"
+            >
+              <Type size={12} />
+              Off
+            </button>
+          ) : (
+            <div key={s.id} className="cap-template-card">
+              <button
+                className={`btn sm ${clip.captionStyleId === s.id ? 'primary' : ''}`}
+                style={{ flexDirection: 'column', padding: '3px', height: 68, gap: 2, alignItems: 'stretch' }}
+                onClick={() => applyTemplate(s as import('@shared/constants').CaptionStylePreset)}
+                title={s.description ?? ''}
+              >
+                <TemplatePreview style={s as import('@shared/constants').CaptionStylePreset} text={sampleText} safeArea={showSafeArea} active={clip.captionStyleId === s.id} />
+                <span style={{ fontSize: 10 }}>{s.label}</span>
+                <span className="cap-template-animation">{(s as import('@shared/constants').CaptionStylePreset).wordAnimation}</span>
+              </button>
+              <button className={`cap-template-favorite ${favoriteIds.includes(s.id) ? 'active' : ''}`} onClick={() => toggleFavorite(s.id)} aria-label={`${favoriteIds.includes(s.id) ? 'Remove' : 'Add'} ${s.label} ${favoriteIds.includes(s.id) ? 'from' : 'to'} favorites`} title="Favorite preset"><Star size={12} fill={favoriteIds.includes(s.id) ? 'currentColor' : 'none'} /></button>
+            </div>
+          )
+        )}
+      </div>
+      </div>
+      <div className="field-hint cap-style-hint">{style.description}</div>
+
+      <details className="inspector-section">
+        <summary>
+          <Type size={12} /> Typeface <ChevronRight size={13} className="chev" />
+        </summary>
+        <div className="inspector-body">
         <input className="input" value={fontSearch} onChange={(e) => setFontSearch(e.target.value)} placeholder="Search fonts" aria-label="Search caption fonts" />
         <div className="row" style={{ gap: 8 }}>
           <label className="tiny">Font
@@ -2590,7 +2634,7 @@ function CaptionsPanel(props: {
           </label>
           <button className="btn sm" onClick={savePreset}>Save as preset</button>
         </div>
-        <div className="field-hint">Fonts are bundled under the SIL Open Font License. The weight list only shows available font files.</div>
+<div className="field-hint">Fonts are bundled under the SIL Open Font License. The weight list only shows available font files.</div>
         <div className="row" style={{ gap: 6 }}>
           <button className="btn sm" onClick={() => { localStorage.setItem('clipwright.captionStyleClipboard', JSON.stringify({ id: clip.captionStyleId, overrides })); setCanPasteStyle(true) }}>Copy style</button>
           <button className="btn sm" disabled={!canPasteStyle} title={canPasteStyle ? 'Paste the copied caption style' : 'Copy a caption style first'} onClick={() => {
@@ -2600,47 +2644,15 @@ function CaptionsPanel(props: {
               else setCanPasteStyle(false)
             } catch { setCanPasteStyle(false) }
           }}>Paste style</button>
-          <span className="tiny" style={{ color: 'var(--text-3)' }}>{props.selectedCueKey ? 'Style applies to this clip’s caption track.' : 'Select a caption block to edit its text.'}</span>
-        </div>
-      </div>
 
-      <div className="cap-templates">
-        {([
-          ...visibleStyles,
-          { id: 'none', label: 'Off', description: 'Render without captions' }
-        ] as Array<{ id: string; label: string; description?: string }>).map((s) =>
-          s.id === 'none' ? (
-            <button
-              key="none"
-              className={`btn sm ${clip.captionStyleId === 'none' ? 'primary' : ''}`}
-              style={{ flexDirection: 'column', padding: '8px 4px', height: 86, gap: 3 }}
-              onClick={() => props.updateClip({ captionStyleId: 'none' })}
-              title="Render without captions"
-            >
-              <Type size={12} />
-              Off
-            </button>
-          ) : (
-            <div key={s.id} className="cap-template-card">
-              <button
-                className={`btn sm ${clip.captionStyleId === s.id ? 'primary' : ''}`}
-                style={{ flexDirection: 'column', padding: '4px', height: 86, gap: 3, alignItems: 'stretch' }}
-                onClick={() => applyTemplate(s as import('@shared/constants').CaptionStylePreset)}
-                title={s.description ?? ''}
-              >
-                <TemplatePreview style={s as import('@shared/constants').CaptionStylePreset} text={sampleText} safeArea={showSafeArea} active={clip.captionStyleId === s.id} />
-                <span style={{ fontSize: 10 }}>{s.label}</span>
-                <span className="cap-template-animation">{(s as import('@shared/constants').CaptionStylePreset).wordAnimation}</span>
-              </button>
-              <button className={`cap-template-favorite ${favoriteIds.includes(s.id) ? 'active' : ''}`} onClick={() => toggleFavorite(s.id)} aria-label={`${favoriteIds.includes(s.id) ? 'Remove' : 'Add'} ${s.label} ${favoriteIds.includes(s.id) ? 'from' : 'to'} favorites`} title="Favorite preset"><Star size={12} fill={favoriteIds.includes(s.id) ? 'currentColor' : 'none'} /></button>
-            </div>
-          )
-        )}
-      </div>
-      <div className="field-hint">{style.description}</div>
+        </div>
+        </div>
+      </details>
 
       {clip.captionStyleId !== 'none' && (
         <>
+          <div className="cap-group">
+          <div className="cap-group-head">Text, layout &amp; motion</div>
           <Switch
             label="Show platform safe area"
             hint="Editor guide only — never rendered into the output."
@@ -2700,8 +2712,13 @@ function CaptionsPanel(props: {
           </div>
           <Field label={`Letter spacing · ${overrides.letterSpacing ?? style.letterSpacing ?? 0}px`}><input type="range" min="-2" max="8" step="0.2" value={overrides.letterSpacing ?? style.letterSpacing ?? 0} onChange={(e) => setOverride({ letterSpacing: Number(e.target.value) })} /></Field>
 
-          <div className="divider" />
-          <div className="section-title">Colors &amp; container</div>
+          </div>
+
+          <details className="inspector-section">
+            <summary>
+              <Tags size={12} /> Colours, outline &amp; alignment <ChevronRight size={13} className="chev" />
+            </summary>
+            <div className="inspector-body cap-group">
           <div className="row" style={{ gap: 10 }}>
             <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               Text
@@ -2776,12 +2793,15 @@ function CaptionsPanel(props: {
             />
           </Field>
 
-          <div className="divider" />
-          <div className="section-title">Caption cues</div>
+            </div>
+          </details>
+
+          <div className="cap-group cap-cue-group">
+          <div className="cap-group-head">Caption text &amp; timing</div>
           <div className="field-hint">
             Edit text, split or merge cues, and nudge timing. Timing shifts apply to preview and render alike.
           </div>
-          <div className="stack sm" style={{ maxHeight: 280, overflowY: 'auto' }}>
+          <div className="stack sm cap-cue-list">
             {props.cues.map((cue, idx) => {
               const next = props.cues[idx + 1]
               const split = clip.captionCueSplits?.[cue.key]
@@ -2970,14 +2990,17 @@ function CaptionsPanel(props: {
               Hide duplicated caption blocks
             </button>
           )}
+          </div>
         </>
       )}
     </>
   )
 }
 
-/** Live mini preview of a caption template (mirrors CaptionPreview styling). */
-function TemplatePreview(props: {
+/** Live mini preview of a caption template (mirrors CaptionPreview styling).
+ *  Memoised: the gallery holds ~50 of these and the editor re-renders on every
+ *  playback tick, so they must not rebuild their style objects each frame. */
+const TemplatePreview = React.memo(function TemplatePreview(props: {
   style: import('@shared/constants').CaptionStylePreset
   text: string
   safeArea: boolean
@@ -3018,7 +3041,7 @@ function TemplatePreview(props: {
       </span>
     </div>
   )
-}
+})
 
 function colorToRgba(hex: string, opacity: number): string {
   const value = hex.replace('#', '')
