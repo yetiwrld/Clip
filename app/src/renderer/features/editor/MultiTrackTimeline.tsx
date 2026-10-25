@@ -6,6 +6,8 @@ import { effectiveItemSpeed, sourceDeltaForTimelineDelta, timelineItemDuration, 
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
 import { deleteTimelineItem, duplicateTimelineItem, fitTimelineZoom, splitTimelineItemAt, TIMELINE_ZOOM_MAX, TIMELINE_ZOOM_MIN, timelineZoomFromSlider, timelineZoomSliderValue } from '@shared/editor/timeline-editing'
 import { droppedFilePath, mediaUrl } from '../../api/client'
+import { registerCommands } from '../../commands/registry'
+import { timelineCommands, type TimelineHandlers } from '../../commands/screenCommands'
 
 type DragState = { id: string; mode: 'move' | 'left' | 'right'; startX: number; initial: TimelineItem }
 type EditDragState =
@@ -596,25 +598,21 @@ export function MultiTrackTimeline(props: {
   }
   function setSnap() { props.onChange({ ...props.timeline, snapEnabled: !props.timeline.snapEnabled }) }
 
+  // Timeline keys live in the shared registry too; this component supplies the
+  // actions and removes them when the timeline unmounts.
+  const commandHandlers = useRef<TimelineHandlers | null>(null)
+
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target instanceof HTMLElement ? event.target : null
-      if (target?.isContentEditable || target?.closest('input, textarea, select, [contenteditable="true"]')) return
-      if (!selected || selectedLocked) return
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        event.preventDefault()
-        deleteSelected()
-      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
-        event.preventDefault()
-        duplicateSelected()
-      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
-        event.preventDefault()
-        splitSelected()
-      }
+    commandHandlers.current = {
+      hasSelection: () => Boolean(selected) && !selectedLocked,
+      deleteSelected,
+      duplicateSelected,
+      splitSelected,
+      toggleSnap: setSnap
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selected, selectedLocked, props.timeline, props.currentTime])
+  })
+
+  useEffect(() => registerCommands(timelineCommands(() => commandHandlers.current as TimelineHandlers)), [])
 
   return <section className="multi-track-editor" aria-label="Multi-track timeline editor">
     <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete remove">

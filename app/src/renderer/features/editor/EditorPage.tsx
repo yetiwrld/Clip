@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
+import { registerCommands, shortcutLabelFor } from '../../commands/registry'
+import { editorCommands, type EditorHandlers } from '../../commands/screenCommands'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, Field, Spinner, Switch } from '../../components/ui'
 import { buildCues, cueAt } from '@shared/captions/segmentation'
@@ -149,17 +151,10 @@ export function EditorPage() {
     clipRef.current = clip
   }, [clip])
 
+  // Focus moves into the drawer when it opens. Escape is a registered command
+  // (editor.closeInspector), not a second listener.
   useEffect(() => {
-    if (!inspectorOpen) return
-    inspectorCloseRef.current?.focus()
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      setInspectorOpen(false)
-      inspectorToggleRef.current?.focus()
-    }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
+    if (inspectorOpen) inspectorCloseRef.current?.focus()
   }, [inspectorOpen])
 
   // ---------------------------------------------------------------- load ---
@@ -898,64 +893,73 @@ export function EditorPage() {
     seekTo(v.currentTime + dir * frameDuration(fps))
   }, [data.activeProject, seekTo])
 
+  // Shortcuts are registered, not listened for. The command ids, titles and key
+  // bindings live in commands/screenCommands.ts; this component only supplies
+  // the behaviour, read through a ref so nothing re-registers on every frame.
+  const editorCommandHandlers = useRef<EditorHandlers | null>(null)
+
+  function undoAction() {
+    const timelineHistory = timelineHistoryRef.current
+    const clipHistory = historyRef.current
+    const timelineIsNewest = timelineHistory.lastActionAt >= clipHistory.lastPush
+    if (timelineIsNewest && timelineHistory.undo.length) undoTimeline()
+    else if (clipHistory.past.length) undo()
+    else undoTimeline()
+  }
+
+  function redoAction() {
+    const timelineHistory = timelineHistoryRef.current
+    const clipHistory = historyRef.current
+    const timelineIsNewest = timelineHistory.lastActionAt >= clipHistory.lastPush
+    if (timelineIsNewest && timelineHistory.redo.length) redoTimeline()
+    else if (clipHistory.future.length) redo()
+    else redoTimeline()
+  }
+
+  const clipFps = data.activeProject?.fps && data.activeProject.fps > 0 ? data.activeProject.fps : 25
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
-      if (!clip) return
-      const v = videoRef.current
-      const fps = data.activeProject?.fps && data.activeProject.fps > 0 ? data.activeProject.fps : 25
-      if (e.code === 'Space') {
-        e.preventDefault()
-        togglePlay()
-      } else if (e.key === 'j' || e.key === 'J') {
-        e.preventDefault()
-        rewind()
-      } else if (e.key === 'k' || e.key === 'K') {
-        e.preventDefault()
-        v?.pause()
-      } else if (e.key === 'l' || e.key === 'L') {
-        e.preventDefault()
-        playForward()
-      } else if (e.key === ',') {
-        frameStep(-1)
-      } else if (e.key === '.') {
-        frameStep(1)
-      } else if (e.key === 'i' || e.key === 'I') {
-        updateClip({ startTime: Math.min(currentTime, clip.endTime - frameDuration(fps)) })
-      } else if (e.key === 'o' || e.key === 'O') {
-        updateClip({ endTime: Math.max(currentTime, clip.startTime + frameDuration(fps)) })
-      } else if (e.key === 'Home') {
-        e.preventDefault()
-        seekTo(clip.startTime)
-      } else if (e.key === 'End') {
-        e.preventDefault()
-        seekTo(clip.endTime - frameDuration(fps))
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        if (v) seekTo(v.currentTime - (e.shiftKey ? 5 : 1))
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        if (v) seekTo(v.currentTime + (e.shiftKey ? 5 : 1))
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
-        e.preventDefault()
-        const timelineHistory = timelineHistoryRef.current
-        const clipHistory = historyRef.current
-        const timelineIsNewest = timelineHistory.lastActionAt >= clipHistory.lastPush
-        if (e.shiftKey) {
-          if (timelineIsNewest && timelineHistory.redo.length) redoTimeline()
-          else if (clipHistory.future.length) redo()
-          else redoTimeline()
-        } else {
-          if (timelineIsNewest && timelineHistory.undo.length) undoTimeline()
-          else if (clipHistory.past.length) undo()
-          else undoTimeline()
-        }
-      }
+    editorCommandHandlers.current = {
+      hasClip: () => Boolean(clip),
+      playPause: togglePlay,
+      rewind,
+      pause: () => videoRef.current?.pause(),
+      playForward,
+      stepFrame: frameStep,
+      seekBy: (seconds) => {
+        const video = videoRef.current
+        if (!video) return
+        seekTo(video.currentTime + seconds)
+      },
+      markStart: () => {
+        if (!clip) return
+        updateClip({ startTime: Math.min(currentTime, clip.endTime - frameDuration(clipFps)) })
+      },
+      markEnd: () => {
+        if (!clip) return
+        updateClip({ endTime: Math.max(currentTime, clip.startTime + frameDuration(clipFps)) })
+      },
+      goToStart: () => {
+        if (clip) seekTo(clip.startTime)
+      },
+      goToEnd: () => {
+        if (clip) seekTo(clip.endTime - frameDuration(clipFps))
+      },
+      undo: undoAction,
+      redo: redoAction,
+      exportClip: () => void queueRender(false),
+      optimizeBoundaries: () => void optimizeBoundaries(),
+      toggleInspector: () => setInspectorOpen((open) => !open),
+      inspectorEnabled: () => window.matchMedia('(max-width: 680px)').matches,
+      closeInspector: () => {
+        setInspectorOpen(false)
+        inspectorToggleRef.current?.focus()
+      },
+      inspectorOpen: () => inspectorOpen
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [clip, currentTime, togglePlay, updateClip, rewind, playForward, frameStep, seekTo, undo, redo, undoTimeline, redoTimeline, data.activeProject])
+  })
+
+  useEffect(() => registerCommands(editorCommands(() => editorCommandHandlers.current as EditorHandlers)), [])
 
   // ------------------------------------------------------------- captions ---
   const project = data.activeProject
@@ -1210,6 +1214,29 @@ export function EditorPage() {
   }
 
   // ---------------------------------------------------------------- render ---
+  /** Shared by the Trim panel button and the palette command. */
+  async function optimizeBoundaries() {
+    try {
+      if (!await flushSavesRef.current.clip()) return
+      const latestClip = clipRef.current ?? clip
+      if (!latestClip) return
+      if (!await saveNowRef.current(snapshotOf(latestClip), latestClip.id)) return
+      const result = await api['clips.optimizeBoundaries']({ clipId: latestClip.id })
+      pushHistory()
+      dispatchClipCommand({ type: 'clip.restore', snapshot: snapshotOf(result.clip), issuedAt: Date.now() })
+      historyRef.current.lastPush = Date.now()
+      app.toast({
+        level: 'success',
+        message: result.adjusted
+          ? `Boundaries optimized (quality ${Math.round(result.quality.before.score * 100)}% → ${Math.round(result.quality.after.score * 100)}%).`
+          : 'Boundaries were already clean — nothing to change.',
+        hint: `${result.startReason}; ${result.endReason}`
+      })
+    } catch (err) {
+      app.toast({ level: 'error', ...errMessage(err) })
+    }
+  }
+
   async function queueRender(preview: boolean) {
     const exportClip = clipRef.current ?? clip
     if (!exportClip) return
@@ -1357,6 +1384,14 @@ export function EditorPage() {
     transform: `rotate(${cameraState?.rotation ?? 0}deg)`
   } : undefined
 
+  // Shortcut hints in tooltips are read from the registry, so a rebinding
+  // changes the tooltip too. Empty until the commands register, which happens
+  // on the first effect.
+  const keyHint = (id: string) => {
+    const label = shortcutLabelFor(id)
+    return label ? ` (${label})` : ''
+  }
+
   return (
     <div className="editor-shell" data-density="compact">
       {/* ------------------------------------------------------- top bar -- */}
@@ -1387,10 +1422,10 @@ export function EditorPage() {
             {formatClock(currentTime, true)} <span>/</span> {formatClock(outputSeconds, true)}
           </span>
           <span className="topbar-divider" aria-hidden="true" />
-          <button className="btn ghost sm icon" onClick={undo} disabled={!historyState.canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+          <button className="btn ghost sm icon" onClick={undo} disabled={!historyState.canUndo} title={`Undo${keyHint('editor.undo')}`} aria-label="Undo">
             <Undo2 size={14} />
           </button>
-          <button className="btn ghost sm icon" onClick={redo} disabled={!historyState.canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+          <button className="btn ghost sm icon" onClick={redo} disabled={!historyState.canRedo} title={`Redo${keyHint('editor.redo')}`} aria-label="Redo">
             <Redo2 size={14} />
           </button>
           <span className="topbar-divider" aria-hidden="true" />
@@ -1667,16 +1702,16 @@ export function EditorPage() {
           </div>
           </div>
 
-          <div className="transport" title="Space play/pause · J/K/L shuttle · , . frame step · I/O trim">
+          <div className="transport" title="Space play/pause · J/K/L shuttle · , . frame step · I/O trim · Ctrl+K for every command">
             <span className="timecode">
               {formatClock(currentTime, true)} <span className="total">/ {formatClock(project.duration ?? 0, true)}</span>
             </span>
             <span className="transport-gap" />
             <div className="transport-controls">
-              <button className="btn ghost sm icon" onClick={() => seekTo(clip.startTime)} aria-label="Return to clip start" title="Go to clip start (Home)">
+              <button className="btn ghost sm icon" onClick={() => seekTo(clip.startTime)} aria-label="Return to clip start" title={`Go to clip start${keyHint('editor.goToStart')}`}>
                 <SkipBack size={14} />
               </button>
-              <button className="btn transport-play" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} title={playing ? 'Pause (Space)' : 'Play (Space)'}>
+              <button className="btn transport-play" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} title={`${playing ? 'Pause' : 'Play'}${keyHint('editor.playPause')}`}>
                 {playing ? <Pause size={16} /> : <Play size={16} />}
               </button>
               <button className="btn ghost sm icon" onClick={() => setMuted(!muted)} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
@@ -1731,26 +1766,7 @@ export function EditorPage() {
                 cues={cues}
                 onSeek={seekTo}
                 segments={segments}
-                onOptimize={async () => {
-                  try {
-                    if (!await flushSavesRef.current.clip()) return
-                    const latestClip = clipRef.current ?? clip
-                    if (!await saveNowRef.current(snapshotOf(latestClip), latestClip.id)) return
-                    const result = await api['clips.optimizeBoundaries']({ clipId: latestClip.id })
-                    pushHistory()
-                    dispatchClipCommand({ type: 'clip.restore', snapshot: snapshotOf(result.clip), issuedAt: Date.now() })
-                    historyRef.current.lastPush = Date.now()
-                    app.toast({
-                      level: 'success',
-                      message: result.adjusted
-                        ? `Boundaries optimized (quality ${Math.round(result.quality.before.score * 100)}% → ${Math.round(result.quality.after.score * 100)}%).`
-                        : 'Boundaries were already clean — nothing to change.',
-                      hint: `${result.startReason}; ${result.endReason}`
-                    })
-                  } catch (err) {
-                    app.toast({ level: 'error', ...errMessage(err) })
-                  }
-                }}
+                onOptimize={optimizeBoundaries}
               />
             </div>
           </details>

@@ -1,8 +1,17 @@
 import { create } from 'zustand'
 import type { AppInfo, AppSettings, DependencyStatus, ProviderAvailability, Project } from '@shared/types'
+import type { PaletteMode } from '../commands/types'
 import { api, errMessage } from '../api/client'
 
 export type View = 'dashboard' | 'project' | 'editor' | 'queue' | 'settings'
+
+/** Tabs on the project screen. Kept in the store so commands can switch them. */
+export type ProjectTab = 'source' | 'transcript' | 'moments' | 'clips' | 'renders'
+
+/** Sections on the settings screen, for the same reason. */
+export type SettingsSection = 'ai' | 'transcription' | 'video' | 'captions' | 'export' | 'storage' | 'advanced'
+
+export type { PaletteMode }
 
 export interface Toast {
   id: number
@@ -22,6 +31,20 @@ interface AppStore {
   openProject(projectId: string): void
   openEditor(clipId: string, projectId: string): void
   goBack(): { view: View; projectId: string | null } | null
+
+  /** Which project tab is open. Reset to Source when a project is opened. */
+  projectTab: ProjectTab
+  setProjectTab(tab: ProjectTab): void
+
+  /** Which settings section is open. */
+  settingsSection: SettingsSection
+  setSettingsSection(section: SettingsSection): void
+
+  /** The command palette is a single overlay owned by the app shell. */
+  paletteOpen: boolean
+  paletteMode: PaletteMode
+  openPalette(mode?: PaletteMode): void
+  closePalette(): void
 
   appInfo: AppInfo | null
   settings: AppSettings | null
@@ -57,7 +80,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   openProject(projectId) {
     lastView = { view: get().view, projectId: get().projectId }
-    set({ view: 'project', projectId, editorClipId: null })
+    set({ view: 'project', projectId, editorClipId: null, projectTab: 'source' })
+  },
+
+  projectTab: 'source',
+  setProjectTab(projectTab) {
+    set({ projectTab })
+  },
+
+  settingsSection: 'ai',
+  setSettingsSection(settingsSection) {
+    set({ settingsSection })
+  },
+
+  paletteOpen: false,
+  paletteMode: 'commands',
+  openPalette(mode = 'commands') {
+    set({ paletteOpen: true, paletteMode: mode })
+  },
+  closePalette() {
+    set({ paletteOpen: false })
   },
   openEditor(clipId, projectId) {
     lastView = { view: 'project', projectId }

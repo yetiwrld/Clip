@@ -13,7 +13,9 @@ type Section = 'ai' | 'transcription' | 'video' | 'captions' | 'export' | 'stora
 
 export function SettingsPage() {
   const app = useAppStore()
-  const [section, setSection] = useState<Section>('ai')
+  // Section lives in the store so the command palette can jump to one.
+  const section = app.settingsSection as Section
+  const setSection = app.setSettingsSection
   const settings = app.settings
 
   if (!settings) {

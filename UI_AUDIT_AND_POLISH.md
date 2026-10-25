@@ -423,3 +423,30 @@ screens may not introduce inline padding or horizontal margins.
   frame is exactly the gutter and nothing visibly changes.
 * Per-element vertical margins inside the storage section were left as they
   are: they set rhythm inside one list, not a shared edge.
+
+---
+
+## 2026-10-25 — Command palette and one shortcut registry
+
+The renderer had four independent `keydown` listeners (editor transport,
+timeline editing, the mobile inspector drawer, every modal) and no way to
+discover any of them. Space played, but only a hard-coded tooltip said so.
+
+* New `src/renderer/commands/` — types, key matching and formatting, fuzzy
+  scoring, the registry store, the app and screen catalogs, and the single
+  global listener.
+* Ctrl+K opens a command palette: fuzzy search, categories, recent actions,
+  arrow/Enter/Escape, a listbox with `aria-activedescendant`, focus returned on
+  close, and Ctrl+/ switching to a searchable shortcut reference.
+* Every command runs a real action through the stores. Project tabs and
+  settings sections moved into the app store so the palette can actually switch
+  them instead of pretending to.
+* Editor and timeline shortcuts were removed from their components and
+  registered as commands, with the behaviour supplied through a ref. The
+  inspector's Escape listener became a command with `allowInInput`.
+  Result: exactly one `addEventListener('keydown')` in the renderer.
+* Tooltips for undo/redo, play and clip start now read their key from the
+  registry, so a rebinding updates the tooltip.
+* Sidebar gained a Shortcuts row with its key hint, so the palette is
+  discoverable without knowing Ctrl+K.
+* 18 new unit tests; 37 files / 339 tests pass.

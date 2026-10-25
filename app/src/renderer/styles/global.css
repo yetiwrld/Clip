@@ -139,6 +139,7 @@
   --z-popover: 300;       /* menus, dropdowns */
   --z-fullscreen: 350;    /* the stage, fullscreen */
   --z-modal: 400;
+  --z-palette: 450;       /* command palette, above dialogs it may be opened from */
   --z-toast: 500;
 
   /* ---- elevation (minimal, neutral only) ---- */
@@ -408,6 +409,25 @@ textarea {
 .nav-item .nav-badge.active-count {
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+/* Shortcut hint on a nav row: quiet until the row is hovered. */
+.nav-item .nav-kbd {
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-snug);
+  color: var(--text-3);
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.nav-item:hover .nav-kbd,
+.nav-item:focus-visible .nav-kbd {
+  color: var(--text-2);
+  border-color: var(--border-strong);
 }
 
 .sidebar-bottom {
@@ -4242,5 +4262,218 @@ button:disabled {
   }
   .editor-tool-panel {
     width: min(264px, calc(100vw - var(--editor-rail-w) - var(--space-3)));
+  }
+}
+
+/* ========================================================= COMMAND PALETTE
+   A floating search field over the app: compact, dismissible, keyboard first.
+   It borrows the same surface, border, shadow and type scale as menus and
+   dialogs, so it reads as part of the product rather than a layer on top.
+   ========================================================= */
+
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-palette);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-block: 12vh var(--space-6);
+  padding-inline: var(--space-6);
+  background: rgba(0, 0, 0, 0.55);
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+
+.palette {
+  width: min(620px, 100%);
+  max-height: min(62vh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
+  animation: pop-in var(--dur-base) var(--ease-out);
+  transform-origin: top center;
+}
+
+.palette-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 46px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.palette-search-icon {
+  flex: none;
+  color: var(--text-3);
+}
+
+.palette-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--fs-base);
+  font-family: inherit;
+  outline: none;
+}
+
+.palette-input::placeholder {
+  color: var(--text-3);
+}
+
+.palette-esc {
+  flex: none;
+  color: var(--text-3);
+}
+
+.palette-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2);
+  scrollbar-gutter: stable;
+}
+
+.palette-group + .palette-group {
+  margin-top: var(--space-2);
+}
+
+.palette-group-title {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 34px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.palette-item.active {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.palette-item.static {
+  cursor: default;
+}
+
+.palette-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.palette-item-title {
+  font-size: var(--fs-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-item-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-key {
+  flex: none;
+  color: var(--text-3);
+}
+
+.palette-item.active .palette-key {
+  color: var(--text-2);
+}
+
+.palette-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-9) var(--space-5);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.palette-empty strong {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+}
+
+.palette-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.palette-foot-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.palette-foot .kbd svg {
+  vertical-align: -1px;
+}
+
+.palette-mode {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.palette-mode:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+@media (max-width: 680px) {
+  .palette-backdrop {
+    padding-block: var(--space-3) var(--space-6);
+    padding-inline: var(--space-3);
+  }
+  .palette {
+    max-height: 76vh;
+  }
+  .palette-foot-hint:nth-child(3) {
+    display: none;
   }
 }

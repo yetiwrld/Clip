@@ -17,7 +17,10 @@ export function ProjectPage() {
   const app = useAppStore()
   const data = useDataStore()
   const projectId = app.projectId
-  const [tab, setTab] = useState<Tab>('source')
+  // Tab lives in the store so the command palette can switch it. openProject()
+  // resets it to Source, which is what a fresh mount used to do.
+  const tab = app.projectTab as Tab
+  const setTab = app.setProjectTab
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
 

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { FolderOpen, ListVideo, Settings as SettingsIcon, X, TriangleAlert } from 'lucide-react'
+import { FolderOpen, ListVideo, Settings as SettingsIcon, X, TriangleAlert, Keyboard } from 'lucide-react'
 import { useAppStore } from './stores/app'
 import { useDataStore } from './stores/data'
 import { subscribeEvents, isPreview, mediaUrl, api } from './api/client'
@@ -12,6 +12,11 @@ import { QueuePage } from './features/render-queue/QueuePage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { FirstRunModal } from './features/onboarding/FirstRunModal'
 import { UpdatePrompt } from './features/updates/UpdatePrompt'
+import { CommandPalette } from './components/CommandPalette'
+import { registerCommands } from './commands/registry'
+import { navigationCommands, projectCommands } from './commands/appCommands'
+import { formatShortcut } from './commands/keys'
+import { useGlobalShortcuts } from './commands/useGlobalShortcuts'
 
 export function App() {
   const { view, navigate, bootstrap, bootstrapped, settings } = useAppStore()
@@ -19,6 +24,17 @@ export function App() {
   const toasts = useAppStore((s) => s.toasts)
   const toast = useAppStore((s) => s.toast)
   const dismissToast = useAppStore((s) => s.dismissToast)
+  const openPalette = useAppStore((s) => s.openPalette)
+  const projects = data.projects
+
+  // One listener for the whole renderer, and the two command sets that never
+  // change with the screen. Screen-specific commands register themselves.
+  useGlobalShortcuts()
+  useEffect(() => registerCommands(navigationCommands()), [])
+  useEffect(
+    () => registerCommands(projectCommands(projects.map((project) => ({ id: project.id, name: project.name })))),
+    [projects]
+  )
 
   useEffect(() => {
     void bootstrap()
@@ -102,7 +118,11 @@ export function App() {
             of the free space, so Settings always sits directly above the
             version/workspace/preview lines instead of floating mid-gap. */}
         <div className="sidebar-bottom">
-          <button className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')} style={{ width: '100%' }}>
+          <button className="nav-item" onClick={() => openPalette('shortcuts')} title="Searchable keyboard shortcut reference">
+            <Keyboard size={16} /> Shortcuts
+            <kbd className="nav-kbd">{formatShortcut({ key: '/', mod: true })}</kbd>
+          </button>
+          <button className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>
             <SettingsIcon size={16} /> Settings
           </button>
 
@@ -122,6 +142,8 @@ export function App() {
         {view === 'queue' && <QueuePage />}
         {view === 'settings' && <SettingsPage />}
       </main>
+
+      <CommandPalette />
 
       <div className="toasts">
         {toasts.map((t) => (
