@@ -288,3 +288,40 @@ Screen by screen, the load-bearing changes:
 5. Run `npx vitest run tests/unit/copy-consistency.test.ts`. It fails on three
    dots, vague system words, Title Case buttons, bare OK/Submit, unlabelled icon
    buttons, tooltips over 90 characters, and placeholder-only fields.
+
+
+---
+
+## Saving, undo and deletion wording
+
+These strings are load-bearing: they are the only place the app tells the user
+whether their work is safe. Keep them literal.
+
+| State | Where | Text |
+| --- | --- | --- |
+| writing | editor top bar, settings header | `Saving…` |
+| confirmed on disk | editor top bar | `All changes saved` |
+| not sent yet | editor top bar | `Unsaved changes` |
+| write failed | editor top bar | `Save failed` + button `Retry save` |
+| recovered draft | editor strip | `Unsaved changes from <date> were found for this clip.` + `Restore changes` / `Discard` |
+| leaving editor | dialog title | `Leave without saving?` + `Keep editing` / `Try saving again` / `Leave and discard changes` |
+
+Rules:
+
+* Never show `All changes saved` until the write has resolved. The word
+  "Saved" alone is not enough — say what was saved and where it is.
+* Failures name what happened and what to do: "Your clip edit is still in
+  memory, but Clipwright could not write it to disk." plus a retry hint. Do
+  not say "Save error" or "Something went wrong".
+* Undo lives in the toast that follows the action, labelled exactly `Undo`.
+  The confirmation in front of it must not claim a delete is permanent when
+  Undo exists: "You can undo this from the message that appears."
+* Permanent actions say so plainly and differently from reversible ones:
+  "This is permanent: a deleted project cannot be brought back. Deleting a
+  single clip can be undone."
+* For irreversible deletes, the confirm button names the object
+  (`Delete project`, `Delete clip`), never `OK`, and the dialog may ask the
+  user to type the project name under a label that repeats it:
+  `Type “<name>” to confirm`.
+* Settings: "Saved" in the header refers to the setting just changed, not to
+  the whole app.

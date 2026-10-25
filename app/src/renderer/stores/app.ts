@@ -21,6 +21,8 @@ export interface Toast {
   code?: string
   actionLabel?: string
   action?: () => void
+  /** How long the toast stays. Longer for messages that carry an Undo. */
+  timeoutMs?: number
 }
 
 interface AppStore {
@@ -48,6 +50,8 @@ interface AppStore {
 
   appInfo: AppInfo | null
   settings: AppSettings | null
+  /** Settings write through one switch, so the header can show the truth. */
+  settingsSaveState: 'idle' | 'saving' | 'saved' | 'error'
   dependencies: DependencyStatus[]
   refreshDependencies(): Promise<void>
   providers: ProviderAvailability[]
@@ -111,6 +115,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   appInfo: null,
   settings: null,
+  settingsSaveState: 'idle',
   dependencies: [],
   providers: [],
   bootstrapped: false,
@@ -130,13 +135,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   async bootstrap() {
     try {
-      const [appInfo, settings, dependencies, providers] = await Promise.all([
+      const [appInfo, settings, dependencies, providers, storage] = await Promise.all([
         api['app.getInfo'](),
         api['settings.get'](),
         api['app.checkDependencies'](),
-        api['analysis.providers']()
+        api['analysis.providers'](),
+        api['storage.status']()
       ])
       set({ appInfo, settings, dependencies, providers, bootstrapped: true })
+      if (storage.recoveredFromCorrupt) {
+        const kept = storage.corruptBackupPath?.split(/[\\/]/).pop() ?? 'app.db.corrupt'
+        get().toast({
+          level: 'warn',
+          message: 'Clipwright could not read your workspace database, so it started a new one.',
+          hint: `Nothing was deleted: the unreadable file was kept as “${kept}” next to it. Projects it listed are hidden until that file is repaired.`,
+          timeoutMs: 20000
+        })
+      }
     } catch (err) {
       const { message, hint } = errMessage(err)
       get().toast({ level: 'error', message: `Startup check failed: ${message}`, hint })
@@ -145,12 +160,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   async saveSettings(patch) {
+    set({ settingsSaveState: 'saving' })
     try {
       const settings = await api['settings.update']({ patch })
-      set({ settings })
+      set({ settings, settingsSaveState: 'saved' })
       return true
     } catch (err) {
       const { message, hint } = errMessage(err)
+      set({ settingsSaveState: 'error' })
       get().toast({ level: 'error', message, hint })
       return false
     }
@@ -160,7 +177,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   toast(t) {
     const id = toastSeq++
     set((s) => ({ toasts: [...s.toasts, { ...t, id }] }))
-    const timeout = t.level === 'error' ? 9000 : 5000
+    const timeout = t.timeoutMs ?? (t.level === 'error' ? 9000 : 5000)
     setTimeout(() => get().dismissToast(id), timeout)
   },
   dismissToast(id) {

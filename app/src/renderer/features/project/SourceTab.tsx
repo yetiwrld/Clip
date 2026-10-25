@@ -4,7 +4,7 @@ import { api, errMessage, isElectron, mediaUrl } from '../../api/client'
 import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
-import { Field, formatBytes, Modal, ProgressBar, Spinner } from '../../components/ui'
+import { ConfirmDialog, Field, formatBytes, Modal, ProgressBar, Spinner } from '../../components/ui'
 import { DURATION_RANGES } from '@shared/constants'
 
 export function SourceTab() {
@@ -430,26 +430,22 @@ export function SourceTab() {
       </div>
 
       {confirmDelete && (
-        <Modal
+        <ConfirmDialog
           title="Delete project?"
-          onClose={() => setConfirmDelete(false)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setConfirmDelete(false)}>
-                Cancel
-              </button>
-              <button className="btn danger" onClick={() => void deleteProject()}>
-                <Trash2 size={14} /> Delete project
-              </button>
-            </>
-          }
+          danger
+          confirmLabel="Delete project"
+          confirmPhrase={project.name}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void deleteProject()}
         >
           <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
-            <strong>“{project.name}”</strong> and all of its imported media, transcripts, clips and renders will be removed from
-            the workspace. Files already exported to the exports folder are kept.
+            <strong>“{project.name}”</strong> and everything inside it — imported media, transcripts, clips and renders —
+            is removed from the workspace. Files already exported to the exports folder are kept.
           </div>
-          <div className="field-hint">This cannot be undone.</div>
-        </Modal>
+          <div className="field-hint">
+            This is permanent: a deleted project cannot be brought back. Deleting a single clip can be undone.
+          </div>
+        </ConfirmDialog>
       )}
     </div>
   )

@@ -1,7 +1,7 @@
 import type { AppSettings, AppInfo, AnalysisSummary, Clip, ClipCandidate, DependencyStatus,
   DiagnosticsReport, ExportResult, Project, ProjectDocument, ProjectStorage, ProjectSummary, RenderJob,
   ClipTimeline, ProjectAsset, StructuredError, TaskInfo, TranscriptSegment, Speaker, AudioRestorationPreset,
-  StorageCleanupCategoryId, StorageCleanupReport, StorageCleanupResult } from './types'
+  StorageCleanupCategoryId, StorageCleanupReport, StorageCleanupResult, StorageStatus, ClipDeletionSnapshot } from './types'
 
 /**
  * The typed API surface exposed to the renderer. Transports:
@@ -33,6 +33,10 @@ export interface ClipwrightApi {
   'storage.cleanup.scan'(): Promise<StorageCleanupReport>
   /** Remove only explicitly selected, server-allowlisted cleanup categories. */
   'storage.cleanup.run'(p: { categories: StorageCleanupCategoryId[]; scanToken: string }): Promise<StorageCleanupResult>
+  /** What is actually on disk right now. Read before claiming "Saved". */
+  'storage.status'(): Promise<StorageStatus>
+  /** Force a write and resolve only when it landed. Rejects on failure. */
+  'storage.flush'(): Promise<StorageStatus>
   'projects.updateSettings'(p: {
     id: string
     settings: { durationPreset?: 'short' | 'medium' | 'long' | 'mixed'; maxCandidates?: number }
@@ -154,7 +158,10 @@ export interface ClipwrightApi {
   'clips.createFromCandidate'(p: { candidateId: string }): Promise<Clip>
   'clips.fetchCandidateSection'(p: { candidateId: string }): Promise<{ taskId: string }>
   'clips.update'(p: { id: string; patch: Partial<Omit<Clip, 'id' | 'projectId' | 'candidateId' | 'status' | 'createdAt' | 'updatedAt'>> }): Promise<Clip>
-  'clips.delete'(p: { id: string }): Promise<void>
+  /** Removes the clip and returns the snapshot that `clips.restore` needs. */
+  'clips.delete'(p: { id: string }): Promise<ClipDeletionSnapshot | null>
+  /** Undo for a deletion made in this session. */
+  'clips.restore'(p: { snapshot: ClipDeletionSnapshot }): Promise<Clip>
   'clips.generateMetadata'(p: { id: string }): Promise<Clip>
 
   // renders

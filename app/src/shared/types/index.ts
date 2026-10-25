@@ -426,6 +426,17 @@ export interface StructuredError {
   details?: string
 }
 
+/**
+ * Everything needed to put a deleted clip back: the row, its timeline document
+ * and the render records that were cascaded away with it. Captured by
+ * `clips.delete` and handed back to `clips.restore` by the Undo action.
+ */
+export interface ClipDeletionSnapshot {
+  clip: Clip
+  timeline: ClipTimeline
+  renders: Array<{ job: RenderJob; settings: Record<string, unknown> }>
+}
+
 export interface RenderJob {
   id: string
   clipId: string
@@ -621,6 +632,21 @@ export interface AppInfo {
   platform: string
   isElectron: boolean
   workspaceRoot: string
+}
+
+/**
+ * Truthful state of the on-disk database. The renderer reads this before it
+ * claims anything is saved: `dirty` means at least one write has not reached
+ * the file yet, and `lastError` means the last attempt failed.
+ */
+export interface StorageStatus {
+  dirty: boolean
+  lastPersistedAt: string | null
+  lastError: string | null
+  /** The database file was unreadable at startup and was moved aside. */
+  recoveredFromCorrupt: boolean
+  /** Where the unreadable file was moved, so the user can inspect it. */
+  corruptBackupPath: string | null
 }
 
 export interface ExportResult {

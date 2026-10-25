@@ -36,6 +36,65 @@ export function Modal(props: {
   )
 }
 
+/**
+ * Confirmation for a consequential action.
+ *
+ * `danger` styles the confirm button; `confirmPhrase` makes the user type the
+ * exact name of what they are about to destroy, so a stray Enter cannot delete
+ * a finished project. Only use the phrase for permanent actions — reversible
+ * ones should offer Undo instead.
+ */
+export function ConfirmDialog(props: {
+  title: string
+  children: React.ReactNode
+  confirmLabel: string
+  cancelLabel?: string
+  danger?: boolean
+  confirmPhrase?: string
+  busy?: boolean
+  onConfirm(): void
+  onCancel(): void
+}) {
+  const [typed, setTyped] = React.useState('')
+  const inputId = React.useId()
+  const ready = !props.confirmPhrase || typed.trim() === props.confirmPhrase
+  return (
+    <Modal
+      title={props.title}
+      onClose={props.onCancel}
+      footer={
+        <>
+          <button className="btn" onClick={props.onCancel}>{props.cancelLabel ?? 'Cancel'}</button>
+          <button
+            className={props.danger ? 'btn danger' : 'btn primary'}
+            onClick={props.onConfirm}
+            disabled={!ready || props.busy}
+          >
+            {props.busy && <Spinner size={12} />}
+            {props.confirmLabel}
+          </button>
+        </>
+      }
+    >
+      {props.children}
+      {props.confirmPhrase && (
+        <div className="confirm-phrase">
+          <label className="field-label" htmlFor={inputId}>Type “{props.confirmPhrase}” to confirm</label>
+          <input
+            id={inputId}
+            className="input"
+            value={typed}
+            onChange={(event) => setTyped(event.target.value)}
+            autoFocus
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 export function ProgressBar(props: { value: number; success?: boolean; danger?: boolean }) {
   const pct = Math.round(Math.min(1, Math.max(0, props.value)) * 100)
   return (

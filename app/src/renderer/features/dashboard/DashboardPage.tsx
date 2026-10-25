@@ -4,7 +4,7 @@ import { api, isElectron, mediaUrl, errMessage } from '../../api/client'
 import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
-import { EmptyState, Modal, formatRelative } from '../../components/ui'
+import { ConfirmDialog, EmptyState, Modal, formatRelative } from '../../components/ui'
 import { plural, taskTypeLabel } from '../../copy/labels'
 import { formatClock } from '@shared/utils/time'
 import type { ProjectSummary } from '@shared/types'
@@ -360,24 +360,22 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
       </div>
 
       {confirmDelete && (
-        <Modal
+        <ConfirmDialog
           title="Delete project?"
-          onClose={() => setConfirmDelete(false)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button className="btn danger" onClick={() => void doDelete()}>
-                <Trash2 size={14} /> Delete project
-              </button>
-            </>
-          }
+          danger
+          confirmLabel="Delete project"
+          confirmPhrase={summary.name}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void doDelete()}
         >
           <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
-            <strong>“{summary.name}”</strong> and all of its imported media, transcripts, clips and renders will be removed from
-            the workspace. Files already exported to the exports folder are kept.
+            <strong>“{summary.name}”</strong> and everything inside it — imported media, transcripts, clips and renders —
+            is removed from the workspace. Files already exported to the exports folder are kept.
           </div>
-          <div className="field-hint">This cannot be undone.</div>
-        </Modal>
+          <div className="field-hint">
+            This is permanent: a deleted project cannot be brought back. Deleting a single clip can be undone.
+          </div>
+        </ConfirmDialog>
       )}
     </div>
   )

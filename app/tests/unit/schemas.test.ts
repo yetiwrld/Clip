@@ -62,6 +62,7 @@ describe('IPC payload validation (the explicit bridge contract)', () => {
       'settings.get', 'settings.update', 'settings.setSecret', 'settings.deleteSecret',
       'settings.secretHints', 'settings.testAiProvider',
       'exports.run',
+      'storage.status', 'storage.flush', 'clips.restore',
       'system.revealPath', 'system.copyToClipboard', 'system.openLogsFolder', 'system.exportDiagnostics', 'system.fontUrl'
     ]
     expect(Object.keys(ipcPayloads).sort()).toEqual([...expected].sort())

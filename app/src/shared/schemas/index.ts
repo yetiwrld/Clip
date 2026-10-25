@@ -295,6 +295,8 @@ export const ipcPayloads = {
     .strict(),
   'projects.storage': z.object({ id: uuidSchema }).strict(),
   'storage.cleanup.scan': z.object({}).strict(),
+  'storage.status': z.object({}).strict(),
+  'storage.flush': z.object({}).strict(),
   'storage.cleanup.run': z.object({
     categories: z.array(z.enum([
       'preview-proxies', 'filmstrips', 'waveforms', 'transcription-audio',
@@ -424,6 +426,18 @@ export const ipcPayloads = {
   'clips.fetchCandidateSection': z.object({ candidateId: uuidSchema }).strict(),
   'clips.update': z.object({ id: uuidSchema, patch: clipPatchSchema }).strict(),
   'clips.delete': z.object({ id: uuidSchema }).strict(),
+  // The snapshot is produced by clips.delete in this same session; the schema
+  // bounds its shape and the service validates the fields it writes.
+  'clips.restore': z.object({
+    snapshot: z.object({
+      clip: z.record(z.string(), z.unknown()),
+      timeline: z.record(z.string(), z.unknown()).optional(),
+      renders: z.array(z.object({
+        job: z.record(z.string(), z.unknown()),
+        settings: z.record(z.string(), z.unknown()).optional()
+      })).max(500).optional()
+    }).strict()
+  }).strict(),
   'clips.generateMetadata': z.object({ id: uuidSchema }).strict(),
 
   'renders.queue': z.object({ clipId: uuidSchema, preview: z.boolean().default(false) }).strict(),

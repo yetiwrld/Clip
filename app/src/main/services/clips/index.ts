@@ -1,11 +1,11 @@
 import { AppError } from '@shared/errors'
-import type { Clip } from '@shared/types'
+import type { Clip, ClipDeletionSnapshot, ClipTimeline, RenderJob } from '@shared/types'
 import { rawMetadataResponseSchema } from '@shared/schemas'
 import { excerptFor } from '@shared/candidates'
 import { getPlatformPreset } from '@shared/constants'
 import { buildMetadataUserPrompt, METADATA_SYSTEM } from '@prompts/index'
 import type { AppContext } from '../app-context'
-import { candidatesRepo, clipsRepo, projectsRepo, segmentsRepo } from '../database/repositories'
+import { candidatesRepo, clipTimelineRepo, clipsRepo, projectsRepo, rendersRepo, segmentsRepo } from '../database/repositories'
 import { getSettings } from '../settings'
 import { chatComplete, extractJson } from '../ai/chat'
 import { createProjectFromUrlCandidateSection, type ImportProgress } from '../projects'
@@ -121,15 +121,101 @@ export function updateClip(ctx: AppContext, id: string, patch: Record<string, un
   return updated
 }
 
-export function deleteClip(ctx: AppContext, id: string): void {
+/**
+ * Delete a clip and return everything needed to undo it. The row, its timeline
+ * and its render records are gone after this call, so the caller shows an Undo
+ * that posts the snapshot straight back to `restoreClip`.
+ *
+ * Finished render files stay on disk; restoring the records reconnects them.
+ */
+export function deleteClip(ctx: AppContext, id: string): ClipDeletionSnapshot | null {
   const clip = clipsRepo.get(ctx.db, id)
-  if (!clip) return
+  if (!clip) return null
+  const snapshot: ClipDeletionSnapshot = {
+    clip,
+    timeline: clipTimelineRepo.get(ctx.db, id),
+    renders: rendersRepo
+      .list(ctx.db, clip.projectId)
+      .filter((job) => job.clipId === id)
+      .map((job) => ({ job, settings: rendersRepo.getSettings(ctx.db, job.id) }))
+  }
   if (clip.candidateId) {
     // The candidate becomes available again for a fresh clip
     candidatesRepo.updateStatus(ctx.db, clip.candidateId, 'discovered')
   }
   clipsRepo.delete(ctx.db, id)
   ctx.logger.info('clips', 'delete', `clip=${id}`)
+  return snapshot
+}
+
+/** Undo for `deleteClip`. Rejects instead of half-restoring. */
+export function restoreClip(ctx: AppContext, snapshot: ClipDeletionSnapshot): Clip {
+  if (!snapshot || typeof snapshot !== 'object' || !snapshot.clip?.id) {
+    throw new AppError('CLIP_RESTORE_INVALID', 'That clip could not be restored because its saved copy is incomplete.')
+  }
+  const { clip, timeline, renders } = snapshot
+  const project = projectsRepo.get(ctx.db, clip.projectId)
+  if (!project) {
+    throw new AppError(
+      'PROJECT_NOT_FOUND',
+      'That clip could not be restored because its project no longer exists.',
+      'Reopen a project that still exists, then create the clip again from its moment.'
+    )
+  }
+  if (clipsRepo.get(ctx.db, clip.id)) {
+    throw new AppError('CLIP_RESTORE_CONFLICT', 'That clip is already in the project.', 'Nothing was changed.')
+  }
+  ctx.db.transaction(() => {
+    clipsRepo.create(ctx.db, {
+      id: clip.id,
+      candidateId: clip.candidateId,
+      projectId: clip.projectId,
+      startTime: clip.startTime,
+      endTime: clip.endTime,
+      aspectRatio: clip.aspectRatio,
+      cropMode: clip.cropMode,
+      cropX: clip.cropX,
+      cropY: clip.cropY,
+      zoom: clip.zoom,
+      customAspectW: clip.customAspectW,
+      customAspectH: clip.customAspectH,
+      fitMode: clip.fitMode,
+      captionStyleId: clip.captionStyleId,
+      captionOverrides: clip.captionOverrides,
+      captionTextEdits: clip.captionTextEdits,
+      captionCueSplits: clip.captionCueSplits,
+      captionCueMerges: clip.captionCueMerges,
+      captionTimingOffsets: clip.captionTimingOffsets,
+      captionCueHidden: clip.captionCueHidden,
+      captionCueDuplicates: clip.captionCueDuplicates,
+      silenceCuts: clip.silenceCuts,
+      trackingKeyframes: clip.trackingKeyframes,
+      cameraKeyframes: clip.cameraKeyframes,
+      textLayers: clip.textLayers,
+      audioRestoration: clip.audioRestoration,
+      outputResolution: clip.outputResolution,
+      outputQuality: clip.outputQuality,
+      outputFps: clip.outputFps,
+      title: clip.title,
+      description: clip.description,
+      hashtags: clip.hashtags,
+      cta: clip.cta,
+      metadataProvider: clip.metadataProvider,
+      status: clip.status
+    })
+    const document: ClipTimeline = timeline
+    if (document && (document.tracks?.length || document.items?.length)) {
+      clipTimelineRepo.save(ctx.db, clip.id, document)
+    }
+    for (const entry of renders ?? []) {
+      const job: RenderJob = entry.job
+      if (!job?.id) continue
+      rendersRepo.restore(ctx.db, job, entry.settings ?? {})
+    }
+    if (clip.candidateId) candidatesRepo.updateStatus(ctx.db, clip.candidateId, 'converted')
+  })
+  ctx.logger.info('clips', 'restore', `clip=${clip.id}`)
+  return clipsRepo.get(ctx.db, clip.id) as Clip
 }
 
 // -------------------------------------------------------------- metadata ---

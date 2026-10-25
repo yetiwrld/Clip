@@ -563,3 +563,107 @@ Verified: `tsc` clean, build clean, unit project 30 files / 260 tests pass. The
 served stylesheet carries the new rule and the served bundle hash changed to
 `index-CWqnWCu8.js` / `index-Ckb1PPHc.css`. Still not seen on screen — the
 column widths are arithmetic, not observation.
+
+---
+
+## 2026-10-26 — Data safety: autosave truth, undo for deletion, crash recovery
+
+The audit started from the storage layer because "Saved" is a promise about
+bytes, and the interface was making that promise before the bytes existed.
+
+### What the existing system already did well
+
+* SQLite via sql.js with atomic whole-file writes (temp file → rename).
+* Debounced clip autosave (700 ms) and timeline autosave (450 ms), merged per
+  clip, serialised through a promise queue, flushed on `pagehide` and unmount.
+* Undo/redo in the editor with snapshot history, a shortcut registry that
+  already ignores text fields, and a timeline history merged into the same
+  Ctrl+Z.
+* Task and render recovery at startup for interrupted background work.
+
+None of that was replaced. The work below closes the gaps around it.
+
+### Gaps found
+
+1. **"Saved" could be false.** `clips.update` resolved when the change reached
+   the in-memory database. The file write was debounced 250 ms and its failure
+   was swallowed, so the editor could show "Saved" for a change that never
+   reached disk.
+2. **A failed write disabled all later writes.** `persistNow` cleared `pending`
+   before writing and chained the write with `.then`; after one failure the
+   queue stayed rejected and the dirty flag was re-set only by the debounce
+   callback, so nothing retried.
+3. **No failure state.** The save indicator had three states; a failed write
+   fell back to "Unsaved changes" with a toast, and the failure was invisible
+   one second later.
+4. **Timeline edits never showed as unsaved.** `scheduleTimelineSave` did not
+   touch the save state, so a timeline drag showed "Saved" while the write was
+   still pending.
+5. **A crash inside the debounce window lost the edit.** There was no local
+   copy between "typed" and "written".
+6. **Clip deletion destroyed work with no way back**, and said "this cannot be
+   undone" next to a plain confirm.
+7. **A corrupt database file stopped the app from starting at all.**
+8. **Project deletion was one Enter away.** The dialog listed consequences but
+   the confirm button was ordinary.
+
+### What changed
+
+* `AppDatabase.persistNow()` keeps `pending` set until the rename succeeds,
+  never poisons the queue on failure, records `lastError`/`lastPersistedAt`,
+  and reports all of it through `status()`. `close()` flushes and rethrows
+  instead of silently dropping the last write.
+* New `flushDurability()` service + `storage.status` / `storage.flush` IPC.
+  Every user-data method in the dispatcher (`DURABLE_METHODS`) flushes before
+  it returns, so a resolved save is a written save. Failures raise
+  `STORAGE_WRITE_FAILED` with the "still in memory" explanation and a retry
+  hint.
+* Editor save indicator: **Saving… / All changes saved / Unsaved changes /
+  Save failed**, with an inline **Retry save** when it failed, `aria-live`, and
+  no success state before the flush resolves. Timeline saves now feed the same
+  state.
+* Draft journal (`src/renderer/persistence/draft-journal.ts`) + recovery strip:
+  "Unsaved changes from <time> were found for this clip" with **Restore
+  changes** / **Discard**. Versioned, size-capped, corruption-tolerant, and
+  only offered when newer than the stored clip.
+* Leaving the editor with unwritten edits opens **Leave without saving?**
+  (Keep editing / Try saving again / Leave and discard changes), and the window
+  warns on `beforeunload` while a write is outstanding.
+* **Undo for clip deletion.** `clips.delete` now returns a snapshot (row,
+  timeline, render records) and `clips.restore` puts it back in one
+  transaction; the toast carries **Undo** for 12 seconds. The dialog says the
+  delete is undoable and that finished renders stay on disk.
+* **Project deletion** now requires typing the project name; the dialog states
+  that this one is permanent and contrasts it with clip deletion. Implemented
+  as a new shared `ConfirmDialog` in `components/ui.tsx` (also used to keep the
+  dashboard and Source tab dialogs identical).
+* **Settings** show **Saving… / Saved / Save failed** in the page header;
+  settings writes are durable too.
+* **Corrupt database** is moved to `app.db.corrupt-<time>` and the app starts
+  fresh with a warning toast naming the kept file, instead of failing to boot.
+* Asset removal copy now says the project's copy is deleted (the original is
+  not), because that one really is permanent.
+
+### Not changed on purpose
+
+Clip deletion still asks for confirmation even though it can be undone: the
+settings on a clip are hand-made and the Undo toast is time-limited. Project
+deletion stays permanent — a trash folder that keeps gigabytes of media would
+be a worse surprise than a typed confirmation. Both decisions are written down
+in `DATA_SAFETY.md` §7 and §9.
+
+### Verification
+
+* `tsc --noEmit -p tsconfig.web.json` clean; `electron-vite build` clean.
+* New: `tests/unit/draft-journal.test.ts` (11 tests),
+  `tests/integration/persistence.test.ts` (7 tests: restart, failed write +
+  retry, 25 rapid writes, corrupt database, leftover temp file, delete → undo,
+  double restore).
+* `tests/unit/durable-saves.test.ts` (6 tests) pins the contract itself: durable
+  methods stay listed, the dispatcher flushes after the handler, `pending`
+  survives a failed write, and the editor has no optimistic "saved".
+* `schemas.test.ts` and `renderer-api-contract.test.ts` extended for the three
+  new methods.
+* Full suite: 41 files / 381 tests pass. `electron-vite build` clean; the
+  preview backend answers `storage.status` / `storage.flush` and a create →
+  delete round trip over the live server leaves the database clean.

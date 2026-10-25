@@ -5,6 +5,7 @@ import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, Modal, ProgressBar, Spinner } from '../../components/ui'
 import { clipStatusLabel, plural } from '../../copy/labels'
+import type { ClipDeletionSnapshot } from '@shared/types'
 import { getCaptionStyle } from '@shared/constants'
 import { formatClock } from '@shared/utils/time'
 
@@ -38,11 +39,38 @@ export function ClipsTab() {
 
   async function remove(clipId: string) {
     try {
-      await api['clips.delete']({ id: clipId })
+      // The backend hands back everything the delete removed, so the Undo
+      // action in the toast can put the clip back exactly as it was.
+      const snapshot = await api['clips.delete']({ id: clipId })
       await data.loadClips(project.id)
       await data.loadRenders(project.id)
+      if (!snapshot) return
+      app.toast({
+        level: 'success',
+        message: `Deleted “${snapshot.clip.title || 'Untitled clip'}”.`,
+        hint: 'Its edits and render records were removed too. Renders already on disk were kept.',
+        actionLabel: 'Undo',
+        action: () => void undoRemove(snapshot),
+        timeoutMs: 12000
+      })
     } catch (err) {
       app.toast({ level: 'error', ...errMessage(err) })
+    }
+  }
+
+  async function undoRemove(snapshot: ClipDeletionSnapshot) {
+    try {
+      await api['clips.restore']({ snapshot })
+      await data.loadClips(project.id)
+      await data.loadRenders(project.id)
+      app.toast({ level: 'success', message: 'Clip restored with its edits and render records.' })
+    } catch (err) {
+      const { message, hint } = errMessage(err)
+      app.toast({
+        level: 'error',
+        message,
+        hint: hint ?? 'The clip could not be put back. Nothing else was changed.'
+      })
     }
   }
 
@@ -252,7 +280,8 @@ function ClipRow({
           }
         >
           <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
-            “{clip.title || 'Untitled clip'}” and its edits, captions and renders will be removed. This cannot be undone.
+            “{clip.title || 'Untitled clip'}” and its edits and captions will be removed. Renders you already made stay in the
+            workspace. You can undo this from the message that appears.
           </div>
         </Modal>
       )}

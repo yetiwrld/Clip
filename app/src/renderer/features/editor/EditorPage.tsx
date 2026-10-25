@@ -11,8 +11,10 @@ import { useAppStore } from '../../stores/app'
 import { registerCommands, shortcutLabelFor } from '../../commands/registry'
 import { editorCommands, type EditorHandlers } from '../../commands/screenCommands'
 import { useDataStore } from '../../stores/data'
-import { ErrorBox, Field, Spinner, Switch } from '../../components/ui'
+import { ErrorBox, Field, Modal, Spinner, Switch } from '../../components/ui'
 import { plural, providerLabel } from '../../copy/labels'
+import { flushStorage, saveStateCopy, type SaveState } from '../../persistence/durability'
+import { browserDraftStorage, clearDraft, draftIsNewer, readDraft, writeDraft } from '../../persistence/draft-journal'
 import { buildCues, cueAt } from '@shared/captions/segmentation'
 import { AUDIO_RESTORATION_PRESETS } from '@shared/audio/restoration'
 import { applyTrackingToCrop, cameraStateAt, computeCameraCrop, computeCrop } from '@shared/video/crop'
@@ -88,7 +90,10 @@ export function EditorPage() {
   const [currentTime, setCurrentTime] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
-  const [saveState, setSaveState] = useState<'saved' | 'saving' | 'dirty'>('saved')
+  const [saveState, setSaveState] = useState<SaveState>('saved')
+  /** Edits recovered from a previous session that were never written to disk. */
+  const [draftOffer, setDraftOffer] = useState<{ savedAt: string; patch: Record<string, unknown>; timeline?: ClipTimeline } | null>(null)
+  const [leavePrompt, setLeavePrompt] = useState(false)
   const [renderQueued, setRenderQueued] = useState(false)
   const [previewQueued, setPreviewQueued] = useState(false)
   const [selectedSilenceIndex, setSelectedSilenceIndex] = useState<number | null>(null)
@@ -139,6 +144,10 @@ export function EditorPage() {
   // switch from applying the previous clip's pending edit to the next clip.
   const pendingClipPatches = useRef(new Map<string, Partial<Clip>>())
   const saveNowRef = useRef<(patch: Partial<Clip>, targetClipId?: string | null) => Promise<boolean>>(async () => false)
+  // Draft journal: a local copy of edits inside the debounce window so a crash
+  // cannot lose them. Writes are throttled and merged per clip.
+  const draftWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingDraft = useRef<{ patch?: Record<string, unknown>; timeline?: ClipTimeline } | null>(null)
   const clipSaveQueue = useRef<Promise<void>>(Promise.resolve())
   const loadedRef = useRef<string | null>(null)
   const clipRef = useRef<Clip | null>(null)
@@ -204,6 +213,20 @@ export function EditorPage() {
         if (!savedTimeline.tracks.length) void api['timeline.save']({ clipId, timeline: restoredTimeline })
         setCurrentTime(found.startTime)
         historyRef.current = { past: [], future: [], lastPush: 0 }
+        // A draft that is newer than the saved clip means the app stopped
+        // between an edit and its write. Offer it back instead of dropping it.
+        const store = browserDraftStorage()
+        const draft = store ? readDraft(store, clipId) : null
+        if (draft && draftIsNewer(draft, found.updatedAt)) {
+          setDraftOffer({
+            savedAt: draft.savedAt,
+            patch: draft.patch,
+            ...(draft.timeline === undefined ? {} : { timeline: draft.timeline as ClipTimeline })
+          })
+        } else {
+          if (draft && store) clearDraft(store, clipId)
+          setDraftOffer(null)
+        }
       } catch (err) {
         if (loadedRef.current === clipId) setError(err)
       }
@@ -270,6 +293,8 @@ export function EditorPage() {
     clipTimelineRef.current = executed
     pendingTimelineClipId.current = targetClipId
     setClipTimeline(executed)
+    markDirty()
+    noteDraft({ timeline: executed })
     if (timelineSaveTimer.current) clearTimeout(timelineSaveTimer.current)
     timelineSaveTimer.current = setTimeout(() => {
       timelineSaveTimer.current = null
@@ -302,11 +327,19 @@ export function EditorPage() {
     if (!targetClipId) return false
     let saved = false
     const write = timelineSaveQueue.current.catch(() => undefined).then(async () => {
+      if (activeClipIdRef.current === targetClipId) setSaveState('saving')
       try {
         await api['timeline.save']({ clipId: targetClipId, timeline: next })
+        await flushStorage()
         saved = true
       } catch (err) {
-        app.toast({ level: 'error', ...errMessage(err) })
+        if (activeClipIdRef.current === targetClipId) setSaveState('error')
+        app.toast({
+          level: 'error',
+          ...errMessage(err),
+          actionLabel: 'Retry save',
+          action: () => void retrySave()
+        })
       }
     })
     timelineSaveQueue.current = write
@@ -335,7 +368,7 @@ export function EditorPage() {
   }
   async function removeAsset(asset: ProjectAsset) {
     if (!projectId) return
-    if (!window.confirm(`Remove “${asset.name}” from this project? Your original file will not be affected.`)) return
+    if (!window.confirm(`Remove “${asset.name}” from this project? The project's copy of the file is deleted. Your original file is not affected. This cannot be undone.`)) return
     try { await api['media.assets.remove']({ assetId: asset.id }); await data.loadAssets(projectId) }
     catch (err) { app.toast({ level: 'error', ...errMessage(err) }) }
   }
@@ -376,6 +409,68 @@ export function EditorPage() {
     setClip(next)
   }, [])
 
+  // ------------------------------------------------------- save bookkeeping --
+  /**
+   * True while anything the user changed is not on disk yet: a debounce timer
+   * still running, a patch queued for write, or a journalled edit waiting.
+   * "All changes saved" is only shown when this is false.
+   */
+  function hasPendingWrites(): boolean {
+    return pendingClipPatches.current.size > 0 ||
+      pendingTimelineClipId.current !== null ||
+      pendingDraft.current !== null ||
+      saveTimer.current !== null ||
+      timelineSaveTimer.current !== null
+  }
+
+  function refreshSaveState(): void {
+    if (!activeClipIdRef.current) return
+    setSaveState(hasPendingWrites() ? 'dirty' : 'saved')
+  }
+
+  /**
+   * A new edit while the last write failed must not quietly turn "Save failed"
+   * back into "Unsaved changes": the failed write is still pending, so keep the
+   * failure visible until a write actually succeeds.
+   */
+  function markDirty(): void {
+    setSaveState((current) => (current === 'error' ? 'error' : 'dirty'))
+  }
+
+  /** Queue a crash-journal write, merged with anything queued in this tick. */
+  function noteDraft(update: { patch?: Record<string, unknown>; timeline?: ClipTimeline }): void {
+    if (!browserDraftStorage() || !activeClipIdRef.current) return
+    pendingDraft.current = { ...(pendingDraft.current ?? {}), ...update }
+    if (draftWriteTimer.current) return
+    draftWriteTimer.current = setTimeout(() => {
+      draftWriteTimer.current = null
+      writePendingDraft()
+    }, 150)
+  }
+
+  function writePendingDraft(): void {
+    const store = browserDraftStorage()
+    const targetClipId = activeClipIdRef.current
+    const update = pendingDraft.current
+    pendingDraft.current = null
+    if (!store || !targetClipId || !update) return
+    writeDraft(store, targetClipId, {
+      ...update,
+      baseUpdatedAt: clipRef.current?.updatedAt ?? new Date().toISOString()
+    })
+  }
+
+  /** The write succeeded: the journal entry has nothing left to protect. */
+  function clearPendingDraft(targetClipId: string | null = activeClipIdRef.current): void {
+    pendingDraft.current = null
+    if (draftWriteTimer.current) {
+      clearTimeout(draftWriteTimer.current)
+      draftWriteTimer.current = null
+    }
+    const store = browserDraftStorage()
+    if (store && targetClipId) clearDraft(store, targetClipId)
+  }
+
   // Cancels the pending debounce and writes whatever is still unwritten.
   // Both helpers are reached through `flushSavesRef` from timers/listeners so
   // they always run with the current render's `saveNow`/`saveTimelineNow`
@@ -396,8 +491,12 @@ export function EditorPage() {
           ...(pendingClipPatches.current.get(targetClipId) ?? {})
         })
         allSaved = false
+      } else if (!pendingClipPatches.current.has(targetClipId)) {
+        // This clip is on disk and nothing newer is queued for it.
+        clearPendingDraft(targetClipId)
       }
     }
+    if (allSaved) refreshSaveState()
     return allSaved
   }
   async function flushTimelineSave(force = false): Promise<boolean> {
@@ -409,6 +508,8 @@ export function EditorPage() {
     pendingTimelineClipId.current = null
     const saved = await timelineSaveNowRef.current(timeline, targetClipId)
     if (!saved && pendingTimelineClipId.current === null) pendingTimelineClipId.current = targetClipId
+    else if (saved && !pendingClipPatches.current.has(targetClipId)) clearPendingDraft(targetClipId)
+    if (saved) refreshSaveState()
     return saved
   }
   const flushSavesRef = useRef({ clip: flushClipPatch, timeline: flushTimelineSave })
@@ -417,11 +518,12 @@ export function EditorPage() {
   const updateClip = useCallback((patch: Partial<Clip>, immediate = false, history = true) => {
     if (history) pushHistory()
     dispatchClipCommand({ type: 'clip.patch', patch, issuedAt: Date.now() })
-    setSaveState('dirty')
+    markDirty()
     const targetClipId = activeClipIdRef.current
     if (targetClipId) {
       const pending = pendingClipPatches.current.get(targetClipId) ?? {}
       pendingClipPatches.current.set(targetClipId, { ...pending, ...patch })
+      noteDraft({ patch: patch as Record<string, unknown> })
     }
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(
@@ -499,17 +601,24 @@ export function EditorPage() {
       if (activeClipIdRef.current === targetClipId) setSaveState('saving')
       try {
         const saved = await api['clips.update']({ id: targetClipId, patch: patch as Record<string, unknown> })
+        // The backend accepted the change; this proves it reached the file.
+        // Until it resolves we must not show "All changes saved".
+        await flushStorage()
         if (activeClipIdRef.current === targetClipId) {
           const next = { ...(clipRef.current ?? saved), ...saved }
           clipRef.current = next
           setClip(next)
-          setSaveState(pendingClipPatches.current.has(targetClipId) ? 'dirty' : 'saved')
         }
         void data.loadClips(saved.projectId)
         savedOk = true
       } catch (err) {
-        if (activeClipIdRef.current === targetClipId) setSaveState('dirty')
-        app.toast({ level: 'error', ...errMessage(err) })
+        if (activeClipIdRef.current === targetClipId) setSaveState('error')
+        app.toast({
+          level: 'error',
+          ...errMessage(err),
+          actionLabel: 'Retry save',
+          action: () => void retrySave()
+        })
       }
     })
     clipSaveQueue.current = write
@@ -517,6 +626,15 @@ export function EditorPage() {
     return savedOk
   }
   saveNowRef.current = saveNow
+
+  /** Try the failed writes again, then say so only if they landed. */
+  async function retrySave(): Promise<void> {
+    const clipOk = await flushSavesRef.current.clip()
+    const timelineOk = await flushSavesRef.current.timeline()
+    if (clipOk && timelineOk && !hasPendingWrites()) {
+      app.toast({ level: 'success', message: 'Saved. Your changes are on disk now.' })
+    }
+  }
 
   // ------------------------------------------------------------ undo/redo ---
   const undo = useCallback(() => {
@@ -528,7 +646,7 @@ export function EditorPage() {
     h.lastPush = 0
     setHistoryState({ canUndo: h.past.length > 0, canRedo: h.future.length > 0 })
     dispatchClipCommand({ type: 'clip.restore', snapshot: prevSnap, issuedAt: Date.now() })
-    setSaveState('dirty')
+    markDirty()
     // The restore supersedes pending patches for this clip, but not edits
     // queued for another clip during a rapid navigation.
     const targetClipId = activeClipIdRef.current
@@ -547,13 +665,68 @@ export function EditorPage() {
     h.lastPush = 0
     setHistoryState({ canUndo: h.past.length > 0, canRedo: h.future.length > 0 })
     dispatchClipCommand({ type: 'clip.restore', snapshot: nextSnap, issuedAt: Date.now() })
-    setSaveState('dirty')
+    markDirty()
     const targetClipId = activeClipIdRef.current
     if (targetClipId) pendingClipPatches.current.set(targetClipId, nextSnap)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => void flushSavesRef.current.clip(), 300)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatchClipCommand])
+
+  // --------------------------------------------------- recovered drafts ---
+  function restoreDraft(): void {
+    const offer = draftOffer
+    if (!offer) return
+    setDraftOffer(null)
+    // Through updateClip so the restore is a normal edit: undoable, autosaved,
+    // and reflected in the inspector.
+    updateClip(offer.patch as Partial<Clip>, true)
+    const timeline = offer.timeline as ClipTimeline | undefined
+    if (timeline && Array.isArray(timeline.tracks) && Array.isArray(timeline.items)) {
+      clipTimelineRef.current = timeline
+      setClipTimeline(timeline)
+      pendingTimelineClipId.current = activeClipIdRef.current
+      saveTimelineImmediately(timeline)
+    }
+    app.toast({ level: 'success', message: 'Restored the edits from your last session.', hint: 'They are being saved now.' })
+  }
+
+  function discardDraft(): void {
+    setDraftOffer(null)
+    clearPendingDraft(activeClipIdRef.current)
+    app.toast({ level: 'info', message: 'Discarded the edits from your last session.' })
+  }
+
+  // ------------------------------------------------------- leaving guard ---
+  function requestLeave(): void {
+    if (!project) return
+    if (hasPendingWrites() || saveState === 'error' || saveState === 'saving') {
+      setLeavePrompt(true)
+      return
+    }
+    app.openProject(project.id)
+  }
+
+  function discardAndLeave(): void {
+    setLeavePrompt(false)
+    clearPendingDraft(activeClipIdRef.current)
+    pendingClipPatches.current.clear()
+    pendingTimelineClipId.current = null
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    if (timelineSaveTimer.current) { clearTimeout(timelineSaveTimer.current); timelineSaveTimer.current = null }
+    if (project) app.openProject(project.id)
+  }
+
+  // Closing the window while a write is outstanding should not be silent.
+  useEffect(() => {
+    if (saveState === 'saved') return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [saveState])
 
   // ------------------------------------------------------------- playback ---
   useEffect(() => {
@@ -1250,8 +1423,13 @@ export function EditorPage() {
     try {
       // First flush pending clip patches (including edits from the same event
       // tick), then persist the full click-time snapshot used by the renderer.
-      if (!await flushSavesRef.current.clip()) return
-      if (!await saveNowRef.current(exportClipSnapshot, exportClip.id)) return
+      const notSaved = () => app.toast({
+        level: 'error',
+        message: 'Your last edit is not saved, so the render was not queued.',
+        hint: 'Fix the save first (Retry save in the top bar), then render again. Rendering unsaved edits would produce a file the app cannot reproduce.'
+      })
+      if (!await flushSavesRef.current.clip()) { notSaved(); return }
+      if (!await saveNowRef.current(exportClipSnapshot, exportClip.id)) { notSaved(); return }
       // Cancel the timeline debounce only for this target clip and write the
       // exact click-time ref snapshot before queuing the background render.
       if (pendingTimelineClipId.current === exportClip.id) {
@@ -1262,6 +1440,7 @@ export function EditorPage() {
       const timelineSaved = await timelineSaveNowRef.current(exportTimeline, exportClip.id)
       if (!timelineSaved) {
         if (pendingTimelineClipId.current === null) pendingTimelineClipId.current = exportClip.id
+        notSaved()
         return
       }
       await api['renders.queue']({ clipId: exportClip.id, preview })
@@ -1401,7 +1580,7 @@ export function EditorPage() {
       {/* ------------------------------------------------------- top bar -- */}
       <div className="editor-topbar">
         <div className="topbar-left">
-          <button className="btn ghost sm icon" onClick={() => app.openProject(project.id)} aria-label="Back to project" title="Back to project">
+          <button className="btn ghost sm icon" onClick={requestLeave} aria-label="Back to project" title="Back to project">
             <ArrowLeft size={14} />
           </button>
           <div className="topbar-title">
@@ -1416,11 +1595,22 @@ export function EditorPage() {
               onChange={(e) => updateClip({ title: e.target.value })}
             />
           </div>
-          <span className={`save-state ${saveState === 'dirty' ? 'dirty' : ''}`} title={saveState === 'saving' ? 'Saving changes to this clip' : saveState === 'saved' ? 'All changes saved' : 'Changes not saved yet'}>
+          <span
+            className={`save-state ${saveState === 'dirty' ? 'dirty' : ''} ${saveState === 'error' ? 'failed' : ''}`}
+            title={saveStateCopy(saveState).title}
+            role="status"
+            aria-live="polite"
+          >
             {saveState === 'saving' && <Spinner size={12} />}
             {saveState === 'saved' && <Check size={12} />}
-            {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Unsaved changes'}
+            {saveState === 'error' && <AlertTriangle size={12} />}
+            {saveStateCopy(saveState).label}
           </span>
+          {saveState === 'error' && (
+            <button className="btn ghost sm" onClick={() => void retrySave()} title="Write your changes to disk again">
+              Retry save
+            </button>
+          )}
         </div>
         <div className="topbar-actions">
           <span className="editor-topbar-status" title="Playhead time / total duration">
@@ -1447,6 +1637,36 @@ export function EditorPage() {
           </button>
         </div>
       </div>
+
+      {draftOffer && (
+        <div className="recovery-bar" role="status">
+          <AlertTriangle size={14} />
+          <span className="recovery-text">
+            Unsaved changes from {new Date(draftOffer.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} were found for this clip.
+          </span>
+          <div className="recovery-actions">
+            <button className="btn sm" onClick={restoreDraft}>Restore changes</button>
+            <button className="btn ghost sm" onClick={discardDraft}>Discard</button>
+          </div>
+        </div>
+      )}
+
+      {leavePrompt && (
+        <Modal
+          title="Leave without saving?"
+          onClose={() => setLeavePrompt(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setLeavePrompt(false)}>Keep editing</button>
+              <button className="btn" onClick={() => { setLeavePrompt(false); void retrySave() }}>Try saving again</button>
+              <button className="btn danger" onClick={discardAndLeave}>Leave and discard changes</button>
+            </>
+          }
+        >
+          <p>Your last changes to this clip have not reached the disk yet.</p>
+          <p className="muted">If you leave now, those changes are lost. Keeping editing lets the next save finish them.</p>
+        </Modal>
+      )}
 
       {/* ---------------------------------------------------- stage + insp -- */}
       <div className="editor-body">

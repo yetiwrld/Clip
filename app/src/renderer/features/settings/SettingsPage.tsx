@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
   Bot, AudioLines, Video, Captions, Package, HardDrive, Wrench, ShieldCheck,
-  Download, FolderOpen, KeyRound, Trash2, TestTube2, Save
+  Download, FolderOpen, KeyRound, Trash2, TestTube2, Save, AlertTriangle, Check
 , RefreshCw } from 'lucide-react'
 import { api, errMessage, isElectron } from '../../api/client'
 import { useAppStore } from '../../stores/app'
@@ -43,6 +43,25 @@ export function SettingsPage() {
           <div className="page-title">Settings</div>
           <div className="page-subtitle">App preferences. Everything here is stored on this computer.</div>
         </div>
+        {app.settingsSaveState !== 'idle' && (
+          <span
+            className={`save-state ${app.settingsSaveState === 'error' ? 'failed' : ''}`}
+            role="status"
+            aria-live="polite"
+            title={
+              app.settingsSaveState === 'saving'
+                ? 'Writing this setting to disk'
+                : app.settingsSaveState === 'saved'
+                  ? 'This setting is on disk'
+                  : 'This setting could not be written to disk'
+            }
+          >
+            {app.settingsSaveState === 'saving' && <Spinner size={12} />}
+            {app.settingsSaveState === 'saved' && <Check size={12} />}
+            {app.settingsSaveState === 'error' && <AlertTriangle size={12} />}
+            {app.settingsSaveState === 'saving' ? 'Saving…' : app.settingsSaveState === 'saved' ? 'Saved' : 'Save failed'}
+          </span>
+        )}
       </div>
 
       <div className="settings-layout">

@@ -548,6 +548,20 @@ export const rendersRepo = {
     return row ? mapRender(row) : null
   },
 
+  /** Put a render record back after an undo, with its original timestamps. */
+  restore(db: AppDatabase, job: RenderJob, settings: Record<string, unknown>): void {
+    db.run(
+      `INSERT INTO renders (id, clip_id, project_id, output_path, status, progress, stage, error,
+        settings, preview, started_at, completed_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        job.id, job.clipId, job.projectId, job.outputPath, job.status, job.progress, job.stage,
+        job.error ? JSON.stringify(job.error) : null, JSON.stringify(settings ?? {}),
+        job.preview ? 1 : 0, job.startedAt, job.completedAt, job.createdAt, job.updatedAt
+      ]
+    )
+  },
+
   getSettings(db: AppDatabase, id: string): Record<string, unknown> {
     const row = db.get<RenderRow>('SELECT * FROM renders WHERE id = ?', [id])
     return row ? parseJson<Record<string, unknown>>(row.settings, {}) : {}

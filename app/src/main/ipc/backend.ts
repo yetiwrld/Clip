@@ -1,7 +1,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { AppError } from '@shared/errors'
-import type { AppInfo, ProjectSummary, RenderJob, StorageCleanupCategoryId } from '@shared/types'
+import type { AppInfo, ClipDeletionSnapshot, ProjectSummary, RenderJob, StorageCleanupCategoryId } from '@shared/types'
 import { ipcPayloads } from '@shared/schemas'
 import type { AppContext } from '../services/app-context'
 import { candidatesRepo, clipsRepo, projectsRepo, speakersRepo } from '../services/database/repositories'
@@ -22,12 +22,13 @@ import { buildAssetWaveform, buildFilmstrip, buildWaveform, projectForVisuals } 
 import { optimizeClipBoundaries } from '../services/clips/boundaries'
 import { getCandidates, listAnalysisProviders, runAnalysis, updateCandidateStatus } from '../services/ai/analysis'
 import { testAiProvider as testAiProviderService } from '../services/ai/test'
-import { createClipFromCandidate, createRemoteSectionClip, deleteClip, generateClipMetadata, listClips, updateClip } from '../services/clips'
+import { createClipFromCandidate, createRemoteSectionClip, deleteClip, generateClipMetadata, listClips, restoreClip, updateClip } from '../services/clips'
 import { trackSubject } from '../services/clips/tracking'
 import { getSettings, updateSettings } from '../services/settings'
 import { buildDiagnostics, checkDependencies, exportDiagnostics } from '../services/diagnostics'
 import { runExport } from '../services/exports'
 import { runStorageCleanup, scanStorageCleanup } from '../services/storage/cleanup'
+import { flushDurability } from '../services/storage/durability'
 
 /**
  * Backend assembly + the single method registry. The same dispatcher serves
@@ -50,6 +51,29 @@ export interface Backend {
   renders: RenderQueue
   host: HostServices | null
   invoke(method: string, payload: unknown): Promise<unknown>
+}
+
+/**
+ * Methods that change user data and must reach the disk before they resolve.
+ * Everything else is either read-only or regenerable (task progress, render
+ * stages), where a lost second of progress costs nothing.
+ */
+const DURABLE_METHODS: Record<string, string> = {
+  'projects.create': 'new project',
+  'projects.rename': 'project name',
+  'projects.updateSettings': 'project settings',
+  'projects.delete': 'project deletion',
+  'clips.createFromCandidate': 'new clip',
+  'clips.update': 'clip edit',
+  'clips.delete': 'clip deletion',
+  'clips.restore': 'clip restore',
+  'timeline.save': 'timeline edit',
+  'transcript.import': 'imported transcript',
+  'transcript.updateSpeaker': 'speaker change',
+  'transcript.renameSpeaker': 'speaker name',
+  'media.assets.rename': 'asset name',
+  'media.assets.remove': 'asset removal',
+  'settings.update': 'settings change'
 }
 
 const MEDIA_FILTERS = [
@@ -342,6 +366,7 @@ function runTask(taskId: string, fn: (report: import('../services/tasks/index').
     },
     'clips.update': (p: { id: string; patch: Record<string, unknown> }) => updateClip(ctx, p.id, p.patch),
     'clips.delete': (p: { id: string }) => deleteClip(ctx, p.id),
+    'clips.restore': (p: { snapshot: ClipDeletionSnapshot }) => restoreClip(ctx, p.snapshot),
     'clips.generateMetadata': (p: { id: string }) => generateClipMetadata(ctx, p.id),
 
     'renders.queue': async (p: { clipId: string; preview?: boolean }): Promise<{ renderId: string }> =>
@@ -383,6 +408,12 @@ function runTask(taskId: string, fn: (report: import('../services/tasks/index').
     'settings.secretHints': () => ctx.secrets.hints(),
     'settings.testAiProvider': (p: { providerId: 'openai-compatible' | 'anthropic'; baseUrl?: string; model?: string }) =>
       testAiProviderService(ctx, p),
+
+    'storage.status': () => ctx.db.status(),
+    'storage.flush': async () => {
+      await flushDurability(ctx, 'change')
+      return ctx.db.status()
+    },
 
     'exports.run': (p: { clipIds: string[]; includeMetadata?: boolean }) => runExport(ctx, p.clipIds, p.includeMetadata ?? true),
 
@@ -430,7 +461,10 @@ function runTask(taskId: string, fn: (report: import('../services/tasks/index').
       }
       validatedPayload = parsed.data ?? {}
     }
-    return handler(validatedPayload as never)
+    const result = await handler(validatedPayload as never)
+    const durableAction = DURABLE_METHODS[method]
+    if (durableAction) await flushDurability(ctx, durableAction)
+    return result
   }
 
   // Startup recovery: mark interrupted work for the recovery UI (spec §88)

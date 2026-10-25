@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import initSqlJs, { type SqlJsDatabase } from 'sql.js'
+import type { StorageStatus } from '@shared/types'
 
 /**
  * SQLite database backed by sql.js (WASM). Whole-file atomic persistence:
@@ -11,6 +12,15 @@ import initSqlJs, { type SqlJsDatabase } from 'sql.js'
  * (after every service transaction the caller may `persistNow()`; shutdown
  * always flushes). At our data scale (metadata + transcripts, MBs) a full
  * export is a few milliseconds.
+ *
+ * Durability rules (data safety audit):
+ *   - `pending` stays true until the bytes are on disk, so a failed write is
+ *     retried by the next write, the next flush, or shutdown.
+ *   - a failed write never poisons `persistQueue`; the next flush still runs.
+ *   - `status()` reports the truth, so the UI can say "Not saved" instead of
+ *     guessing.
+ *   - an unreadable database file is moved aside at startup instead of
+ *     preventing the app from opening.
  */
 export class AppDatabase {
   private db!: SqlJsDatabase
@@ -19,6 +29,9 @@ export class AppDatabase {
   private pending = false
   private closed = false
   private persistQueue: Promise<void> = Promise.resolve()
+  private lastPersistedAt: string | null = null
+  private lastError: string | null = null
+  private corruptBackup: string | null = null
 
   private constructor() {}
 
@@ -26,8 +39,10 @@ export class AppDatabase {
     const impl = new AppDatabase()
     const wasmPath = locateSqlWasm(moduleDir)
     const SQL = await initSqlJs({ locateFile: () => wasmPath })
-    impl.db = new SQL.Database(fs.existsSync(file) ? fs.readFileSync(file) : undefined)
     impl.file = file
+    impl.db = openOrQuarantine(SQL, file, (backup) => {
+      impl.corruptBackup = backup
+    })
     impl.db.run('PRAGMA foreign_keys = ON')
     return impl
   }
@@ -82,46 +97,112 @@ export class AppDatabase {
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null
-      void this.persistNow().catch(() => {
-        // Preserve the dirty state so a later write or shutdown can retry.
-        this.pending = true
-      })
+      // persistNow keeps `pending` set when the write fails, so the next
+      // write, flush or shutdown retries the same bytes.
+      void this.persistNow().catch(() => undefined)
     }, 250)
     // Do not keep the process alive just for a pending flush.
     this.timer.unref?.()
   }
 
+  /**
+   * Write every pending change to disk and resolve only once it is there.
+   * Rejects when the write fails, leaving `dirty` true so the caller can retry
+   * and the UI can tell the truth.
+   */
   async persistNow(): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
     }
-    if (!this.pending || this.closed) {
+    if (this.closed) {
+      await this.persistQueue
+      return
+    }
+    if (!this.pending) {
       await this.persistQueue
       return
     }
     this.pending = false
     const data = Buffer.from(this.db.export())
     const tmp = `${this.file}.tmp`
-    this.persistQueue = this.persistQueue.then(async () => {
+    const write = this.persistQueue.then(async () => {
       await fs.promises.mkdir(path.dirname(this.file), { recursive: true })
       await fs.promises.writeFile(tmp, data)
       await fs.promises.rename(tmp, this.file)
     })
-    await this.persistQueue
+    // A rejected write must not kill the chain for every later flush.
+    this.persistQueue = write.catch(() => undefined)
+    try {
+      await write
+      this.lastPersistedAt = new Date().toISOString()
+      this.lastError = null
+    } catch (err) {
+      this.pending = true
+      this.lastError = err instanceof Error ? err.message : String(err)
+      throw err
+    }
+  }
+
+  /** The renderer-facing truth about what is on disk. */
+  status(): StorageStatus {
+    return {
+      dirty: this.pending || Boolean(this.timer),
+      lastPersistedAt: this.lastPersistedAt,
+      lastError: this.lastError,
+      recoveredFromCorrupt: this.corruptBackup !== null,
+      corruptBackupPath: this.corruptBackup
+    }
+  }
+
+  get isDirty(): boolean {
+    return this.pending || this.timer !== null
   }
 
   async close(): Promise<void> {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
-    await this.persistNow()
-    this.closed = true
-    await this.persistQueue
-    this.db.close()
+    // A failed final flush still closes cleanly: the bytes stay pending, the
+    // caller sees the rejection, and the next launch reports what happened.
+    try {
+      await this.persistNow()
+    } finally {
+      this.closed = true
+      await this.persistQueue
+      this.db.close()
+    }
   }
 
   get isOpen(): boolean {
     return !this.closed
+  }
+}
+
+/**
+ * Open the database file, or move an unreadable one aside and start fresh.
+ * A corrupt file must not stop the app from opening — it must be preserved for
+ * inspection and the user must be told (see `status().recoveredFromCorrupt`).
+ */
+function openOrQuarantine(
+  SQL: { Database: new (data?: Uint8Array) => SqlJsDatabase },
+  file: string,
+  onQuarantine: (backupPath: string) => void
+): SqlJsDatabase {
+  if (!fs.existsSync(file)) return new SQL.Database()
+  const bytes = fs.readFileSync(file)
+  if (bytes.byteLength === 0) return new SQL.Database()
+  try {
+    const db = new SQL.Database(bytes)
+    // Reading the schema is enough to fail on a truncated or foreign file.
+    db.exec('SELECT count(*) FROM sqlite_master')
+    return db
+  } catch {
+    const backup = `${file}.corrupt-${Date.now()}`
+    fs.renameSync(file, backup)
+    onQuarantine(backup)
+    const fresh = new SQL.Database()
+    fresh.run('PRAGMA foreign_keys = ON')
+    return fresh
   }
 }
 
