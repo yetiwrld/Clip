@@ -765,9 +765,13 @@ Three layers, all in the existing Vitest project, no new dependency:
    literals **≤ 87**, duplicate declarations **≤ 26**.
 2. **`tests/unit/ui-visual-baseline.test.ts`** + `__snapshots__` — resolves the
    visual contract (box, spacing, type, colour, radius, elevation, stacking, and
-   the responsive overrides) of 46 chrome classes, and snapshots the markup of
-   every shared primitive in its empty, error, loading, progress, selected and
-   disabled states. A change is a snapshot diff a human approves with
+   the responsive overrides) of 55 contracts — the chrome components plus the
+   screen frames (`.app-shell`, `.sidebar`, `.page`, `.editor-topbar`,
+   `.editor-body`, `.editor-stage`, `.editor-inspector`, `.timeline`,
+   `.editor-tool-panel`). The editor's four-column ladder is therefore pinned at
+   1280px, 1180px and below, and the shell at 1100px. It also snapshots the
+   markup of every shared primitive in its empty, error, loading, progress,
+   selected and disabled states. A change is a snapshot diff a human approves with
    `npm run test:visual:update`.
 3. **`tests/unit/ui-a11y.test.ts`** (7) — label binding, switch state, dialog
    naming, progress value, alert role, spinner name.

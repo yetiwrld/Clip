@@ -2,6 +2,12 @@
 
 exports[`visual baseline: component contract > keeps the documented box, type and colour of the chrome 1`] = `
 {
+  ".app-shell": "(base)
+  display: grid
+  grid-template-columns: var(--sidebar-w) 1fr
+  height: 100%
+@media (max-width: 1100px)
+  grid-template-columns: 176px 1fr",
   ".btn": "(base)
   align-items: center
   background: var(--surface-2)
@@ -73,6 +79,68 @@ exports[`visual baseline: component contract > keeps the documented box, type an
 @media (max-width: 760px)
   grid-template-columns: minmax(0, 1fr) auto
   justify-content: stretch",
+  ".editor-body": "(base)
+  display: grid
+  flex: 1
+  grid-template-columns: var(--editor-rail-w) minmax(212px, 268px) minmax(0, 1fr) minmax(276px, 316px)
+  min-height: 0
+  position: relative
+@media (max-width: 1280px)
+  grid-template-columns: var(--editor-rail-w) minmax(190px, 228px) minmax(0, 1fr) minmax(240px, 276px)
+@media (max-width: 1180px)
+  grid-template-columns: var(--editor-rail-w) minmax(184px, 212px) minmax(0, 1fr) minmax(232px, 260px)
+@media (max-width: 1100px)
+  grid-template-columns: var(--editor-rail-w) minmax(176px, 200px) minmax(0, 1fr) minmax(224px, 248px)
+@media (max-width: 920px)
+  grid-template-columns: var(--editor-rail-w) minmax(0, 1fr) 248px
+@media (max-width: 680px)
+  grid-template-columns: var(--editor-rail-w) minmax(0, 1fr)",
+  ".editor-inspector": "(base)
+  background: var(--surface)
+  border-left: 1px solid var(--border)
+  min-height: 0
+  overflow-y: auto
+  padding-bottom: var(--space-4)",
+  ".editor-stage": "(base)
+  align-items: stretch
+  background: var(--surface)
+  display: flex
+  flex-direction: column
+  justify-content: flex-start
+  min-height: 0
+  min-width: 0
+  padding: 0
+  position: relative",
+  ".editor-tool-panel": "(base)
+  background: var(--surface)
+  border-right: 1px solid var(--border)
+  min-height: 0
+  min-width: 0
+  overflow: auto
+  padding: var(--pad-panel)
+@media (max-width: 920px)
+  border-right: 1px solid var(--border-strong)
+  bottom: 0
+  box-shadow: var(--shadow-2)
+  left: var(--editor-rail-w)
+  position: absolute
+  top: 0
+  width: min(264px, 46vw)
+  z-index: var(--z-panel)
+@media (max-width: 680px)
+  width: min(264px, calc(100vw - var(--editor-rail-w) - var(--space-3)))",
+  ".editor-topbar": "@media (max-width:680px)
+  gap: var(--space-3)
+  padding: 0 var(--space-3)
+(base)
+  align-items: center
+  background: var(--surface)
+  border-bottom: 1px solid var(--border)
+  display: flex
+  flex: none
+  gap: var(--space-4)
+  height: 50px
+  padding: 0 var(--space-4)",
   ".empty": "(base)
   align-items: center
   color: var(--text-3)
@@ -219,6 +287,11 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   background: var(--surface-3)
   color: var(--text-1)
   font-weight: var(--fw-medium)",
+  ".page": "(base)
+  flex: 1
+  overflow-y: auto
+  padding-block: var(--space-6) var(--space-10)
+  padding-inline: max(var(--page-gutter), (100% - var(--content-max)) / 2)",
   ".palette": "(base)
   background: var(--surface)
   border: 1px solid var(--border-strong)
@@ -289,6 +362,12 @@ exports[`visual baseline: component contract > keeps the documented box, type an
     border-color var(--dur-fast) var(--ease),
     color var(--dur-fast) var(--ease)
   width: 100%",
+  ".sidebar": "(base)
+  background: var(--surface)
+  border-right: 1px solid var(--border)
+  display: flex
+  flex-direction: column
+  padding: var(--space-4) var(--space-3)",
   ".switch": "(base)
   background: var(--surface-3)
   border: 1px solid var(--border-strong)
@@ -303,6 +382,8 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   ".text-body": "(base)
   font-size: var(--fs-base)
   line-height: var(--lh-normal)",
+  ".timeline": "(base)
+  width: 100%",
   ".toast": "(base)
   align-items: flex-start
   background: var(--surface-2)

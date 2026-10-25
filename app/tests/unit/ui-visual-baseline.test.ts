@@ -145,7 +145,17 @@ const BASELINED_SELECTORS = [
   '.section-title',
   '.text-body',
   '.section-hint',
-  '.create-bar'
+  '.create-bar',
+  // Screen frames: the proportions of the app itself.
+  '.app-shell',
+  '.sidebar',
+  '.page',
+  '.editor-topbar',
+  '.editor-body',
+  '.editor-stage',
+  '.editor-inspector',
+  '.timeline',
+  '.editor-tool-panel'
 ]
 
 /**
