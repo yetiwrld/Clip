@@ -279,7 +279,7 @@ function ClipRow({
             </>
           }
         >
-          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
+          <div className="text-body">
             “{clip.title || 'Untitled clip'}” and its edits and captions will be removed. Renders you already made stay in the
             workspace. You can undo this from the message that appears.
           </div>

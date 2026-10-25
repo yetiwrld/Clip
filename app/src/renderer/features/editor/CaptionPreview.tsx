@@ -102,7 +102,7 @@ export function CaptionPreview(props: {
             position: 'absolute',
             inset: '12% 6%',
             border: '1px dashed rgba(255,255,255,0.4)',
-            borderRadius: 4,
+            borderRadius: 'var(--radius)',
             pointerEvents: 'none',
             zIndex: 4
           }}

@@ -368,7 +368,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
           onCancel={() => setConfirmDelete(false)}
           onConfirm={() => void doDelete()}
         >
-          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
+          <div className="text-body">
             <strong>“{summary.name}”</strong> and everything inside it — imported media, transcripts, clips and renders —
             is removed from the workspace. Files already exported to the exports folder are kept.
           </div>

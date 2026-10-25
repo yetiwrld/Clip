@@ -283,7 +283,7 @@ function MomentRow({
             </div>
           )}
 
-          <div className="tiny" style={{ color: 'var(--text-2)', lineHeight: 1.55 }}>
+          <div className="tiny section-hint" style={{ color: 'var(--text-2)', marginBottom: 0 }}>
             {candidate.reason}
           </div>
 
@@ -328,7 +328,7 @@ export function ScoreBreakdownView({ scores, explanation, provider }: { scores: 
         </div>
       ))}
       {explanation && (
-        <div className="tiny" style={{ lineHeight: 1.55, color: 'var(--text-2)', marginTop: 'var(--space-2)' }}>
+        <div className="tiny" style={{ lineHeight: 'var(--lh-normal)', color: 'var(--text-2)', marginTop: 'var(--space-2)' }}>
           <strong>Why this score</strong> — {explanation}
         </div>
       )}

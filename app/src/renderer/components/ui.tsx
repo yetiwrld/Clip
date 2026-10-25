@@ -170,8 +170,8 @@ export function EmptyState(props: { icon: React.ReactNode; title: string; hint?:
   return (
     <div className="empty">
       <div className="empty-icon">{props.icon}</div>
-      <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{props.title}</div>
-      {props.hint && <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>{props.hint}</div>}
+      <div className="empty-title">{props.title}</div>
+      {props.hint && <div className="muted text-body" style={{ maxWidth: 400 }}>{props.hint}</div>}
       {props.action}
     </div>
   )
@@ -191,7 +191,7 @@ export function Switch(props: { checked: boolean; onChange: (v: boolean) => void
   return (
     <div className="switch-row">
       <div>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 550 }}>{props.label}</div>
+        <div className="text-body" style={{ fontWeight: 'var(--fw-medium)' }}>{props.label}</div>
         {props.hint && <div className="field-hint">{props.hint}</div>}
       </div>
       <button

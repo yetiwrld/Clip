@@ -339,7 +339,7 @@ function ProviderForm(props: {
         )}
       </div>
       {props.testResult && (
-        <div className="field-hint" style={{ lineHeight: 1.6 }}>
+        <div className="field-hint section-hint" style={{ marginBottom: 0 }}>
           {props.testResult.message}
           <br />
           <span className="tiny">
@@ -676,7 +676,7 @@ function StorageSection() {
                     className="row"
                     style={{
                       alignItems: 'flex-start', gap: 'var(--space-4)', padding: 'var(--space-4)',
-                      border: '1px solid var(--border)', borderRadius: 8,
+                      border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
                       opacity: category.fileCount === 0 ? 0.55 : 1,
                       cursor: category.fileCount === 0 ? 'default' : 'pointer'
                     }}

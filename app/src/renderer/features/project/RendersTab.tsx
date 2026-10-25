@@ -149,7 +149,7 @@ function RenderRow({
 
       <div className="q-value">
         {isCompleted && render.outputPath && (
-          <video src={mediaUrl(render.outputPath)} style={{ width: 34, height: 60, borderRadius: 3, background: '#000', border: '1px solid var(--border)' }} muted preload="metadata" title="Rendered preview" />
+          <video className="render-thumb" src={mediaUrl(render.outputPath)} muted preload="metadata" title="Rendered preview" />
         )}
       </div>
 

@@ -364,7 +364,7 @@ export function TranscriptTab() {
                 ref={videoRef}
                 src={project.sourcePath ? mediaUrl(project.sourcePath) : undefined}
                 controls
-                style={{ width: '100%', borderRadius: 8, background: '#000', aspectRatio: '16/9' }}
+                style={{ width: '100%', borderRadius: 'var(--radius-lg)', background: 'var(--stage)', aspectRatio: '16/9' }}
                 preload="metadata"
               />
             )}

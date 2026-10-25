@@ -150,7 +150,7 @@ export function SourceTab() {
     <div className="grid split">
       <div className="stack">
         {project.sourceMode === 'audio-first' && (
-          <div className="panel" style={{ borderColor: 'var(--accent)', lineHeight: 1.55 }}>
+          <div className="panel text-body" style={{ borderColor: 'var(--accent)' }}>
             <strong>Audio-only project</strong>
             <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>
               Only the audio was downloaded. You can transcribe it and find moments from the transcript. Choosing a moment
@@ -309,7 +309,7 @@ export function SourceTab() {
           </div>
           <div className="divider" />
           <div className="section-title">Download part of a video</div>
-          <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 'var(--space-3)' }}>
+          <div className="tiny section-hint">
             Saves only the time range you enter. Needs yt-dlp and FFmpeg. The download may start slightly before your start time,
             and it never falls back to the whole video.
           </div>
@@ -328,7 +328,7 @@ export function SourceTab() {
           </div>
           <div className="divider" />
           <div className="section-title">Audio-only import</div>
-          <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 'var(--space-3)' }}>
+          <div className="tiny section-hint">
             Saves the audio track without the video. Transcription runs on this computer unless you pick a cloud provider. When you
             choose a moment, only that part of the video is downloaded. Audio still uses data, and not every site supports it.
           </div>
@@ -438,7 +438,7 @@ export function SourceTab() {
           onCancel={() => setConfirmDelete(false)}
           onConfirm={() => void deleteProject()}
         >
-          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
+          <div className="text-body">
             <strong>“{project.name}”</strong> and everything inside it — imported media, transcripts, clips and renders —
             is removed from the workspace. Files already exported to the exports folder are kept.
           </div>
