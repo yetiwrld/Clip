@@ -1602,11 +1602,12 @@ export function EditorPage() {
             title={saveStateCopy(saveState).title}
             role="status"
             aria-live="polite"
+            aria-label={saveStateCopy(saveState).label}
           >
             {saveState === 'saving' && <Spinner size={12} />}
             {saveState === 'saved' && <Check size={12} />}
             {saveState === 'error' && <AlertTriangle size={12} />}
-            {saveStateCopy(saveState).label}
+            <span className="save-state-text">{saveStateCopy(saveState).label}</span>
           </span>
           {saveState === 'error' && (
             <button className="btn ghost sm" onClick={() => void retrySave()} title="Write your changes to disk again">

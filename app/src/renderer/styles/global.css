@@ -2593,6 +2593,18 @@ details.error-details pre {
   color: var(--danger);
 }
 
+/* The full state text is the promise ("All changes saved"), so keep it until
+   the top bar genuinely runs out of room; the icon and title carry it after. */
+.save-state-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px) {
+  .editor-topbar .save-state-text { display: none; }
+}
+
 .confirm-phrase {
   margin-top: var(--space-4);
 }
