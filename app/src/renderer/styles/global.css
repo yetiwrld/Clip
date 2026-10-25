@@ -152,7 +152,9 @@
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 240ms;
-  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);      /* state changes */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);    /* anything that enters */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);        /* anything that leaves */
 
   /* ---- spacing scale (single source of truth) ----
      0/2/4      fine alignment, hairlines, tight pairs
@@ -787,21 +789,11 @@ input[type='checkbox'] {
 .status.success { color: var(--text-2); }
 .status.working .dot {
   background: var(--accent);
-  animation: status-pulse 1.2s ease-in-out infinite;
 }
 .status.warn .dot { background: var(--warn); }
 .status.danger .dot { background: var(--danger); }
 .status.danger { color: var(--danger); }
 
-@keyframes status-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
 
 /* ============================================================== tables */
 
@@ -850,7 +842,9 @@ input[type='checkbox'] {
   height: 100%;
   background: var(--accent);
   border-radius: var(--radius-xs);
-  transition: width var(--dur-slow) linear;
+  /* width is the semantic property for a determinate bar; the element is a
+     few pixels tall so the layout cost is one style pass, not a reflow storm */
+  transition: width var(--dur-base) linear;
 }
 
 .progress-fill.success { background: var(--success); }
@@ -1098,7 +1092,7 @@ input[type='checkbox'] {
   max-height: min(82vh, 780px);
   display: flex;
   flex-direction: column;
-  animation: modal-in 130ms ease;
+  animation: modal-in var(--dur-slow) var(--ease-out);
 }
 
 .modal.wide {
@@ -1278,7 +1272,7 @@ input[type='checkbox'] {
   display: flex;
   gap: var(--space-3);
   align-items: flex-start;
-  animation: toast-in 150ms ease;
+  animation: toast-in var(--dur-base) var(--ease-out);
   font-size: var(--fs-base);
 }
 
@@ -1443,15 +1437,6 @@ input[type='checkbox'] {
   }
 }
 
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
 
 /* ======================================================= error states */
 
@@ -3683,4 +3668,151 @@ button:disabled {
 .timeline-resize-handle:focus-visible::after {
   width: 56px;
   background: var(--accent);
+}
+
+/* ============================================================ MOTION SYSTEM
+   Three durations, two curves, one rule: motion explains a change of state,
+   it never draws attention to itself.
+
+     --dur-fast  120ms  hover, press, colour changes, focus
+     --dur-base  180ms  popovers, menus, tabs, expandable panels, toasts
+     --dur-slow  240ms  dialogs and anything that changes a large area
+
+   Everything that moves is transform or opacity, so nothing forces layout.
+   Position, size and content never animate.
+
+   Under 250ms nothing delays interaction: the element is usable the moment it
+   is rendered, the animation only decorates the first frame.
+   ============================================================ */
+
+/* -------------------------------------------------- hover and press ---
+   Colour only. No transforms on controls that sit in dense rows, so a row of
+   buttons cannot ripple while the pointer travels across it. */
+.nav-item,
+.menu button,
+.cap-category-tab,
+.tab,
+.input,
+.select,
+.textarea,
+.timeline-add-track-summary,
+.track-tools button {
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.btn {
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+
+/* List rows and section headers change background on hover; without a
+   transition they snapped, which read as a flicker on a dense list. */
+.transcript-row,
+.project-row,
+.moment-head,
+.editor-moment-card,
+.inspector-section > summary,
+.timeline-add-track-options button,
+.multi-track-ruler-body button,
+.editor-stage .transport-play {
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+/* ------------------------------------------------------- popovers --- */
+.menu,
+.timeline-add-track-options {
+  animation: pop-in var(--dur-base) var(--ease-out);
+}
+
+.menu {
+  transform-origin: top right;
+}
+
+.timeline-add-track-options {
+  transform-origin: top left;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* -------------------------------------------------------- dialogs --- */
+.modal-backdrop {
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+
+/* -------------------------------------------------- expandable rows ---
+   Native details, animated through the details content box. Browsers that do
+   not support ::details-content simply open and close instantly, which is the
+   behaviour the app had before. */
+.inspector-section,
+.cap-panel details {
+  interpolate-size: allow-keywords;
+}
+
+.inspector-section::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition:
+    block-size var(--dur-base) var(--ease),
+    content-visibility var(--dur-base) allow-discrete;
+}
+
+.inspector-section[open]::details-content {
+  block-size: auto;
+}
+
+/* ------------------------------------------------------- timelines ---
+   Clips and caption blocks change colour on hover; they never animate
+   position, because that would lag behind the pointer during a drag. */
+.timeline-caption-block,
+.timeline-text-block,
+.multi-track-item,
+.source-track-clip,
+.cap-template-card > button:first-child,
+.cap-template-favorite,
+.asset-card .asset-thumb {
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+
+/* -------------------------------------------------- reduced motion ---
+   One switch, applied everywhere. Spinners keep turning because they are the
+   only feedback that a long task is alive; everything else becomes instant. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .spin {
+    animation-duration: 1.1s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  .inspector-section::details-content {
+    block-size: auto;
+  }
 }

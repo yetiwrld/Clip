@@ -4,7 +4,7 @@ import {
   ChevronRight, Scissors, Wand2, Save, Undo2, Redo2, AlertTriangle, ShieldCheck,
   Gauge, Film, AudioLines, Eraser, RotateCcw, Zap, Target, X, Trash2, Star, Headphones,
   Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal,
-  Package, X as CloseIcon
+  Package, Check, X as CloseIcon
 } from 'lucide-react'
 import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
@@ -1376,8 +1376,9 @@ export function EditorPage() {
               onChange={(e) => updateClip({ title: e.target.value })}
             />
           </div>
-          <span className={`save-state ${saveState === 'dirty' ? 'dirty' : ''}`}>
+          <span className={`save-state ${saveState === 'dirty' ? 'dirty' : ''}`} title={saveState === 'saving' ? 'Saving changes to this clip' : saveState === 'saved' ? 'All changes saved' : 'Changes not saved yet'}>
             {saveState === 'saving' && <Spinner size={12} />}
+            {saveState === 'saved' && <Check size={12} />}
             {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Unsaved changes'}
           </span>
         </div>

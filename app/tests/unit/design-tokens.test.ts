@@ -128,6 +128,29 @@ function readTag(source: string, from: number): string {
   return source.slice(from)
 }
 
+describe('motion', () => {
+  it('declares three durations and the easing curves', () => {
+    for (const token of ['--dur-fast: 120ms', '--dur-base: 180ms', '--dur-slow: 240ms']) expect(css).toContain(token)
+    for (const token of ['--ease:', '--ease-out:', '--ease-in:']) expect(css).toContain(token)
+  })
+
+  it('never hard-codes a transition duration', () => {
+    const offenders = (css.match(/transition:[^;]+/g) ?? []).filter((decl) => /\d+m?s\b/.test(decl) && !decl.includes('var('))
+    expect(offenders).toEqual([])
+  })
+
+  it('reserves infinite animation for the loading spinner', () => {
+    const infinite = (css.match(/animation:[^;]+infinite[^;]*/g) ?? []).filter((decl) => !decl.includes('spin'))
+    expect(infinite).toEqual([])
+  })
+
+  it('respects the system reduced-motion preference', () => {
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
+    expect(block).toContain('transition-duration: 0.01ms !important')
+    expect(block).toContain('animation-duration: 0.01ms !important')
+  })
+})
+
 describe('icon system', () => {
   it('keeps one stroke source: LucideProvider sets it, call sites do not', () => {
     const offenders: string[] = []
