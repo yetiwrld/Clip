@@ -3,7 +3,7 @@ import {
   ArrowLeft, Play, Pause, Volume2, VolumeX, SkipBack, Type, Crop, Tags, Copy,
   ChevronRight, Scissors, Wand2, Save, Undo2, Redo2, AlertTriangle, ShieldCheck,
   Gauge, Film, AudioLines, Eraser, RotateCcw, Zap, Target, X, Trash2, Star, Headphones,
-  Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal, X as CloseIcon
+  Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal, Upload, X as CloseIcon
 } from 'lucide-react'
 import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
@@ -127,6 +127,7 @@ export function EditorPage() {
   const cameraClipboardRef = useRef<Pick<CameraKeyframe, 'x' | 'y' | 'scale' | 'rotation' | 'easing'> | null>(null)
   const [hasCameraClipboard, setHasCameraClipboard] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
   const [stageSize, setStageSize] = useState({ w: 0, h: 0 })
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Edits made inside one debounce window are merged per clip before the
@@ -1157,10 +1158,12 @@ export function EditorPage() {
 
   const selectedCameraKeyframe = clip?.cameraKeyframes.find((item) => selectedCameraKeyframeTime !== null && Math.abs(item.time - selectedCameraKeyframeTime) < frameTimeTolerance(data.activeProject?.fps)) ?? null
 
-  // Measure the stage; the preview frame is sized from it so it always fits
-  // and always honors the output aspect ratio exactly.
+  // Measure the canvas (the area the picture is drawn into); the preview frame
+  // is sized from it so it always fits and honors the output ratio exactly.
+  // The canvas is measured rather than the whole stage because the stage also
+  // holds the player header and the transport bar.
   useEffect(() => {
-    const el = stageRef.current
+    const el = canvasRef.current
     if (!el) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -1330,7 +1333,8 @@ export function EditorPage() {
   const frame =
     stageSize.w > 0 && stageSize.h > 0
       ? (() => {
-          const w = Math.min(stageSize.w, Math.max(0, stageSize.h - 44) * ratio)
+          // stageSize is the canvas content box, so its padding is excluded already.
+          const w = Math.max(0, Math.min(stageSize.w, stageSize.h * ratio))
           return { w, h: w / ratio }
         })()
       : { w: 0, h: 0 }
@@ -1356,50 +1360,45 @@ export function EditorPage() {
     <div className="editor-shell">
       {/* ------------------------------------------------------- top bar -- */}
       <div className="editor-topbar">
-        <button className="btn ghost icon" onClick={() => app.openProject(project.id)} aria-label="Back to project">
-          <ArrowLeft size={15} />
-        </button>
-        <span className="editor-project-name" title={project.name}>{project.name}</span>
-        <input
-          className="clip-title-input"
-          value={clip.title}
-          placeholder="Clip title"
-          onChange={(e) => updateClip({ title: e.target.value })}
-        />
-        <span className={`save-state ${saveState === 'dirty' ? 'dirty' : ''}`}>
-          {saveState === 'saving' && <Spinner size={11} />}
-          {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Unsaved changes'}
-        </span>
-        <button
-          className="btn ghost sm icon"
-          onClick={undo}
-          disabled={!historyState.canUndo}
-          title="Undo (Ctrl+Z)"
-          aria-label="Undo"
-        >
-          <Undo2 size={13} />
-        </button>
-        <button
-          className="btn ghost sm icon"
-          onClick={redo}
-          disabled={!historyState.canRedo}
-          title="Redo (Ctrl+Shift+Z)"
-          aria-label="Redo"
-        >
-          <Redo2 size={13} />
-        </button>
-        <span className="editor-topbar-status">{formatClock(currentTime, true)} <span>/</span> {formatClock(outputSeconds, true)}</span>
-        <span style={{ flex: 1 }} />
-        <span className="tiny" style={{ marginRight: 6 }}>
-          <span className="kbd">J</span>/<span className="kbd">K</span>/<span className="kbd">L</span> ·{' '}
-          <span className="kbd">, .</span> frame · <span className="kbd">I</span>/<span className="kbd">O</span> trim
-        </span>
-        <button className="btn primary" onClick={() => void queueRender(false)} disabled={renderQueued}>
-          {renderQueued ? <Spinner size={12} /> : <Play size={13} />} Export
-        </button>
-        <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open inspector" title="Open inspector" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
-          <SlidersHorizontal size={14} />
-        </button>
+        <div className="topbar-left">
+          <button className="btn ghost sm icon" onClick={() => app.openProject(project.id)} aria-label="Back to project" title="Back to project">
+            <ArrowLeft size={15} />
+          </button>
+          <div className="topbar-title">
+            <span className="editor-project-name" title={project.name}>{project.name}</span>
+            <span className="topbar-crumb" aria-hidden="true">/</span>
+            <input
+              className="clip-title-input"
+              value={clip.title}
+              placeholder="Clip title"
+              title="Clip title"
+              onChange={(e) => updateClip({ title: e.target.value })}
+            />
+          </div>
+          <span className={`save-state ${saveState === 'dirty' ? 'dirty' : ''}`}>
+            {saveState === 'saving' && <Spinner size={11} />}
+            {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Unsaved changes'}
+          </span>
+        </div>
+        <div className="topbar-actions">
+          <span className="editor-topbar-status" title="Playhead time / total duration">
+            {formatClock(currentTime, true)} <span>/</span> {formatClock(outputSeconds, true)}
+          </span>
+          <span className="topbar-divider" aria-hidden="true" />
+          <button className="btn ghost sm icon" onClick={undo} disabled={!historyState.canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+            <Undo2 size={14} />
+          </button>
+          <button className="btn ghost sm icon" onClick={redo} disabled={!historyState.canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+            <Redo2 size={14} />
+          </button>
+          <span className="topbar-divider" aria-hidden="true" />
+          <button className="btn primary topbar-export" onClick={() => void queueRender(false)} disabled={renderQueued}>
+            {renderQueued ? <Spinner size={12} /> : <Upload size={13} />} Export
+          </button>
+          <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open inspector" title="Open inspector" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
+            <SlidersHorizontal size={14} />
+          </button>
+        </div>
       </div>
 
       {/* ---------------------------------------------------- stage + insp -- */}
@@ -1440,7 +1439,13 @@ export function EditorPage() {
           </div>}
         </aside>
         <div className="editor-stage" ref={stageRef}>
-          <div className="editor-preview-tools" role="toolbar" aria-label="Preview tools">
+          <div className="stage-head">
+            <div className="stage-head-title">
+              <strong>Player</strong>
+              <span>{target.w}×{target.h} · {clip.aspectRatio}</span>
+              {useProxySrc && <span className="stage-chip">Proxy preview</span>}
+            </div>
+            <div className="stage-head-actions editor-preview-tools" role="toolbar" aria-label="Preview tools">
             <button className={`btn sm icon${previewTool === 'select' ? ' primary' : ''}`} onClick={() => setPreviewTool('select')} title="Select tool" aria-label="Select tool" aria-pressed={previewTool === 'select'}><MousePointer2 size={14} /></button>
             <button className={`btn sm icon${previewTool === 'hand' ? ' primary' : ''}`} onClick={() => setPreviewTool('hand')} title="Hand tool: drag to move, scroll to zoom" aria-label="Hand tool" aria-pressed={previewTool === 'hand'}><Hand size={14} /></button>
             {clip.fitMode === 'fit' && <>
@@ -1449,7 +1454,9 @@ export function EditorPage() {
               <span className="tiny mono editor-preview-zoom">{clip.zoom.toFixed(2)}×</span>
               <button className="btn sm icon" onClick={() => zoomFitPreview(0.1)} disabled={clip.zoom >= 3} title="Zoom in" aria-label="Zoom in"><ZoomIn size={14} /></button>
             </>}
+            </div>
           </div>
+          <div className="stage-canvas" ref={canvasRef}>
           <div
             className="editor-frame"
             style={{ width: frame.w || undefined, height: frame.h || undefined }}
@@ -1655,10 +1662,35 @@ export function EditorPage() {
                 onEditCue={(cue) => { setSelectedCueKey(cue.key); setSelectedTimelineItem(null); setSelectedTextLayerId(null); setSelectedMomentId(null); seekTo(cue.startTime) }}
               />
             )}
-            <div className="mono" style={{ position: 'absolute', top: 8, left: 10, background: 'rgba(0,0,0,0.55)', borderRadius: 3, padding: '2px 7px', pointerEvents: 'none', fontSize: 11 }}>
-              {formatClock(currentTime, true)}
-              {useProxySrc && <span style={{ color: 'var(--warn)' }}> · proxy</span>}
+          </div>
+          </div>
+
+          <div className="transport" title="Space play/pause · J/K/L shuttle · , . frame step · I/O trim">
+            <span className="timecode">
+              {formatClock(currentTime, true)} <span className="total">/ {formatClock(project.duration ?? 0, true)}</span>
+            </span>
+            <span className="transport-gap" />
+            <div className="transport-controls">
+              <button className="btn ghost sm icon" onClick={() => seekTo(clip.startTime)} aria-label="Return to clip start" title="Go to clip start (Home)">
+                <SkipBack size={14} />
+              </button>
+              <button className="btn transport-play" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} title={playing ? 'Pause (Space)' : 'Play (Space)'}>
+                {playing ? <Pause size={15} /> : <Play size={15} />}
+              </button>
+              <button className="btn ghost sm icon" onClick={() => setMuted(!muted)} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
+                {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              </button>
             </div>
+            <span className="transport-gap" />
+            {playing && videoRef.current && videoRef.current.playbackRate > 1 && (
+              <span className="tl-badge preview">{videoRef.current.playbackRate}×</span>
+            )}
+            <button className="btn ghost sm icon" onClick={togglePreviewFullscreen} title={isFullscreenPreview ? 'Exit full screen preview' : 'Full screen preview'} aria-label={isFullscreenPreview ? 'Exit full screen preview' : 'Full screen preview'}>
+              <Maximize2 size={14} />
+            </button>
+            <span className="tiny transport-meta">
+              {cues.length} captions{activeCue ? ` · “${activeCue.text.slice(0, 34)}${activeCue.text.length > 34 ? '…' : ''}”` : ''}
+            </span>
           </div>
         </div>
 
@@ -1894,33 +1926,6 @@ export function EditorPage() {
       {/* -------------------------------------------------- timeline + tp -- */}
       <div className="editor-bottom" style={{ height: timelineHeight }}>
         <div className="timeline-resize-handle" role="separator" aria-label="Resize timeline panel" aria-orientation="horizontal" title="Drag to resize timeline" onPointerDown={beginTimelineResize}><MoveVertical size={13} /><span>Drag to resize workspace</span></div>
-        <div className="transport">
-          <button className="btn sm icon" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>
-            {playing ? <Pause size={14} /> : <Play size={14} />}
-          </button>
-          <button
-            className="btn ghost sm icon"
-            onClick={() => seekTo(clip.startTime)}
-            aria-label="Return to clip start"
-            title="Go to clip start (Home)"
-          >
-            <SkipBack size={13} />
-          </button>
-          <button className="btn ghost sm icon" onClick={() => setMuted(!muted)} aria-label={muted ? 'Unmute' : 'Mute'}>
-            {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
-          </button>
-          <button className="btn ghost sm icon" onClick={togglePreviewFullscreen} title={isFullscreenPreview ? 'Exit full screen preview' : 'Full screen preview'} aria-label={isFullscreenPreview ? 'Exit full screen preview' : 'Full screen preview'}><Maximize2 size={13} /></button>
-          <span className="timecode">
-            {formatClock(currentTime, true)} <span className="total">/ {formatClock(project.duration ?? 0, true)}</span>
-          </span>
-          {playing && videoRef.current && videoRef.current.playbackRate > 1 && (
-            <span className="tl-badge preview">{videoRef.current.playbackRate}×</span>
-          )}
-          <span style={{ flex: 1 }} />
-          <span className="tiny">
-            {cues.length} caption cues{activeCue ? ` · “${activeCue.text.slice(0, 40)}${activeCue.text.length > 40 ? '…' : ''}”` : ''}
-          </span>
-        </div>
 
         <MultiTrackTimeline
           timeline={clipTimeline}

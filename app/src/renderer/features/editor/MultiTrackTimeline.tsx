@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { AudioLines, ChevronDown, Copy, Eye, EyeOff, Film, Image as ImageIcon, Lock, Magnet, Maximize2, Plus, Scissors, Trash2, Type, Unlock, Volume2, VolumeX } from 'lucide-react'
+import { AudioLines, ChevronDown, Copy, Eye, EyeOff, Film, Image as ImageIcon, Lock, Magnet, Maximize2, Plus, Scissors, Trash2, Type, Unlock, Volume2, VolumeX, ZoomIn, ZoomOut } from 'lucide-react'
 import type { CameraKeyframe, ClipTimeline, ProjectAsset, TextLayer, TimelineItem, TimelineTrack } from '@shared/types'
 import { formatClock } from '@shared/utils/time'
 import { effectiveItemSpeed, sourceDeltaForTimelineDelta, timelineItemDuration, timelineItemEnd } from '@shared/video/time-map'
@@ -509,12 +509,8 @@ export function MultiTrackTimeline(props: {
   }, [selected, selectedLocked, props.timeline, props.currentTime])
 
   return <section className="multi-track-editor" aria-label="Multi-track timeline editor">
-    <div className="multi-track-toolbar">
-      <div className="timeline-toolbar-title">
-        <strong>Timeline</strong>
-        <span className="tiny muted">Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete remove</span>
-      </div>
-      <div className="row wrap timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
+    <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete remove">
+      <div className="row timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
         <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title="Toggle magnetic snapping" aria-label={`Snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
           <Magnet size={13} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
         </button>
@@ -526,16 +522,18 @@ export function MultiTrackTimeline(props: {
             <button type="button" role="menuitem" onClick={() => addTrack('image')}><ImageIcon size={13} /> Graphics track</button>
           </div>
         </details>
-        <label className="timeline-zoom-control">
-          <span>Zoom</span>
-          <input type="range" aria-label="Timeline zoom" min="0" max="100" step="1" value={timelineZoomSliderValue(pixelsPerSecond)} onChange={(event) => setZoomFromSlider(Number(event.target.value))} />
-          <span className="mono zoom-value">{pixelsPerSecond < 1 ? pixelsPerSecond.toFixed(2) : Math.round(pixelsPerSecond)} px/s</span>
-        </label>
-        <button type="button" className="btn ghost sm icon" onClick={fitTimeline} title="Fit full project in the timeline" aria-label="Fit full project in timeline"><Maximize2 size={13} /></button>
         <span className="timeline-toolbar-divider" aria-hidden="true" />
         <button type="button" className="btn ghost sm icon" onClick={splitSelected} disabled={!canSplit} title="Split selected clip at the playhead · Ctrl/⌘+B" aria-label="Split selected clip at playhead"><Scissors size={13} /></button>
         <button type="button" className="btn ghost sm icon" onClick={duplicateSelected} disabled={!selected || selectedLocked} title="Duplicate selected clip after itself · Ctrl/⌘+D" aria-label="Duplicate selected clip"><Copy size={13} /></button>
         <button type="button" className="btn ghost sm icon danger" onClick={deleteSelected} disabled={!selected || selectedLocked} title="Remove selected timeline item · Delete" aria-label="Delete selected timeline item"><Trash2 size={13} /></button>
+      </div>
+      <div className="timeline-toolbar-right">
+        <label className="timeline-zoom-control">
+          <ZoomOut size={12} aria-hidden="true" />
+          <input type="range" aria-label="Timeline zoom" min="0" max="100" step="1" value={timelineZoomSliderValue(pixelsPerSecond)} onChange={(event) => setZoomFromSlider(Number(event.target.value))} />
+          <ZoomIn size={12} aria-hidden="true" />
+        </label>
+        <button type="button" className="btn ghost sm icon" onClick={fitTimeline} title="Fit full project in the timeline" aria-label="Fit full project in timeline"><Maximize2 size={13} /></button>
       </div>
     </div>
     <div className="multi-track-scroll" ref={scrollRef} onPointerMove={updateHoverCursor} onPointerLeave={() => { if (!cursorDraggingRef.current) positionCursor(pinnedTimeRef.current ?? props.currentTime, false) }} onPointerDownCapture={beginCursorDrag} onWheel={zoomAtPointer}>

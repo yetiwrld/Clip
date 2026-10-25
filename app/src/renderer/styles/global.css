@@ -20,6 +20,13 @@
   --bg-3: var(--surface-3);
   --bg-4: var(--surface-4);
 
+  /* ---- aliases used by the timeline / editor rules ----
+     These were referenced ~40 times but never declared, so every rule that
+     used them silently lost its background or border. Declared here once. */
+  --surface-1: var(--surface);
+  --text-secondary: var(--text-2);
+  --radius-sm: 3px;
+
   /* ---- borders ---- */
   --border: rgba(255, 255, 255, 0.07);
   --border-strong: rgba(255, 255, 255, 0.12);
@@ -3360,4 +3367,597 @@ details.error-details pre {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* ============================================================
+   WORKSPACE PASS — CapCut-style arrangement, Clipwright palette
+   ------------------------------------------------------------
+   What is copied is *arrangement*, not colour:
+
+     top bar          identity left, undo/redo + export right, nothing else
+     tool rail        icon over label, one tinted active state
+     tool panel       fixed browser width, media as thumbnail tiles
+     player panel     title bar, letterboxed canvas, transport docked below
+     inspector        quiet sentence-case sections, chevrons on the right
+     timeline         icon toolbar, flat tracks, one clip colour family
+
+   Palette is untouched: graphite surfaces + the single orange accent.
+   This block lands last in the file and supersedes the older editor rules.
+   ============================================================ */
+
+/* ------------------------------------------------------------ top bar --- */
+
+.editor-topbar {
+  height: 50px;
+  gap: 12px;
+  padding: 0 10px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.topbar-crumb {
+  color: var(--text-3);
+  font-size: 12px;
+  user-select: none;
+}
+
+.editor-topbar .clip-title-input {
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 90px;
+  max-width: 320px;
+  height: 28px;
+  padding: 0 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.topbar-export {
+  height: 30px;
+  padding: 0 16px;
+  gap: 6px;
+  letter-spacing: 0.1px;
+}
+
+/* -------------------------------------------------------------- rail ---- */
+
+.editor-body {
+  grid-template-columns: 72px minmax(212px, 268px) minmax(0, 1fr) minmax(276px, 316px);
+}
+
+.editor-tool-rail {
+  padding: 8px 6px;
+  gap: 2px;
+}
+
+.editor-tool-button {
+  min-height: 56px;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+}
+
+.editor-tool-button.active {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+/* -------------------------------------------------------- tool panel ---- */
+
+.editor-tool-panel {
+  padding: 10px 10px 14px;
+}
+
+.editor-panel-heading {
+  margin: 2px 2px 12px;
+  gap: 2px;
+}
+
+.editor-panel-heading strong {
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+}
+
+.editor-panel-heading span {
+  font-size: 10.5px;
+}
+
+/* Media as thumbnail tiles, the way a browser panel is expected to read. */
+.editor-tool-panel .asset-library-head {
+  padding: 0 0 10px;
+}
+
+.editor-tool-panel .asset-library-tools {
+  gap: 6px;
+  padding: 4px 0 10px;
+}
+
+.editor-tool-panel .asset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 8px;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.editor-tool-panel .asset-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.editor-tool-panel .asset-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.editor-tool-panel .asset-card:hover .asset-thumb {
+  border-color: var(--border-strong);
+}
+
+.editor-tool-panel .asset-card.missing .asset-thumb {
+  border-color: var(--danger);
+}
+
+.editor-tool-panel .asset-copy {
+  padding: 6px 1px 0;
+  gap: 1px;
+}
+
+.editor-tool-panel .asset-copy strong {
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.editor-tool-panel .asset-copy .tiny {
+  font-size: 9.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hover actions sit on the tile instead of eating a row of every card. */
+.editor-tool-panel .asset-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: rgba(10, 10, 10, 0.8);
+  opacity: 0;
+  transition: opacity var(--speed);
+}
+
+.editor-tool-panel .asset-card:hover .asset-actions,
+.editor-tool-panel .asset-card:focus-within .asset-actions {
+  opacity: 1;
+}
+
+.editor-tool-panel .asset-actions .btn {
+  width: 22px;
+  min-height: 22px;
+}
+
+/* ---------------------------------------------------- player + canvas --- */
+
+.editor-body > .editor-stage,
+.editor-stage {
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  background: var(--surface);
+}
+
+.stage-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.stage-head-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stage-head-title strong {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+}
+
+.stage-head-title span {
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.stage-chip {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 9.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.stage-head-actions {
+  margin-left: auto;
+}
+
+.editor-preview-tools {
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.stage-canvas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #0b0b0b;
+}
+
+.editor-frame {
+  border-radius: 4px;
+  outline: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.editor-stage:fullscreen .stage-head,
+.editor-stage:fullscreen > .transport {
+  display: none;
+}
+
+/* ----------------------------------------------------------- transport -- */
+
+.transport {
+  gap: 8px;
+  margin: 0;
+}
+
+.editor-stage > .transport {
+  flex: none;
+  height: 46px;
+  padding: 0 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.transport .timecode {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.transport .timecode .total {
+  color: var(--text-3);
+}
+
+.transport-gap {
+  flex: 1;
+}
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.editor-stage .transport-play {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.editor-stage .transport-play:hover {
+  background: var(--surface-3);
+}
+
+.transport-meta {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+/* ----------------------------------------------------------- inspector -- */
+
+.inspector-context-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  gap: 3px;
+  padding: 12px 14px 11px;
+  background: var(--surface);
+}
+
+.inspector-context-heading span {
+  font-size: 9.5px;
+  letter-spacing: 0.7px;
+  color: var(--text-3);
+}
+
+.inspector-context-heading strong {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.inspector-section > summary {
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-1);
+}
+
+.inspector-section > summary:hover {
+  background: var(--surface-2);
+}
+
+.inspector-section > summary svg:first-child {
+  color: var(--text-3);
+}
+
+.inspector-section[open] > summary svg:first-child {
+  color: var(--accent);
+}
+
+.inspector-section > summary .chev {
+  color: var(--text-3);
+}
+
+.inspector-section .inspector-body {
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.inspector-advanced > summary {
+  padding: 10px 14px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------ timeline -- */
+
+.editor-bottom {
+  padding: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.timeline-resize-handle {
+  height: 11px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.timeline-resize-handle span {
+  display: none;
+}
+
+.editor-bottom .multi-track-editor {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.multi-track-toolbar {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.multi-track-toolbar > div.timeline-toolbar-actions {
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+}
+
+.timeline-toolbar-actions .btn.sm {
+  height: 26px;
+}
+
+.timeline-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.timeline-toolbar-divider {
+  height: 20px;
+}
+
+.timeline-zoom-control {
+  gap: 6px;
+  color: var(--text-3);
+}
+
+.timeline-zoom-control input[type='range'] {
+  width: clamp(70px, 8vw, 110px);
+}
+
+.multi-track-label {
+  width: 132px;
+  min-width: 132px;
+}
+
+/* One clip colour family with a hint of track type, instead of four
+   saturated hues competing for attention. Accent = selected, nothing else. */
+.multi-track-item {
+  background: #2a3036;
+  border-color: #3a434b;
+  color: #eef2f5;
+}
+
+.multi-track-item.audio {
+  background: #29332e;
+  border-color: #3a4842;
+}
+
+.multi-track-item.image {
+  background: #34302a;
+  border-color: #463f36;
+}
+
+.multi-track-item.selected,
+.multi-track-item:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.timeline-caption-block {
+  border-color: #4a4234;
+  background: #332e26;
+  color: #f2e9da;
+}
+
+.timeline-caption-block:hover {
+  border-color: #5d5342;
+  background: #3d372c;
+}
+
+.timeline-text-block {
+  border-color: #3d464d;
+  background: #2b3136;
+  color: #eef4f7;
+}
+
+.source-track-clip {
+  border-color: #3e4952;
+  background: #2c333a;
+  color: #eef3f7;
+}
+
+.source-track-clip.selected,
+.timeline-caption-block.selected,
+.timeline-text-block.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.multi-track-cursor,
+.multi-track-playhead {
+  background: #f2f2f2;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+
+/* --------------------------------------------------------- responsive --- */
+
+@media (max-width: 1180px) {
+  .editor-body {
+    grid-template-columns: 68px minmax(196px, 236px) minmax(0, 1fr) minmax(252px, 292px);
+  }
+  .editor-topbar-status {
+    display: none;
+  }
+}
+
+@media (max-width: 920px) {
+  .editor-body {
+    grid-template-columns: 68px minmax(0, 1fr) 252px;
+  }
+  .editor-tool-panel {
+    top: 50px;
+    left: 68px;
+  }
+}
+
+@media (max-width: 850px) {
+  .multi-track-toolbar > div:first-child {
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+  }
+  .transport-meta {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .editor-body {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .editor-tool-panel {
+    left: 60px;
+  }
+  .editor-topbar {
+    gap: 6px;
+    padding: 0 7px;
+  }
+  .stage-head {
+    padding: 0 6px 0 10px;
+  }
 }
