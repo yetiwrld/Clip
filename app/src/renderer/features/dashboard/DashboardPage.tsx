@@ -268,7 +268,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
         {summary.thumbnail ? (
           <img src={mediaUrl(summary.thumbnail)} alt="" />
         ) : (
-          <Film size={20} strokeWidth={1.5} />
+          <Film size={20} />
         )}
       </div>
 

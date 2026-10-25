@@ -167,9 +167,10 @@ function RenderRow({
           <button
             className="btn ghost sm icon"
             title="Open containing folder"
+            aria-label="Open containing folder"
             onClick={() => void api['system.revealPath']({ path: render.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
           >
-            <FolderOpen size={12} />
+            <FolderOpen size={14} />
           </button>
         )}
       </div>

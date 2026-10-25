@@ -43,7 +43,7 @@ export function MediaLibrary(props: {
     <div className="asset-library-head">
       <div><strong>{props.sectionTitle ?? 'Media library'}</strong><span className="tiny muted">{props.assets.length} assets · reusable in this project</span></div>
       <button className="btn sm" onClick={props.onImport} disabled={props.importing}>
-        <Upload size={14} /> {props.importing ? 'Importing…' : props.importLabel ?? 'Import media'}
+        <Upload size={12} /> {props.importing ? 'Importing…' : props.importLabel ?? 'Import media'}
       </button>
     </div>
     <div className="asset-library-tools">
@@ -65,10 +65,10 @@ export function MediaLibrary(props: {
               if (!audio) return
               if (previewId === asset.id) { audio.pause(); audio.currentTime = 0; setPreviewId(null) }
               else { for (const [id, element] of previewRefs.current) { if (id !== asset.id) { element.pause(); element.currentTime = 0 } }; void audio.play(); setPreviewId(asset.id) }
-            }}>{previewId === asset.id ? <Volume2 size={12} /> : <Play size={12} />}</button>}
-            {asset.missing && <button className="btn ghost sm icon" title="Relink missing media" aria-label={`Relink ${asset.name}`} onClick={() => props.onRelink(asset)}><RefreshCw size={12} /></button>}
-            <button className="btn ghost sm icon" title="Rename asset" aria-label={`Rename ${asset.name}`} onClick={() => props.onRename(asset)}><Pencil size={12} /></button>
-            <button className="btn ghost sm icon danger" title="Remove asset from project" aria-label={`Remove ${asset.name}`} onClick={() => props.onRemove(asset)}><Trash2 size={12} /></button>
+            }}>{previewId === asset.id ? <Volume2 size={14} /> : <Play size={14} />}</button>}
+            {asset.missing && <button className="btn ghost sm icon" title="Relink missing media" aria-label={`Relink ${asset.name}`} onClick={() => props.onRelink(asset)}><RefreshCw size={14} /></button>}
+            <button className="btn ghost sm icon" title="Rename asset" aria-label={`Rename ${asset.name}`} onClick={() => props.onRename(asset)}><Pencil size={14} /></button>
+            <button className="btn ghost sm icon danger" title="Remove asset from project" aria-label={`Remove ${asset.name}`} onClick={() => props.onRemove(asset)}><Trash2 size={14} /></button>
           </div>
           {asset.mediaType === 'audio' && !asset.missing && <audio ref={(element) => { if (element) previewRefs.current.set(asset.id, element); else previewRefs.current.delete(asset.id) }} src={mediaUrl(asset.path)} preload="metadata" onEnded={() => setPreviewId(null)} />}
         </article>

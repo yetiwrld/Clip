@@ -277,7 +277,7 @@ export function SourceTab() {
           <div className="section-title">Import media</div>
           <div className="row wrap">
             <button className="btn" onClick={() => void importFile()} disabled={importing}>
-              <Film size={16} /> From file…
+              <Film size={14} /> From file…
             </button>
             <span className="tiny">MP4 · MOV · MKV · WebM · AVI · common audio</span>
           </div>
@@ -402,7 +402,7 @@ export function SourceTab() {
                 style={{ marginTop: 'var(--space-4)' }}
                 onClick={() => void api['system.revealPath']({ path: data.activeProject!.sourcePath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
               >
-                <FolderOpen size={14} /> Reveal source file
+                <FolderOpen size={12} /> Reveal source file
               </button>
             )}
           </div>
@@ -410,7 +410,7 @@ export function SourceTab() {
 
         <div className="section">
           <button className="btn danger sm" onClick={() => setConfirmDelete(true)}>
-            <Trash2 size={14} /> Delete project…
+            <Trash2 size={12} /> Delete project…
           </button>
         </div>
       </div>

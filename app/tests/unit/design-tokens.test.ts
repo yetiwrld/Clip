@@ -111,6 +111,57 @@ describe('component typography and icons', () => {
   })
 })
 
+/** Read a JSX opening tag, ignoring '>' inside expressions and strings. */
+function readTag(source: string, from: number): string {
+  let depth = 0
+  let quote: string | null = null
+  for (let i = from; i < source.length; i += 1) {
+    const ch = source[i]
+    if (quote) {
+      if (ch === quote) quote = null
+    } else if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch
+    } else if (ch === '{') depth += 1
+    else if (ch === '}') depth -= 1
+    else if (ch === '>' && depth === 0) return source.slice(from, i + 1)
+  }
+  return source.slice(from)
+}
+
+describe('icon system', () => {
+  it('keeps one stroke source: LucideProvider sets it, call sites do not', () => {
+    const offenders: string[] = []
+    for (const file of tsxFiles) {
+      const source = fs.readFileSync(file, 'utf8')
+      for (const line of source.split('\n')) {
+        if (!/strokeWidth=\{[\d.]/.test(line)) continue
+        if (line.includes('LucideProvider')) continue
+        offenders.push(`${path.relative(root, file)}: ${line.trim().slice(0, 70)}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('declares the stroke ramp per size', () => {
+    for (const size of ['12', '14', '16', '20', '28']) {
+      expect(css).toContain(`.lucide[width='${size}']`)
+    }
+  })
+
+  it('labels every icon-only button for screen readers', () => {
+    const offenders: string[] = []
+    for (const file of tsxFiles) {
+      const source = fs.readFileSync(file, 'utf8')
+      for (const match of source.matchAll(/<button\b/g)) {
+        const tag = readTag(source, match.index!)
+        if (!tag.includes('icon')) continue
+        if (!tag.includes('aria-label')) offenders.push(`${path.relative(root, file)}: ${tag.slice(0, 70)}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
 describe('interaction states', () => {
   it('declares one focus ring, press and disabled treatment', () => {
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*var\(--focus-ring\)/)

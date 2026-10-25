@@ -3,7 +3,8 @@ import {
   ArrowLeft, Play, Pause, Volume2, VolumeX, SkipBack, Type, Crop, Tags, Copy,
   ChevronRight, Scissors, Wand2, Save, Undo2, Redo2, AlertTriangle, ShieldCheck,
   Gauge, Film, AudioLines, Eraser, RotateCcw, Zap, Target, X, Trash2, Star, Headphones,
-  Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal, Upload, X as CloseIcon
+  Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal,
+  Package, X as CloseIcon
 } from 'lucide-react'
 import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
@@ -1362,7 +1363,7 @@ export function EditorPage() {
       <div className="editor-topbar">
         <div className="topbar-left">
           <button className="btn ghost sm icon" onClick={() => app.openProject(project.id)} aria-label="Back to project" title="Back to project">
-            <ArrowLeft size={16} />
+            <ArrowLeft size={14} />
           </button>
           <div className="topbar-title">
             <span className="editor-project-name" title={project.name}>{project.name}</span>
@@ -1393,7 +1394,7 @@ export function EditorPage() {
           </button>
           <span className="topbar-divider" aria-hidden="true" />
           <button className="btn primary topbar-export" onClick={() => void queueRender(false)} disabled={renderQueued}>
-            {renderQueued ? <Spinner size={12} /> : <Upload size={14} />} Export
+            {renderQueued ? <Spinner size={14} /> : <Package size={14} />} Export
           </button>
           <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open inspector" title="Open inspector" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
             <SlidersHorizontal size={14} />
@@ -1779,7 +1780,7 @@ export function EditorPage() {
 
           {!selectedCueKey && <details className="inspector-section">
             <summary>
-              <Type size={12} /> Captions <ChevronRight size={14} className="chev" />
+              <Captions size={12} /> Captions <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <CaptionsPanel

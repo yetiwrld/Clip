@@ -308,7 +308,7 @@ function ProviderForm(props: {
 
       <div className="row">
         <button className="btn" onClick={props.onTest} disabled={props.testing}>
-          {props.testing ? <Spinner size={12} /> : <TestTube2 size={14} />} {props.testing ? 'Testing…' : 'Test connection'}
+          {props.testing ? <Spinner size={14} /> : <TestTube2 size={14} />} {props.testing ? 'Testing…' : 'Test connection'}
         </button>
         {props.testResult && (
           <span className={`status ${props.testResult.ok ? 'success' : 'danger'}`}>

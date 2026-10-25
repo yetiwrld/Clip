@@ -512,7 +512,7 @@ export function MultiTrackTimeline(props: {
     <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete remove">
       <div className="row timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
         <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title="Toggle magnetic snapping" aria-label={`Snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
-          <Magnet size={14} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
+          <Magnet size={12} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
         </button>
         <details className="timeline-add-track-menu" ref={trackMenuRef}>
           <summary className="btn sm timeline-add-track-summary" aria-label="Add timeline track" aria-haspopup="menu"><Plus size={14} /> Add track <ChevronDown size={12} /></summary>

@@ -144,7 +144,7 @@ function ClipRow({
         {doneRender?.outputPath ? (
           <video src={mediaUrl(doneRender.outputPath)} muted preload="metadata" />
         ) : (
-          <Film size={16} strokeWidth={1.5} />
+          <Film size={16} />
         )}
       </div>
 

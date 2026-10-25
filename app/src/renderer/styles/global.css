@@ -3556,3 +3556,63 @@ button:disabled {
    not slide left as the clock grows from 0:00 to 1:00:00. */
 .transport .timecode { min-width: 104px; font-variant-numeric: tabular-nums; }
 .transport .timecode .total { color: var(--text-3); }
+
+/* ============================================================ ICON SYSTEM
+   lucide-react is the only icon set, and every glyph is an outline icon on a
+   24 x 24 grid. Consistency therefore comes from two numbers: the rendered
+   size and the stroke.
+
+   Sizes by role
+     12  inline text, badges, section headers, small buttons with a label
+     14  toolbar buttons, menus, icon-only buttons, regular buttons
+     16  navigation, tabs, the transport play control
+     20  standalone figures (project thumbnails)
+     28  empty states and status illustrations
+
+   The stroke ramps with the size so optical weight stays even: a 12 px glyph
+   needs a heavier stroke than a 28 px one. Anything not listed keeps the base
+   1.75 set once by LucideProvider in main.tsx.
+   ============================================================ */
+
+.lucide {
+  flex: none; /* never squash an icon in a flex row */
+}
+
+.lucide[width='12'] {
+  stroke-width: 2;
+}
+.lucide[width='14'] {
+  stroke-width: 1.9;
+}
+.lucide[width='16'] {
+  stroke-width: 1.75;
+}
+.lucide[width='20'] {
+  stroke-width: 1.6;
+}
+.lucide[width='28'] {
+  stroke-width: 1.5;
+}
+
+/* State colour comes from the parent, never from the icon itself. */
+.nav-item.active > .lucide {
+  color: var(--accent);
+}
+.btn.primary > .lucide {
+  color: var(--accent-contrast);
+}
+
+/* Icon-only buttons are exact squares so a row of them keeps its rhythm. */
+.btn.icon,
+.btn.sm.icon {
+  padding: 0;
+  aspect-ratio: 1;
+}
+
+/* Disabled keeps the glyph readable instead of turning it into a ghost. */
+.btn:disabled {
+  opacity: 0.5;
+}
+.btn:disabled > .lucide {
+  opacity: 0.8;
+}

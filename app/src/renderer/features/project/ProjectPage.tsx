@@ -72,7 +72,7 @@ export function ProjectPage() {
     <div className="page">
       <div className="page-header">
         <button className="btn ghost" onClick={() => app.navigate('dashboard')} aria-label="Back to projects">
-          <ArrowLeft size={16} />
+          <ArrowLeft size={14} />
         </button>
         <div style={{ minWidth: 0 }}>
           <div className="page-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</div>
@@ -87,7 +87,7 @@ export function ProjectPage() {
         <div className="header-spacer" />
         <Pipeline status={status} />
         <button className="btn ghost" onClick={() => void data.loadProject(project.id)} aria-label="Refresh project" title="Refresh">
-          <RefreshCw size={16} />
+          <RefreshCw size={14} />
         </button>
       </div>
 
@@ -100,7 +100,7 @@ export function ProjectPage() {
       <div className="tabs">
         <TabButton tab={tab} setTab={setTab} id="source" icon={<Film size={14} />} label="Source" />
         <TabButton tab={tab} setTab={setTab} id="transcript" icon={<FileText size={14} />} label="Transcript" count={data.transcript.length || undefined} />
-        <TabButton tab={tab} setTab={setTab} id="moments" icon={<BarChart3 size={14} strokeWidth={1.75} />} label="Moments" count={data.candidates.length || undefined} />
+        <TabButton tab={tab} setTab={setTab} id="moments" icon={<BarChart3 size={14} />} label="Moments" count={data.candidates.length || undefined} />
         <TabButton tab={tab} setTab={setTab} id="clips" icon={<Scissors size={14} />} label="Clips" count={data.clips.length || undefined} />
         <TabButton tab={tab} setTab={setTab} id="renders" icon={<ListVideo size={14} />} label="Renders" count={data.renders.length || undefined} />
       </div>
@@ -161,7 +161,7 @@ function Pipeline({ status }: { status: string }) {
           <React.Fragment key={s.id}>
             {i > 0 && <span className="pipeline-arrow">›</span>}
             <span className={`pipeline-step ${state}`}>
-              {state === 'done' ? <Check size={12} strokeWidth={2.5} className="p-check" /> : <span className="p-dot" />}
+              {state === 'done' ? <Check size={12} className="p-check" /> : <span className="p-dot" />}
               {s.label}
             </span>
           </React.Fragment>
