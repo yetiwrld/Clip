@@ -3531,3 +3531,32 @@ button:disabled {
   font-size: var(--fs-sm);
   line-height: var(--lh-normal);
 }
+
+/* ============================================================ CASCADE GUARDS
+   A handful of older rules are more specific than the ones in the workspace
+   pass, so they still won on padding and alignment. These restate the same
+   intent at matching specificity. They belong with the rest of the pass and
+   can be folded in once the older rules above are retired.
+   ============================================================ */
+
+/* The stage itself has no inner padding any more: the canvas does, so the
+   video is centred inside the letterbox and not inside a second box. */
+.editor-body > .editor-stage { padding: 0; align-items: stretch; justify-content: flex-start; }
+
+/* Toolbar: icon row left, zoom right, everything on one baseline. */
+.multi-track-toolbar > div.timeline-toolbar-actions {
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* The sliding panel starts after the rail, at every width. */
+@media (max-width: 920px) { .editor-tool-panel { top: 50px; left: 68px; } }
+@media (max-width: 680px) { .editor-tool-panel { left: 60px; } }
+
+/* Transport: the timecode column keeps a fixed width so the play button does
+   not slide left as the clock grows from 0:00 to 1:00:00. */
+.transport .timecode { min-width: 104px; font-variant-numeric: tabular-nums; }
+.transport .timecode .total { color: var(--text-3); }
