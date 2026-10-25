@@ -192,7 +192,10 @@ function ClipRow({
             <Package size={12} /> Export
           </button>
         )}
-        <div className="menu-wrap">
+        <div
+          className="menu-wrap"
+          onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setMenuOpen(false) } }}
+        >
           <button
             className="btn ghost sm icon"
             aria-label="More clip actions"

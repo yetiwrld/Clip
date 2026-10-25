@@ -162,3 +162,66 @@ Verification: `tsc --noEmit` clean, `electron-vite build` clean,
 * **Nothing has been checked on a real screen yet.** Colour contrast, long
   project names, long caption text, and the 680 px breakpoint all need a look
   at an actual window.
+
+---
+
+# Progressive disclosure pass
+
+Second pass. Same principle as before: nothing was deleted, everything that
+was hidden is one predictable click away.
+
+## What was measured
+
+| screen | visible at once before | after |
+|---|---|---|
+| Editor inspector | 1 collapsed drawer holding 8 fully expanded sections | 9 section rows, 1 open |
+| Clip row actions | 6 buttons | 3 buttons + a menu |
+| Clip delete | no confirmation | confirmation dialog |
+| Timeline toolbar | snap, add track, split, duplicate, delete, zoom, fit | unchanged — already contextual and disabled without a selection |
+| Settings | left nav, one section at a time | unchanged — already disclosed |
+| Project tabs | toolbars of 2–5 actions | unchanged |
+
+## What changed in the editor inspector
+
+The worst offender was structural rather than visual: **every** control lived
+inside one collapsed drawer labelled "Clip, camera & export settings". So the
+inspector looked almost empty, and opening that drawer produced a column
+about three thousand pixels tall, because eight sections inside it were all
+expanded.
+
+Now:
+
+* the drawer is gone — Trim, Silence removal, Audio restoration, Captions,
+  Crop & framing, Camera keyframes, Text / graphics, Output & quality and
+  Metadata are top-level section rows;
+* Trim is open (it is the first task on a clip), everything else is closed;
+* each row is a native `<details>`/`<summary>`, so it is keyboard operable and
+  announces its expanded state without extra scripting;
+* when a caption or a text layer is selected, the inspector still swaps to
+  that item's own panel, so the section you need is the one on screen.
+
+## Clip list
+
+`Edit` and `Render` (and `Export` once rendered) stay visible. `Open folder`,
+`Copy title, description` and `Delete clip…` moved into a `⋯` menu built from
+the same `.menu` component the dashboard already uses.
+
+Deleting a clip now opens a confirmation dialog. It removes the clip's trims,
+captions and renders and there is no undo.
+
+## Discoverability and states
+
+* Every icon-only control now has a tooltip; the two overflow menus announce
+  `aria-haspopup` and `aria-expanded`.
+* Expanded, collapsed, hover, selected and keyboard focus all reuse the
+  existing section, menu and focus-ring rules — no new visual language.
+* Disabled actions (split, duplicate, delete in the timeline toolbar) remain
+  visible with their shortcut in the tooltip, so the function is still
+  discoverable.
+
+## Still open
+
+* The `⋯` menu closes on outside click but not on `Escape`.
+* The transcript toolbar shows five actions at once (two transcribe buttons,
+  speaker detection, import, copy). Acceptable today; a candidate for the same
+  menu treatment.
