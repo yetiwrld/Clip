@@ -108,6 +108,11 @@ Honest caveat: I authored the target, so this shows REA's *mechanics*, not its p
 ```
 rea-lab/
 ├── REA_INSTALL.md                         current install + verified results (2026-10-25)
+├── CAPCUT_STYLE_ANALYSIS.md               what CapCut's style is vs what this app has
+├── CAPCUT_REFERENCE_1022_1013.md          analysis of the two real CapCut projects  <-- start here
+├── CAPCUT_IMPLEMENTATION_PLAN.md          how to build it, workstreams and risks
+├── reference/                             the two real drafts (JSON + covers), trimmed
+├── tools/capcut-digest.py                 turn any CapCut draft into a style report
 ├── README.md                              this report
 ├── HANDOFF.md                             resumable brief
 ├── setup.sh                               rebuild the install (sandbox-aware)

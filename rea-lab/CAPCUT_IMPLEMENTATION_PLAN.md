@@ -5,7 +5,15 @@
 app has/doesn't).
 **Scope agreed:** all three meanings (output look → editor UX → templates), and render-engine change
 is in scope including transitions.
-**Plan version:** 1 · 2026-10-25
+**Plan version:** 2 · 2026-10-25
+
+> **Revised after real projects arrived.** Two actual CapCut projects (`1022`, `1013`) were
+> supplied and analysed — see [`CAPCUT_REFERENCE_1022_1013.md`](CAPCUT_REFERENCE_1022_1013.md).
+> They contain **zero** keyframes, **zero** colour grading, **zero** masks/effects and no speed
+> curves, so the ranking below was made from documentation and is now out of date. The revised
+> order is in §6 of the reference document: text outline → volume range → crossfades → still
+> flicker → pacing grid. Read that first; this document is still correct on *how* to build each
+> piece, just no longer correct on *what to build first*.
 
 ---
 
