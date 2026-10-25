@@ -89,8 +89,9 @@ if [ "$WITH_BROWSER" = 1 ]; then
 fi
 
 # ---------- 4. REA ----------
-echo "==> rea-agents (npm -> $PREFIX)"
-npm_config_prefix="$PREFIX" npm install -g rea-agents --no-fund --no-audit
+echo "==> rea-agents@6.8.0 pinned (npm -> $PREFIX)"
+# Pinned deliberately: an unpinned install pulled 6.7.0, which lacks --source-paths-json.
+npm_config_prefix="$PREFIX" npm install -g rea-agents@6.8.0 --no-fund --no-audit
 
 # ---------- 5. Verify ----------
 export PATH="$PREFIX/bin:$PATH"

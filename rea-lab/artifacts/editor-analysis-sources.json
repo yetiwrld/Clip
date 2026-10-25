@@ -1,0 +1,22 @@
+[
+ "src/shared/types/index.ts",
+ "src/shared/editor/timeline-commands.ts",
+ "src/shared/editor/timeline-editing.ts",
+ "src/shared/video/crop.ts",
+ "src/shared/video/segments.ts",
+ "src/shared/video/textLayers.ts",
+ "src/shared/video/time-map.ts",
+ "src/shared/captions/ass.ts",
+ "src/shared/captions/segmentation.ts",
+ "src/shared/captions/text-ass.ts",
+ "src/shared/ipc.ts",
+ "src/shared/constants/index.ts",
+ "src/renderer/features/editor/EditorPage.tsx",
+ "src/renderer/features/editor/MultiTrackTimeline.tsx",
+ "src/renderer/features/editor/CaptionPreview.tsx",
+ "src/renderer/features/editor/MediaLibrary.tsx",
+ "src/main/services/rendering/plan.ts",
+ "src/main/services/rendering/queue.ts",
+ "src/main/services/exports/index.ts",
+ "src/main/services/clips/boundaries.ts"
+]

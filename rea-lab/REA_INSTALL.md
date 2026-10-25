@@ -29,7 +29,7 @@ bash rea-lab/setup.sh
 
 | Piece | Where | Notes |
 |---|---|---|
-| `rea-agents@6.8.0` | `/var/tmp/rt/rea` (isolated npm prefix) | 150 packages, ~15 s, from registry.npmjs.org |
+| `rea-agents@6.8.0` | `/var/tmp/rt/rea` (isolated npm prefix) | 150 packages, ~15 s, from registry.npmjs.org. **Pinned** — an unpinned reinstall silently resolved 6.7.0, which lacks `--source-paths-json`. |
 | `rea` + `rea-agents` binaries | `/var/tmp/rt/rea/bin` | symlinks into `lib/node_modules/rea-agents` |
 | Runtime | system Node **v22.22.3** | REA declares `^22.23.4 \|\| ^24.22.1 \|\| >=26.12.1` |
 
