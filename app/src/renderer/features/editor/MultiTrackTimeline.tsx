@@ -68,6 +68,9 @@ export function MultiTrackTimeline(props: {
   const dragSeekFrameRef = useRef<number | null>(null)
   const pendingDragSeekRef = useRef<number | null>(null)
   const lastDragSeekAtRef = useRef(0)
+  const lastManualScrollRef = useRef(0)
+  const pixelsPerSecondRef = useRef(40)
+  const dragScrollStartRef = useRef(0)
   const [pixelsPerSecond, setPixelsPerSecond] = useState(40)
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(1100)
   const [dragTarget, setDragTarget] = useState<string | null>(null)
@@ -75,6 +78,7 @@ export function MultiTrackTimeline(props: {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedTrackingTime, setSelectedTrackingTime] = useState<number | null>(null)
   const span = Math.max(30, props.duration || 30)
+  pixelsPerSecondRef.current = pixelsPerSecond
   const labelWidthFallback = 160
   const width = Math.max(timelineViewportWidth, labelWidthFallback + span * pixelsPerSecond)
   const gridStep = pixelsPerSecond > 100 ? 1 : pixelsPerSecond > 45 ? 5 : pixelsPerSecond > 15 ? 10 : 60
@@ -119,21 +123,23 @@ export function MultiTrackTimeline(props: {
     return () => observer.disconnect()
   }, [])
 
-  // Keep the active edit visible when a project opens on a source time well
-  // beyond zero, and only follow playback when it approaches the viewport edge.
+  // Keep the playhead visible after a seek — and only after a seek. While the
+  // clip is playing the animation loop follows it frame by frame; moving the
+  // viewport here as well used to yank the timeline on every timeupdate, which
+  // is what made scrolling feel broken.
   useEffect(() => {
+    if (props.playing) return
     const viewport = scrollRef.current
     if (!viewport) return
     const labelWidth = getTrackLabelWidth()
     const usableWidth = Math.max(1, viewport.clientWidth - labelWidth)
-    const margin = Math.min(220, usableWidth * 0.2)
-    const playheadX = Math.max(0, props.currentTime) * pixelsPerSecond
+    const playheadX = Math.max(0, props.currentTime) * pixelsPerSecondRef.current
     const visibleStart = viewport.scrollLeft + labelWidth
     const visibleEnd = viewport.scrollLeft + viewport.clientWidth
-    if (playheadX < visibleStart + margin || playheadX > visibleEnd - margin) {
-      viewport.scrollLeft = Math.max(0, playheadX - labelWidth - margin)
-    }
-  }, [props.currentTime, pixelsPerSecond, timelineViewportWidth])
+    // already on screen: leave the scroll position exactly where the user put it
+    if (playheadX >= visibleStart + 16 && playheadX <= visibleEnd - 16) return
+    viewport.scrollLeft = Math.max(0, playheadX - labelWidth - usableWidth * 0.25)
+  }, [props.currentTime, props.playing])
 
   useEffect(() => {
     if (!props.playing) {
@@ -143,12 +149,45 @@ export function MultiTrackTimeline(props: {
     }
     let frame = 0
     const followPlayback = () => {
-      positionCursor(props.getPlaybackTime(), false)
+      const time = props.getPlaybackTime()
+      positionCursor(time, false)
+      const viewport = scrollRef.current
+      // Follow at 70% of the usable width, one frame at a time, and only when
+      // the user has not just scrolled by hand.
+      if (viewport && performance.now() - lastManualScrollRef.current > 1200) {
+        const labelWidth = getTrackLabelWidth()
+        const usableWidth = Math.max(1, viewport.clientWidth - labelWidth)
+        const desired = Math.max(0, time * pixelsPerSecond - usableWidth * 0.7)
+        if (desired > viewport.scrollLeft + 1) viewport.scrollLeft = desired
+      }
       frame = requestAnimationFrame(followPlayback)
     }
     frame = requestAnimationFrame(followPlayback)
     return () => cancelAnimationFrame(frame)
   }, [props.playing, props.currentTime, props.getPlaybackTime, pixelsPerSecond])
+
+  /**
+   * Horizontal delta of a drag in seconds. The viewport can move under the
+   * pointer (wheel, edge autoscroll, playback follow), so the scroll offset
+   * has to be part of the maths or the item drifts away from the cursor.
+   */
+  function dragDeltaSeconds(clientX: number, startX: number) {
+    const viewport = scrollRef.current
+    const scrolled = viewport ? viewport.scrollLeft - dragScrollStartRef.current : 0
+    return (clientX - startX + scrolled) / pixelsPerSecond
+  }
+
+  /** Scroll the timeline while a drag is held near either edge. */
+  function autoScrollDuringDrag(clientX: number) {
+    const viewport = scrollRef.current
+    if (!viewport) return
+    const rect = viewport.getBoundingClientRect()
+    const edge = 56
+    const left = rect.left + edge
+    const right = rect.right - edge
+    if (clientX < left) viewport.scrollLeft = Math.max(0, viewport.scrollLeft - (left - clientX) * 0.6)
+    else if (clientX > right) viewport.scrollLeft += (clientX - right) * 0.6
+  }
 
   function positionCursor(time: number, hovering: boolean) {
     const cursor = cursorRef.current
@@ -167,10 +206,12 @@ export function MultiTrackTimeline(props: {
     event.stopPropagation()
     event.preventDefault()
     editDragRef.current = state
+    dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
     const move = (pointer: PointerEvent) => {
       const drag = editDragRef.current
       if (!drag) return
-      const delta = (pointer.clientX - drag.startX) / pixelsPerSecond
+      autoScrollDuringDrag(pointer.clientX)
+      const delta = dragDeltaSeconds(pointer.clientX, drag.startX)
       if (drag.mode === 'source-left') {
         props.onChangeSourceRange?.(Math.max(0, Math.min(drag.start + delta, drag.end - frameDuration(props.fps))), drag.end)
       } else if (drag.mode === 'source-right') {
@@ -191,16 +232,19 @@ export function MultiTrackTimeline(props: {
         props.onChangeTextLayer?.(drag.layer.id, { startTime, endTime: startTime + duration })
         drag.layer = { ...drag.layer, startTime, endTime: startTime + duration }
         drag.startX = pointer.clientX
+        dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
       } else if (drag.mode === 'text-left') {
         const startTime = Math.max(0, Math.min(drag.layer.startTime + delta, drag.layer.endTime - 0.1))
         props.onChangeTextLayer?.(drag.layer.id, { startTime })
         drag.layer = { ...drag.layer, startTime }
         drag.startX = pointer.clientX
+        dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
       } else if (drag.mode === 'text-right') {
         const endTime = Math.max(drag.layer.startTime + 0.1, Math.min(span, drag.layer.endTime + delta))
         props.onChangeTextLayer?.(drag.layer.id, { endTime })
         drag.layer = { ...drag.layer, endTime }
         drag.startX = pointer.clientX
+        dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
       }
     }
     const up = () => {
@@ -295,28 +339,90 @@ export function MultiTrackTimeline(props: {
     window.addEventListener('pointerup', stop, { once: true })
     window.addEventListener('pointercancel', stop, { once: true })
   }
-  function zoomAtPointer(event: React.WheelEvent<HTMLDivElement>) {
-    if (!event.ctrlKey && !event.metaKey) return
+  /** Zoom while keeping the time under the pointer in the same place. */
+  function zoomAroundPointer(nextZoom: number, clientX: number) {
     const viewport = scrollRef.current
     if (!viewport) return
-    event.preventDefault()
     const labelWidth = getTrackLabelWidth()
     const rect = viewport.getBoundingClientRect()
-    const pointerX = Math.max(labelWidth, Math.min(viewport.clientWidth, event.clientX - rect.left))
+    const pointerX = Math.max(labelWidth, Math.min(viewport.clientWidth, clientX - rect.left))
     const timelineTime = (viewport.scrollLeft + pointerX - labelWidth) / pixelsPerSecond
-    const multiplier = event.deltaY < 0 ? 1.12 : 1 / 1.12
-    const nextZoom = Math.max(TIMELINE_ZOOM_MIN, Math.min(TIMELINE_ZOOM_MAX, pixelsPerSecond * multiplier))
     setPixelsPerSecond(nextZoom)
     requestAnimationFrame(() => requestAnimationFrame(() => {
       viewport.scrollLeft = Math.max(0, labelWidth + timelineTime * nextZoom - pointerX)
     }))
   }
+  /** Zoom while keeping the middle of the view on the same moment. */
+  function zoomAroundCentre(nextZoom: number) {
+    const viewport = scrollRef.current
+    if (!viewport) {
+      setPixelsPerSecond(nextZoom)
+      return
+    }
+    const labelWidth = getTrackLabelWidth()
+    const usableWidth = Math.max(1, viewport.clientWidth - labelWidth)
+    const centreTime = (viewport.scrollLeft + usableWidth / 2) / pixelsPerSecond
+    setPixelsPerSecond(nextZoom)
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      viewport.scrollLeft = Math.max(0, centreTime * nextZoom - usableWidth / 2)
+    }))
+  }
   function setZoomFromSlider(value: number) {
-    setPixelsPerSecond(timelineZoomFromSlider(value))
+    zoomAroundCentre(timelineZoomFromSlider(value))
   }
   function fitTimeline() {
     setPixelsPerSecond(fitTimelineZoom(timelineViewportWidth, getTrackLabelWidth(), span))
+    requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollLeft = 0 })
   }
+
+  // Wheel behaviour over the timeline:
+  //   plain wheel        scroll the track list, then time once it is exhausted
+  //   shift + wheel      always time (horizontal)
+  //   ctrl / cmd + wheel  zoom around the pointer
+  //   horizontal gesture  native, trackpads only
+  // React registers onWheel as passive, so preventDefault there does nothing —
+  // that is why ctrl+wheel used to zoom the whole window. This listener is real.
+  useEffect(() => {
+    const viewport = scrollRef.current
+    if (!viewport) return
+    function onWheel(event: WheelEvent) {
+      const el = scrollRef.current
+      if (!el) return
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1
+      const dx = event.deltaX * unit
+      const dy = event.deltaY * unit
+      lastManualScrollRef.current = performance.now()
+
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        const next = dy < 0 ? pixelsPerSecond * 1.12 : pixelsPerSecond / 1.12
+        zoomAroundPointer(Math.max(TIMELINE_ZOOM_MIN, Math.min(TIMELINE_ZOOM_MAX, next)), event.clientX)
+        return
+      }
+
+      const canScrollY = el.scrollHeight > el.clientHeight + 1
+      const canScrollX = el.scrollWidth > el.clientWidth + 1
+
+      // shift + wheel is horizontal everywhere else in Chromium, so keep it
+      // that way here: it always moves time, never the track list.
+      if (event.shiftKey) {
+        if (!canScrollX) return
+        event.preventDefault()
+        el.scrollLeft += dy || dx
+        return
+      }
+      if (Math.abs(dx) > Math.abs(dy)) return
+
+      const atTop = el.scrollTop <= 0
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+      if (canScrollY && !(dy < 0 ? atTop : atBottom)) return // native vertical
+      if (!canScrollX) return
+      event.preventDefault()
+      el.scrollLeft += dy
+    }
+    viewport.addEventListener('wheel', onWheel, { passive: false })
+    return () => viewport.removeEventListener('wheel', onWheel)
+  }, [pixelsPerSecond])
   function addTrack(type: TimelineTrack['type']) {
     const siblings = props.timeline.tracks.filter((track) => track.type === type)
     const id = crypto.randomUUID()
@@ -380,10 +486,12 @@ export function MultiTrackTimeline(props: {
     if (track?.locked) return
     event.stopPropagation(); event.preventDefault(); setSelectedId(item.id); seekTo(item.startTime); props.onSelectItem?.(item)
     dragRef.current = { id: item.id, mode, startX: event.clientX, initial: item }
+    dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
     const onMove = (move: PointerEvent) => {
       const state = dragRef.current
       if (!state) return
-      const dt = (move.clientX - state.startX) / pixelsPerSecond
+      autoScrollDuringDrag(move.clientX)
+      const dt = dragDeltaSeconds(move.clientX, state.startX)
       const original = state.initial
       if (state.mode === 'move') {
         let startTime = Math.max(0, original.startTime + dt)
@@ -536,7 +644,7 @@ export function MultiTrackTimeline(props: {
         <button type="button" className="btn ghost sm icon" onClick={fitTimeline} title="Fit full project in the timeline" aria-label="Fit full project in timeline"><Maximize2 size={14} /></button>
       </div>
     </div>
-    <div className="multi-track-scroll" ref={scrollRef} onPointerMove={updateHoverCursor} onPointerLeave={() => { if (!cursorDraggingRef.current) positionCursor(pinnedTimeRef.current ?? props.currentTime, false) }} onPointerDownCapture={beginCursorDrag} onWheel={zoomAtPointer}>
+    <div className="multi-track-scroll" ref={scrollRef} onPointerMove={updateHoverCursor} onPointerLeave={() => { if (!cursorDraggingRef.current) positionCursor(pinnedTimeRef.current ?? props.currentTime, false) }} onPointerDownCapture={beginCursorDrag}>
       <div className="multi-track-canvas" style={{ width, '--timeline-grid-size': `${pixelsPerSecond * gridStep}px` } as React.CSSProperties}>
         <div className="multi-track-ruler"><div className="multi-track-label">TRACKS</div><div className="multi-track-ruler-body">{ticks.map((time) => <button type="button" key={time} style={{ left: time * pixelsPerSecond }} aria-label={`Seek to ${formatClock(time, true)}`} title={`Seek to ${formatClock(time, true)}`} onClick={() => seekTo(time)}>{formatClock(time, true)}<i /></button>)}</div></div>
         {props.sourceClip && <div className="multi-track-row source-track-row">

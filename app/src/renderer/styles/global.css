@@ -2542,7 +2542,6 @@ details.error-details pre {
 .timeline-add-track-options { position:absolute; top:calc(100% + 5px); right:0; z-index: var(--z-popover); display:flex; min-width:158px; flex-direction:column; gap: var(--space-2); padding: var(--space-2); border:1px solid var(--border-strong); border-radius: var(--radius-lg); background:var(--surface-2); box-shadow:var(--shadow-2); }
 .timeline-add-track-options button { display:flex; align-items:center; gap: var(--space-3); width:100%; padding: var(--space-3) var(--space-3); border:0; border-radius: var(--radius-control); background:transparent; color:var(--text-2); text-align:left; cursor:pointer; font:inherit; font-size: var(--fs-xs); }
 .timeline-add-track-options button:hover,.timeline-add-track-options button:focus-visible { background:var(--surface-3); color:var(--text-1); outline:none; }
-.multi-track-scroll { overflow: auto; max-height: 370px; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .multi-track-lane { background-image:linear-gradient(to right, transparent calc(100% - 1px), var(--border) calc(100% - 1px)); background-size:var(--timeline-grid-size,40px) 100%; }
 .multi-track-ruler-body button:hover { background:var(--surface-2); color:var(--text-1); }
 .track-title input { width: 100%; min-width: 0; border: 1px solid transparent; outline: 0; color: var(--text-1); background: transparent; font-size: var(--fs-xs); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); text-overflow: ellipsis; }
@@ -3615,4 +3614,73 @@ button:disabled {
 }
 .btn:disabled > .lucide {
   opacity: 0.8;
+}
+
+/* ============================================================ TIMELINE SCROLL
+   The timeline is the one place in the product that scrolls in both axes, so
+   it gets its own scrollbar treatment: a visible track, a thumb that reads
+   against the surface rather than the page background, and a corner that does
+   not flash white where the two bars meet.
+   ============================================================ */
+
+.multi-track-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  /* keep the ruler and the label column from being clipped by rounding */
+  padding-bottom: 1px;
+}
+
+.multi-track-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.multi-track-scroll::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+.multi-track-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid var(--surface);
+  border-radius: var(--radius-round);
+  background: var(--surface-4);
+}
+
+.multi-track-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+.multi-track-scroll::-webkit-scrollbar-corner {
+  background: var(--surface);
+}
+
+/* The corner where the ruler meets the track labels stays solid while both
+   axes are scrolled. */
+.multi-track-ruler > .multi-track-label {
+  z-index: var(--z-top);
+  box-shadow: 1px 0 0 var(--border-strong);
+}
+
+/* A scrollbar that appears mid-scroll would shift the inspector sideways;
+   reserve the gutter so expanding a section never moves the content. */
+.editor-inspector,
+.editor-tool-panel {
+  scrollbar-gutter: stable;
+}
+
+/* The panel resize strip was invisible: an 11 px band with no grip, so nobody
+   knew the timeline could be made taller. */
+.timeline-resize-handle::after {
+  content: '';
+  width: 40px;
+  height: 3px;
+  border-radius: var(--radius-round);
+  background: var(--border-strong);
+  transition: background var(--speed), width var(--speed);
+}
+
+.timeline-resize-handle:hover::after,
+.timeline-resize-handle:focus-visible::after {
+  width: 56px;
+  background: var(--accent);
 }

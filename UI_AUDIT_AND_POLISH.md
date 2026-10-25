@@ -225,3 +225,65 @@ captions and renders and there is no undo.
 * The transcript toolbar shows five actions at once (two transcribe buttons,
   speaker detection, import, copy). Acceptable today; a candidate for the same
   menu treatment.
+
+---
+
+# Timeline scrolling pass
+
+The timeline is the only surface in the product that scrolls in two axes, and
+it was fighting itself.
+
+## What was broken
+
+1. **Scrolling fought playback.** An effect ran on every `currentTime` change
+   and, whenever the playhead was within 220 px of an edge, jumped
+   `scrollLeft` by up to 500 px. During playback that fired several times a
+   second, so the timeline appeared to lurch sideways on its own. Any manual
+   scroll was undone by the next update.
+2. **Ctrl + wheel zoomed the whole window.** The zoom handler was a React
+   `onWheel`, and React registers wheel events as passive, so
+   `preventDefault()` silently did nothing. Chromium then zoomed the app.
+3. **The wheel often did nothing.** With no vertical overflow, a plain wheel
+   had nothing to scroll and fell through to a page that cannot scroll.
+   Horizontal movement was only reachable through the scrollbar.
+4. **Dragging drifted once the view moved.** Drag maths used
+   `clientX - startX` only, ignoring how far the container had scrolled during
+   the gesture, so a clip slid away from the cursor whenever anything scrolled.
+5. **The panel resize strip was invisible** — an 11 px band with no grip, and
+   its label was `display: none`.
+6. **Scrollbars were hard to see** on the timeline surface, and the inspector
+   shifted sideways whenever a scrollbar appeared or vanished as a section
+   opened.
+
+## What it does now
+
+| gesture | result |
+|---|---|
+| plain wheel | scrolls the track list; once that is exhausted, scrolls time |
+| shift + wheel | always time (horizontal), matching Chromium |
+| ctrl / cmd + wheel | zooms around the pointer, keeping that moment under the cursor |
+| trackpad horizontal | native |
+| drag near an edge | the timeline auto-scrolls and the clip stays under the cursor |
+| click a ruler tick | seeks, as before |
+
+* Playback follows the playhead **one frame at a time** at 70 % of the visible
+  width, and pauses following for 1.2 s after any manual scroll.
+* A seek only moves the view when the playhead is actually off screen, with a
+  16 px tolerance, and only while paused. Zooming never moves the view: the
+  slider anchors on the centre, the wheel on the pointer, and `Fit` returns to
+  zero.
+* Drag maths now includes the scroll offset, so a clip cannot drift from the
+  pointer during autoscroll, wheel scroll or playback follow.
+* The timeline scrollbars are 10 px with a surface-coloured track, and the
+  corner where both axes meet stays solid under the sticky ruler.
+* The resize strip has a visible grip that widens and turns accent on hover.
+* The inspector and the tool panel reserve their scrollbar gutter, so
+  expanding a section no longer shifts the content sideways.
+* The timeline no longer scrolls the page: `overscroll-behavior: contain`.
+
+## Still open
+
+* The resize strip is mouse-draggable but has no keyboard handling, even
+  though it carries `role="separator"`.
+* Autoscroll is driven by pointer events, so holding perfectly still at the
+  edge advances very slowly.
