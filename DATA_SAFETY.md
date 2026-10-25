@@ -135,6 +135,12 @@ npx tsx scripts/make-fixtures.ts   # once per checkout
 npx vitest run tests/unit/draft-journal.test.ts tests/integration/persistence.test.ts
 ```
 
+Checked against the running app, not only in tests: importing a real 8-second
+clip, importing a transcript, analysing it, creating a clip, editing its title,
+confirming `storage.status` reports nothing pending, deleting it, restoring it
+from the snapshot with the edit intact, then deleting the project and finding
+the database clean. Full suite at that point: 41 files / 381 tests.
+
 ## 9. Considered and not built
 
 * **Per-project version history / snapshots.** The database is a single
