@@ -147,7 +147,7 @@ export function SourceTab() {
   }
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.7fr) minmax(280px, 1fr)', alignItems: 'start' }}>
+    <div className="grid split">
       <div className="stack">
         {project.sourceMode === 'audio-first' && (
           <div className="panel" style={{ borderColor: 'var(--accent)', lineHeight: 1.55 }}>

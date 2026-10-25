@@ -59,10 +59,10 @@ export function ClipsTab() {
 
   if (data.clips.length === 0) {
     return (
-      <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
+      <div className="empty">
         <Scissors size={28} className="empty-icon" />
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No clips yet</div>
-        <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
+        <div className="empty-title">No clips yet</div>
+        <div className="empty-copy">
           Create a clip from a discovered moment in the Moments tab, then trim, caption and render it here.
         </div>
       </div>
@@ -78,9 +78,9 @@ export function ClipsTab() {
     <div className="stack">
       {error ? <ErrorBox error={error} /> : null}
       {renderable.length > 0 && (
-        <div className="row" style={{ padding: '0 var(--space-3) var(--space-3)' }}>
+        <div className="row export-bar">
           <span className="tiny">{renderable.length} rendered clip{renderable.length === 1 ? '' : 's'} ready to export</span>
-          <span style={{ flex: 1 }} />
+          <span className="spacer" />
           <button className="btn sm" onClick={() => void exportClips(renderable.map((c) => c.id))} disabled={exporting}>
             {exporting ? <Spinner size={12} /> : <Package size={12} />} {exporting ? 'Exporting…' : 'Export all rendered'}
           </button>
@@ -208,7 +208,7 @@ function ClipRow({
           </button>
           {menuOpen && (
             <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={(event) => { event.stopPropagation(); setMenuOpen(false) }} />
+              <div className="menu-scrim" onClick={(event) => { event.stopPropagation(); setMenuOpen(false) }} />
               <div className="menu" role="menu" onClick={(event) => event.stopPropagation()}>
                 {doneRender?.outputPath && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void api['system.revealPath']({ path: doneRender.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) })) }}>

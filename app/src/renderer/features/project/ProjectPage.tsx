@@ -74,8 +74,8 @@ export function ProjectPage() {
         <button className="btn ghost" onClick={() => app.navigate('dashboard')} aria-label="Back to projects">
           <ArrowLeft size={14} />
         </button>
-        <div style={{ minWidth: 0 }}>
-          <div className="page-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</div>
+        <div className="page-heading">
+          <div className="page-title">{project.name}</div>
           <div className="page-subtitle">
             {project.sourceFilename ?? 'No media imported'}
             {project.duration != null && ` · ${Math.round(project.duration / 60)} min`}
@@ -84,17 +84,16 @@ export function ProjectPage() {
             {data.storage && ` · ${formatBytes(data.storage.total)} used`}
           </div>
         </div>
-        <div className="header-spacer" />
-        <Pipeline status={status} />
-        <button className="btn ghost" onClick={() => void data.loadProject(project.id)} aria-label="Refresh project" title="Refresh">
-          <RefreshCw size={14} />
-        </button>
+        <div className="page-actions pushed">
+          <Pipeline status={status} />
+          <button className="btn ghost" onClick={() => void data.loadProject(project.id)} aria-label="Refresh project" title="Refresh">
+            <RefreshCw size={14} />
+          </button>
+        </div>
       </div>
 
       {project.statusMessage && (project.status.endsWith('failed') || !project.hasAudio) && (
-        <div style={{ marginBottom: 'var(--space-5)' }}>
-          <ErrorBox error={{ message: project.statusMessage, code: project.status }} />
-        </div>
+        <ErrorBox error={{ message: project.statusMessage, code: project.status }} />
       )}
 
       <div className="tabs">

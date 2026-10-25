@@ -37,7 +37,7 @@ export function SettingsPage() {
   return (
     <div className="page" data-density="compact">
       <div className="page-header">
-        <div>
+        <div className="page-heading">
           <div className="page-title">Settings</div>
           <div className="page-subtitle">Application preferences — stored locally in the workspace database.</div>
         </div>
@@ -217,14 +217,14 @@ function ProviderForm(props: {
   const [local, setLocal] = useState(props.config)
   return (
     <div className="settings-section stack">
-      <div className="row">
-        <div className="section-title" style={{ marginBottom: 0 }}>{props.title}</div>
-        <span style={{ flex: 1 }} />
+      <div className="settings-head">
+        <div className="section-title">{props.title}</div>
+        <span className="spacer" />
         {props.hint && <span className="chip" title="Stored API key (masked)"><KeyRound size={12} /> {props.hint}</span>}
       </div>
       <div className="tiny">{props.providers}</div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+      <div className="grid two">
         <Field
           label={props.providerId === 'anthropic' ? 'Base URL (blank = official API)' : 'Base URL (e.g. https://api.gonkarouter.io/v1)'}
           hint={props.providerId === 'anthropic' ? undefined : 'OpenAI-compatible chat endpoint. Usually ends with /v1 — /chat/completions is appended automatically.'}
@@ -270,7 +270,7 @@ function ProviderForm(props: {
         <div className="field-hint">Keys are stored in a protected local file inside the workspace — never in the database, logs, or diagnostics.</div>
       </Field>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+      <div className="grid two">
         <Field label={`Temperature — ${local.temperature}`}>
           <input type="range" min={0} max={1} step={0.05} defaultValue={local.temperature}
             onChange={(e) => setLocal({ ...local, temperature: parseFloat(e.target.value) })}
@@ -377,7 +377,7 @@ function TranscriptionSection() {
       <Field label="Language" hint="“auto” detects per video.">
         <input className="input" defaultValue={t.language} onBlur={(e) => void app.saveSettings({ transcription: { language: e.target.value } })} placeholder="auto" />
       </Field>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+      <div className="grid two">
         <Field label="Local Whisper model" hint="tiny/fast → medium/accurate. Downloads once, then cached offline.">
           <select className="select" value={t.whisperModel} onChange={(e) => void app.saveSettings({ transcription: { whisperModel: e.target.value } })}>
             <option value="tiny">tiny — fastest</option>
@@ -426,7 +426,7 @@ function VideoSection() {
           <option value="mixed">Mixed · 15–90s</option>
         </select>
       </Field>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+      <div className="grid two">
         <Field label="Default output resolution" hint="Applied to new clips; each clip can override it in the editor.">
           <select className="select" value={v.defaultResolution} onChange={(e) => void app.saveSettings({ video: { defaultResolution: e.target.value } })}>
             {RESOLUTION_PRESETS.map((r) => (
@@ -468,7 +468,7 @@ function VideoSection() {
         </select>
       </Field>
       {v.silence.mode !== 'off' && (
-        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}>
+        <div className="grid three">
           <Field label={`Min silence — ${v.silence.minSilenceMs} ms`}>
             <input type="range" min={200} max={2000} step={50} defaultValue={v.silence.minSilenceMs}
               onMouseUp={(e) => void app.saveSettings({ video: { silence: { minSilenceMs: parseInt((e.target as HTMLInputElement).value, 10) } } })} />
@@ -629,9 +629,9 @@ function StorageSection() {
       </div>
 
       <div className="settings-section stack">
-        <div className="row">
-          <div className="section-title" style={{ marginBottom: 0 }}>Storage cleanup</div>
-          <span className="header-spacer" />
+        <div className="settings-head">
+          <div className="section-title">Storage cleanup</div>
+          <span className="spacer" />
           <button className="btn sm" onClick={() => void refreshCleanupScan()} disabled={scanning || cleaning}>
             {scanning ? <Spinner size={12} /> : <RefreshCw size={12} />} Scan again
           </button>
@@ -642,7 +642,7 @@ function StorageSection() {
         </div>
         {cleanupReport && (
           <>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div className="row between">
               <span className="tiny">Available to reclaim</span>
               <strong>{formatBytes(cleanupReport.reclaimableBytes)}</strong>
             </div>
@@ -700,7 +700,7 @@ function StorageSection() {
             {cleanupResult.skippedActiveProjects > 0 && ` ${cleanupResult.skippedActiveProjects} active project(s) were left untouched.`}
           </div>
         )}
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <div className="row end">
           <button
             className="btn danger"
             disabled={selectedCategories.size === 0 || selectedFiles === 0 || cleaning || scanning}
@@ -725,14 +725,14 @@ function StorageSection() {
           )}
         >
           <p>This will remove up to <strong>{formatBytes(selectedBytes)}</strong> across {selectedFiles} generated file(s).</p>
-          <ul style={{ marginTop: 'var(--space-3)', paddingLeft: 'var(--space-7)' }}>
+          <ul className="doc-list">
             {selectedSummary.map((category) => (
               <li key={category.id} style={{ marginBottom: 'var(--space-3)' }}>
                 {category.label}: {category.fileCount} file(s), {formatBytes(category.bytes)}
                 {category.examples.length > 0 && (
                   <details style={{ marginTop: 'var(--space-2)' }}>
                     <summary className="tiny" style={{ cursor: 'pointer' }}>Review workspace-relative file locations</summary>
-                    <ul className="mono tiny" style={{ paddingLeft: 'var(--space-6)', marginTop: 'var(--space-2)', wordBreak: 'break-all' }}>
+                    <ul className="mono tiny doc-sublist">
                       {category.examples.map((example) => <li key={example}>{example}</li>)}
                       {category.additionalFileCount > 0 && <li>and {category.additionalFileCount} more file(s)</li>}
                     </ul>

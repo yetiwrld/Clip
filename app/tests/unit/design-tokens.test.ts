@@ -193,3 +193,95 @@ describe('interaction states', () => {
     expect(css).toMatch(/\.input:disabled[\s\S]{0,200}cursor:\s*not-allowed/)
   })
 })
+
+/**
+ * Layout guard.
+ *
+ * The frame is one system: a gutter that every screen shares, a row inset that
+ * cancels itself with a bleed so row text sits on the gutter, and content
+ * widths declared as tokens. This catches the failure mode that made the old
+ * pages look individually nudged — a screen hand-rolling its own padding or
+ * margin instead of using the frame.
+ */
+function rule(selector: string): string {
+  const start = css.indexOf(`\n${selector} {`)
+  if (start < 0) return ''
+  return css.slice(start, css.indexOf('}', start))
+}
+
+const PAGE_SCREENS = [
+  'features/dashboard/DashboardPage.tsx',
+  'features/render-queue/QueuePage.tsx',
+  'features/settings/SettingsPage.tsx',
+  'features/project/ProjectPage.tsx'
+]
+
+describe('layout', () => {
+  it('declares the layout tokens', () => {
+    for (const token of [
+      '--page-gutter:',
+      '--row-pad-x:',
+      '--row-bleed:',
+      '--content-max:',
+      '--form-max:',
+      '--read-max:',
+      '--editor-rail-w:'
+    ]) {
+      expect(css, `${token} missing`).toContain(token)
+    }
+  })
+
+  it('gives the page frame one owner', () => {
+    const page = rule('.page')
+    expect(page).toContain('padding-inline: max(var(--page-gutter), (100% - var(--content-max)) / 2)')
+    expect(page).not.toMatch(/padding:\s*\d/)
+  })
+
+  it('gives every list row the same inset and bleed', () => {
+    for (const selector of ['.project-row', '.queue-row', '.clip-row', '.moment-head']) {
+      const body = rule(selector)
+      expect(body, `${selector} padding`).toContain('padding:')
+      expect(body, `${selector} inset`).toContain('var(--row-pad-x)')
+      expect(body, `${selector} bleed`).toContain('margin-inline: var(--row-bleed)')
+    }
+  })
+
+  it('never lets a grid column collapse below its content', () => {
+    for (const selector of ['.grid.two', '.grid.three']) {
+      expect(rule(selector), selector).toContain('minmax(0, 1fr)')
+      expect(rule(selector), `${selector} bare 1fr`).not.toMatch(/repeat\(\d, 1fr\)/)
+    }
+  })
+
+  it('lays the project form out as one grid, not two hand-spaced rows', () => {
+    const bar = rule('.create-bar')
+    expect(bar).toContain('display: grid')
+    expect(bar).toContain('grid-template-columns')
+  })
+
+  it('keeps wide tables inside a scroll container', () => {
+    expect(rule('.table-wrap')).toContain('overflow-x: auto')
+  })
+
+  it('drives the floating tool panel from the rail token', () => {
+    expect(css).toContain('left: var(--editor-rail-w)')
+    const rawOffsets = (css.match(/\.editor-tool-panel\s*\{[^}]*left:\s*\d+px/g) ?? [])
+    expect(rawOffsets).toEqual([])
+  })
+
+  it('keeps page-level screens out of inline padding and horizontal margins', () => {
+    const offenders: string[] = []
+    for (const relative of PAGE_SCREENS) {
+      const file = path.join(rendererDir, relative)
+      const source = fs.readFileSync(file, 'utf8')
+      for (const line of source.split('\n')) {
+        const style = line.match(/style=\{\{([^}]*)\}\}/)
+        if (!style) continue
+        if (/\bpadding/.test(style[1]) || /\bmargin(Left|Right|Inline)/.test(style[1]) || /\bmargin:\s*['"]0 /.test(style[1])) {
+          offenders.push(`${relative}: ${line.trim().slice(0, 90)}`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})

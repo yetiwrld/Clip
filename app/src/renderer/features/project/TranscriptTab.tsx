@@ -248,7 +248,7 @@ export function TranscriptTab() {
 
   return (
     <div className="stack">
-      <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 'var(--space-4)' }}>
+      <div className="toolbar plain">
         <div className="row wrap">
           <div className="row" style={{ flex: 1, minWidth: 200 }}>
             <Search size={14} className="muted" />
@@ -331,18 +331,18 @@ export function TranscriptTab() {
       )}
 
       {data.transcript.length === 0 && !transcribing ? (
-        <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
+        <div className="empty">
           <FileText size={28} className="empty-icon" />
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{project.hasAudio ? 'No transcript yet' : 'This video has no audio track'}</div>
-          <div className="muted" style={{ maxWidth: 420, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
+          <div className="empty-title">{project.hasAudio ? 'No transcript yet' : 'This video has no audio track'}</div>
+          <div className="empty-copy">
             {project.hasAudio
               ? `Transcribe the ${project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} (locally with Whisper, or via your explicitly selected cloud provider), or import an existing SRT/VTT/JSON transcript. Moment discovery, captions and editing all work from this transcript.`
               : 'Speech transcription needs audio. You can still import an existing transcript file to continue the workflow.'}
           </div>
         </div>
       ) : data.transcript.length === 0 && localTranscription ? null : (
-        <div className="grid" style={{ gridTemplateColumns: 'minmax(260px, 380px) minmax(0, 1fr)', alignItems: 'start' }}>
-          <div className="panel" style={{ padding: 'var(--space-4)', position: 'sticky', top: 0 }}>
+        <div className="grid transcript">
+          <div className="panel transcript-player">
             {project.sourceMode === 'audio-first' ? (
               <audio
                 ref={audioRef}
@@ -368,7 +368,7 @@ export function TranscriptTab() {
             </div>
           </div>
 
-          <div className="panel" ref={listRef} style={{ maxHeight: '64vh', overflowY: 'auto', padding: 'var(--space-4) var(--space-3)' }}>
+          <div className="panel transcript-scroll" ref={listRef}>
             <div className="transcript-list">
               {filtered.map((seg) => (
                 <TranscriptRow

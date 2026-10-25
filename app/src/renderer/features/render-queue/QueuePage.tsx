@@ -59,7 +59,7 @@ export function QueuePage() {
   return (
     <div className="page" data-density="compact">
       <div className="page-header">
-        <div>
+        <div className="page-heading">
           <div className="page-title">Render queue</div>
           <div className="page-subtitle">Renders run locally with FFmpeg. Concurrency is configurable in Settings → Video.</div>
         </div>
@@ -70,13 +70,13 @@ export function QueuePage() {
           <div className="queue-group-title" style={{ color: 'var(--warn)' }}>
             <History size={12} /> Interrupted processing · {interrupted.length}
           </div>
-          <div className="tiny" style={{ padding: 'var(--space-3) var(--space-3) var(--space-3)', maxWidth: 560 }}>
+          <div className="tiny queue-note">
             These operations were in flight when the application last closed. Nothing was corrupted — choose whether to run them
             again.
           </div>
           {interrupted.map((t) => (
             <div className="queue-row" key={t.id}>
-              <div style={{ minWidth: 0 }}>
+              <div className="q-main">
                 <div className="q-title">{projectById.get(t.projectId ?? '') ?? t.projectId?.slice(0, 8) ?? '—'}</div>
                 <div className="tiny">{t.type}</div>
               </div>
@@ -100,14 +100,14 @@ export function QueuePage() {
           <div className="queue-group-title">Active now</div>
           {running.map((t) => (
             <div className="queue-row" key={t.id}>
-              <div style={{ minWidth: 0 }}>
+              <div className="q-main">
                 <div className="q-title">{t.type}</div>
                 <div className="tiny">{projectById.get(t.projectId ?? '') ?? '—'}</div>
               </div>
               <div className="q-meta tiny">
                 <span className="status working"><span className="dot" /> {t.message ?? t.stage ?? 'Working…'}</span>
               </div>
-              <div className="tiny" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+              <div className="q-value tiny">
                 {t.progress != null ? `${Math.round(t.progress * 100)}%` : ''}
               </div>
               <div className="q-actions">
@@ -120,13 +120,14 @@ export function QueuePage() {
         </div>
       )}
 
-      <div style={{ marginBottom: 'var(--space-6)' }}>
+      <div className="queue-section">
         <RenderList />
       </div>
 
       {history.length > 0 && (
         <div className="queue-group">
           <div className="queue-group-title">Recent operations</div>
+          <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
@@ -147,14 +148,15 @@ export function QueuePage() {
                       <span className="dot" /> {t.state}
                     </span>
                   </td>
-                  <td className="tiny" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td className="tiny truncate">
                     {t.error?.message ?? t.message ?? '—'}
                   </td>
-                  <td className="tiny">{new Date(t.updatedAt).toLocaleTimeString()}</td>
+                  <td className="tiny nowrap">{new Date(t.updatedAt).toLocaleTimeString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Film, Plus, Link2, MoreHorizontal, Pencil, Trash2, Clapperboard } from 'lucide-react'
+import { Film, Plus, MoreHorizontal, Pencil, Trash2, Clapperboard } from 'lucide-react'
 import { api, isElectron, mediaUrl, errMessage } from '../../api/client'
 import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
@@ -136,12 +136,32 @@ export function DashboardPage() {
 
   return (
     <div className="page">
-      <div className="toolbar">
+      <div className="page-header">
+        <div className="page-heading">
+          <div className="page-title">Projects</div>
+          <div className="page-subtitle">
+            {sorted.length === 0
+              ? 'Long-form video in, vertical clips out.'
+              : `${sorted.length} project${sorted.length === 1 ? '' : 's'}${
+                  activeTasks.length > 0 ? ` · ${activeTasks.length} working` : ''
+                }`}
+          </div>
+        </div>
+        <div className="page-actions">
+          <button className="btn" onClick={() => void handleImportFile()} disabled={importing !== null}>
+            <Film size={14} /> {importing === 'file' ? 'Importing…' : 'Import video'}
+          </button>
+        </div>
+      </div>
+
+      {/* Both ways in share one grid, so the inputs, the buttons and the note
+          underneath line up on the same column edges at every width. */}
+      <div className="create-bar">
+        <label className="field-label" htmlFor="new-project-name">New project</label>
         <input
           id="new-project-name"
           className="input"
-          style={{ flex: 1, minWidth: 220, maxWidth: 420 }}
-          placeholder="New project name — e.g. “Episode 42 — Founder Interview”"
+          placeholder="Episode 42 — Founder Interview"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
@@ -149,18 +169,12 @@ export function DashboardPage() {
         <button className="btn primary" onClick={() => void handleCreate()} disabled={creating || !name.trim()}>
           <Plus size={14} /> Create project
         </button>
-        <span style={{ flex: 1 }} />
-        <button className="btn" onClick={() => void handleImportFile()} disabled={importing !== null}>
-          <Film size={14} /> {importing === 'file' ? 'Importing…' : 'Import video'}
-        </button>
-      </div>
 
-      <div className="row wrap" style={{ gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border-strong)' }}>
-        <Link2 size={14} className="muted" />
+        <label className="field-label" htmlFor="import-url">From URL</label>
         <input
+          id="import-url"
           className="input"
-          style={{ flex: 1, minWidth: 220, maxWidth: 420 }}
-          placeholder="…or paste a media page or direct video URL you are authorized to use"
+          placeholder="Paste a media page or direct video URL you are authorized to use"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void handleImportUrl()}
@@ -168,19 +182,20 @@ export function DashboardPage() {
         <button className="btn" onClick={() => void handleImportUrl()} disabled={importing !== null || !url.trim()}>
           {importing === 'url' ? 'Starting…' : 'Import from URL'}
         </button>
-        <span className="tiny" style={{ flex: 1, minWidth: 200 }}>
+
+        <div className="create-note" aria-live="polite">
           {currentUrlCheck == null
             ? 'Direct media links work automatically; supported video sites use yt-dlp.'
             : currentUrlCheck.ok
               ? <span className="status success"><span className="dot" /> Importable via {currentUrlCheck.label}</span>
               : <span className="status danger"><span className="dot" /> {currentUrlCheck.reason} {currentUrlCheck.hint}</span>}
-        </span>
+        </div>
       </div>
 
       {activeTasks.length > 0 && (
         <div className="section">
           {activeTasks.slice(0, 4).map((t) => (
-            <div key={t.id} className="row" style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 'var(--fs-base)' }}>
+            <div key={t.id} className="task-row">
               <span className="status working">
                 <span className="dot" /> {t.message ?? `${t.type}…`}
               </span>
@@ -191,14 +206,14 @@ export function DashboardPage() {
       )}
 
       {sorted.length === 0 ? (
-        <div className="empty" style={{ padding: 'var(--space-12) var(--space-6)' }}>
+        <div className="empty">
           <Clapperboard size={28} className="empty-icon" />
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No projects yet</div>
-          <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
+          <div className="empty-title">No projects yet</div>
+          <div className="empty-copy">
             Create a project and import a long-form video — a podcast, interview, lecture or stream. Clipwright transcribes it,
             finds the strong moments, and helps you turn them into vertical clips.
           </div>
-          <button className="btn primary" style={{ marginTop: 'var(--space-3)' }} onClick={() => document.getElementById('new-project-name')?.focus()}>
+          <button className="btn primary" onClick={() => document.getElementById('new-project-name')?.focus()}>
             <Plus size={14} /> New project
           </button>
         </div>
@@ -272,10 +287,9 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
         )}
       </div>
 
-      <div style={{ minWidth: 0 }}>
+      <div className="project-main">
         {renaming ? (
           <input
-            className="input"
             autoFocus
             value={renameValue}
             onClick={(e) => e.stopPropagation()}
@@ -285,7 +299,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
               if (e.key === 'Escape') { renameCancelledRef.current = true; setRenameValue(summary.name); setRenaming(false) }
             }}
             onBlur={() => void doRename()}
-            style={{ maxWidth: 380 }}
+            className="input project-rename"
           />
         ) : (
           <div className="project-name" title={summary.name}>{summary.name}</div>
@@ -329,7 +343,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
           </button>
           {menuOpen && (
             <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={(event) => { event.stopPropagation(); setMenuOpen(false) }} />
+              <div className="menu-scrim" onClick={(event) => { event.stopPropagation(); setMenuOpen(false) }} />
               <div className="menu" onClick={(event) => event.stopPropagation()}>
                 <button type="button" onClick={() => { setMenuOpen(false); renameCommittedRef.current = false; renameCancelledRef.current = false; setRenameValue(summary.name); setRenaming(true) }}>
                   <Pencil size={14} /> Rename

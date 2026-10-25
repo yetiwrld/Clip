@@ -108,10 +108,10 @@ export function MomentsTab() {
 
   if (data.transcript.length === 0) {
     return (
-      <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
+      <div className="empty">
         <BarChart3 size={28} className="empty-icon" />
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>Analysis needs a transcript</div>
-        <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
+        <div className="empty-title">Analysis needs a transcript</div>
+        <div className="empty-copy">
           Transcribe the {project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} or import a transcript first — the analyzer reads transcript text, never the raw video.
         </div>
       </div>
@@ -120,7 +120,7 @@ export function MomentsTab() {
 
   return (
     <div className="stack">
-      <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 'var(--space-3)' }}>
+      <div className="toolbar plain">
         <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-2)' }}>
           <strong style={{ color: 'var(--text-1)' }}>{moments.length}</strong> moment{moments.length === 1 ? '' : 's'}
           <span style={{ color: 'var(--text-3)' }}> · {data.candidates.filter((c) => c.status !== 'rejected').length} candidates</span>
@@ -142,7 +142,7 @@ export function MomentsTab() {
             <Spinner size={12} /> {analyzeTask.message} {analyzeTask.progress != null && `· ${Math.round(analyzeTask.progress * 100)}%`}
           </span>
         )}
-        <span style={{ flex: 1 }} />
+        <span className="spacer" />
         <button className="btn" onClick={() => void analyze('heuristic-local')} disabled={analyzing || busy}>
           <Cpu size={14} /> Analyze — local heuristic
         </button>
@@ -159,10 +159,10 @@ export function MomentsTab() {
       {error ? <ErrorBox error={error} onRetry={() => void analyze(retryProvider)} retryLabel={`Retry ${retryProvider === 'heuristic-local' ? 'local' : 'AI'} analysis`} /> : null}
 
       {moments.length === 0 && !analyzing ? (
-        <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
+        <div className="empty">
           <BarChart3 size={28} className="empty-icon" />
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No moments discovered yet</div>
-          <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
+          <div className="empty-title">No moments discovered yet</div>
+          <div className="empty-copy">
             Run the analyzer to find candidate clips. The local heuristic works offline; a configured AI provider gives better
             semantic quality.
           </div>
@@ -231,11 +231,7 @@ function MomentRow({
         <span className="moment-audit">
           <ScoreValue score={candidate.overallScore} label={`Overall estimate: ${candidate.overallScore ?? '–'}/100`} />
         </span>
-        <ChevronRight
-          size={14}
-          className="muted"
-          style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}
-        />
+        <ChevronRight size={14} className={`muted moment-chev${expanded ? ' open' : ''}`} />
       </div>
 
       {expanded && (

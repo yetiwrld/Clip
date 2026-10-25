@@ -40,10 +40,10 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
 
   if (renders.length === 0) {
     return (
-      <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
+      <div className="empty">
         <ListVideo size={28} className="empty-icon" />
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No renders yet</div>
-        <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
+        <div className="empty-title">No renders yet</div>
+        <div className="empty-copy">
           Render a clip to produce a vertical MP4 with burned-in captions. Renders run locally with FFmpeg — you can queue
           several and keep working.
         </div>
@@ -117,7 +117,7 @@ function RenderRow({
 
   return (
     <div className="queue-row">
-      <div style={{ minWidth: 0 }}>
+      <div className="q-main">
         <div className="q-title">
           {clipTitle || 'Clip'}
           {render.preview && <span className="tl-badge preview" style={{ marginLeft: 'var(--space-3)' }}>preview</span>}
@@ -146,7 +146,7 @@ function RenderRow({
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="q-value">
         {isCompleted && render.outputPath && (
           <video src={mediaUrl(render.outputPath)} style={{ width: 34, height: 60, borderRadius: 3, background: '#000', border: '1px solid var(--border)' }} muted preload="metadata" title="Rendered preview" />
         )}

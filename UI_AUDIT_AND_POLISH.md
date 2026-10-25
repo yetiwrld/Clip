@@ -287,3 +287,139 @@ it was fighting itself.
   though it carries `role="separator"`.
 * Autoscroll is driven by pointer events, so holding perfectly still at the
   edge advances very slowly.
+
+---
+
+## 2026-10-25 — One layout, one frame
+
+### What was wrong
+
+The screens were each spaced correctly on their own and wrong next to each other.
+
+* **The dashboard had no page header.** Every other screen opened with a title
+  and a subtitle; Projects opened with a form.
+* **Five left edges on one page.** The page padding was 24px, the project rows
+  padded 12px inside it, the URL row padded 8px, the toolbar 0. So the page
+  title (when there was one), the project thumbnail, the URL icon and the
+  import button all started at different x positions.
+* **Hand-spaced rows.** The dashboard's two import rows were flex containers
+  with `flex: 1` spacer spans, inline `maxWidth: 420`, an inline border on one
+  of them and different paddings on each. Nothing about them was shared.
+* **Content stretched to the window.** Lists and settings forms grew with the
+  window with no upper bound, so a 1600px window produced 1400px-wide rows of
+  three words.
+* **Settings had four different two-column form declarations**, all typed out
+  inline, all `1fr 1fr`. A bare `1fr` keeps its min-content floor, so one long
+  URL in a field could push the whole settings column sideways.
+* **Six duplicated editor breakpoints.** The editor body had a fresh
+  `grid-template-columns` block added at 1280, 1180 (twice), 1100, 980, 920
+  (twice) and 680, without removing the previous ones. The floating tool panel
+  was positioned at a hard-coded `left: 68px` while the rail above 1180 was
+  72px, and its drawer width at 680 was silently overwritten by a later base
+  rule.
+* **`<ul>` indents typed inline** in the storage section, and an inline
+  `position: fixed` scrim repeated in two screens.
+
+### The frame
+
+Seven tokens, declared once in `:root`:
+
+| token | value | meaning |
+|---|---|---|
+| `--page-gutter` | 24px | window edge to content. Fixed, not density-scaled: titles must not move between screens. |
+| `--row-pad-x` | 8px | inner padding of a list row, table cell or nav item |
+| `--row-bleed` | −8px | the negative margin that cancels it |
+| `--content-max` | 1180px | widest a list or dashboard may get |
+| `--form-max` | 640px | widest a settings form may get |
+| `--read-max` | 720px | widest a block of running text may get |
+| `--editor-rail-w` | 68px → 52px | editor tool rail, per breakpoint |
+
+`.page` owns the gutter and the centring:
+
+```css
+padding-inline: max(var(--page-gutter), (100% - var(--content-max)) / 2);
+```
+
+One rule replaces a `max-width` on every page. On a very wide window the
+content column centres instead of stretching; the scrollbar stays at the window
+edge because `.page` is still full width.
+
+Rows all use the same pair, so text lands on the gutter while hover fills keep
+their air:
+
+```css
+padding: var(--space-4) var(--row-pad-x);
+margin-inline: var(--row-bleed);
+```
+
+Applied to `.project-row`, `.queue-row`, `.clip-row`, `.moment-head`,
+`.moment-body`, `.task-row`, `.settings-nav` and `.tabs`. Tables get the same
+treatment through `.table-wrap`, which also becomes the only horizontal scroll
+container in the app.
+
+### Grid instead of offsets
+
+* The two dashboard import rows became **one** `.create-bar` grid with labels.
+
+  ```
+  92px | minmax(160px, 420px) | auto | 1fr
+  ```
+
+  Both inputs, both buttons and the status note now share column edges at every
+  width, and collapse to one column under 760px.
+* `.grid` gained `.two`, `.three`, `.split` and `.transcript` variants, all
+  `minmax(0, 1fr)`, so a long string can shrink instead of pushing the layout.
+  `.split` and `.transcript` stack under 980/900px.
+* `.queue-row` uses named areas (`main meta value actions`) instead of child
+  order. Under 860px it reflows to two columns with the metadata on its own
+  line, so nothing is clipped and the buttons keep the right edge.
+* `.row` gained `.between`, `.end`, `.center`, `.top` helpers, replacing inline
+  `justifyContent` in the settings sections.
+
+### The editor ladder
+
+One ordered block at the end of the stylesheet now owns the workspace grid:
+
+| width | columns |
+|---|---|
+| ≥1281 | 68 \| 212–268 \| 1fr \| 276–316 |
+| ≤1280 | 64 \| 190–228 \| 1fr \| 240–276 |
+| ≤1180 | 60 \| 184–212 \| 1fr \| 232–260 |
+| ≤1100 | 56 \| 176–200 \| 1fr \| 224–248 |
+| ≤920 | 56 \| 1fr \| 248, panel floats over the stage |
+| ≤680 | 52 \| 1fr, inspector becomes a drawer |
+
+The floating panel's `left` is `var(--editor-rail-w)`, so it starts exactly
+where the rail ends at every breakpoint. It also spans the full height of the
+body now: it used to start 50px down and stop `220px + 30vh` short, which left
+a visible gap under a floating panel.
+
+### Other alignment fixes
+
+* Page headers: `.page-heading` takes the free space, so action buttons pin to
+  the right edge and a long project name truncates instead of pushing them.
+  `.page-subtitle` clamps to two lines.
+* Empty states: five inline paddings replaced by `.empty`, `.empty-title`,
+  `.empty-copy`, so the four tabs match.
+* `.toolbar.plain` replaces three copies of `borderBottom: none, paddingBottom: 0`.
+* `.settings-head` + `.spacer` replace `.row` + an inline `flex: 1` span.
+* `.menu-scrim` replaces two inline fixed-position layers.
+* `.moment-chev` replaces an inline transform with a hard-coded 120ms.
+* `.doc-list` / `.doc-sublist` replace inline list indents.
+
+### Guards
+
+`tests/unit/design-tokens.test.ts` gained a `layout` suite: the tokens must
+exist, `.page` must own its padding, every list row must use the inset and the
+bleed, `.grid.two/three` must use `minmax(0, 1fr)`, wide tables must sit in a
+`.table-wrap`, the tool panel must use the rail token, and the four page-level
+screens may not introduce inline padding or horizontal margins.
+
+### Not done
+
+* Nothing was checked on a real screen. The alignment is arithmetic, not
+  observation, so the numbers in the table above are the part to verify first.
+* `.page` centres only above 1180px + 2 × 24px of window, so on a laptop the
+  frame is exactly the gutter and nothing visibly changes.
+* Per-element vertical margins inside the storage section were left as they
+  are: they set rhythm inside one list, not a shared edge.
