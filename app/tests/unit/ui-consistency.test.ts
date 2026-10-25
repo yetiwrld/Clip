@@ -276,7 +276,8 @@ describe('design-system compliance', () => {
       }
     }
     // Known pairs kept for review; each is a real "two implementations" case.
-    expect(conflicts.length, `Conflicting duplicate declarations:\n${conflicts.join('\n')}`).toBeLessThanOrEqual(27)
+    // 27 -> 26 after the button motion token was unified.
+    expect(conflicts.length, `Conflicting duplicate declarations:\n${conflicts.join('\n')}`).toBeLessThanOrEqual(26)
   })
 
   it('applies the type scale through inline styles too', () => {

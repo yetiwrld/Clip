@@ -667,3 +667,138 @@ in `DATA_SAFETY.md` §7 and §9.
 * Full suite: 41 files / 381 tests pass. `electron-vite build` clean; the
   preview backend answers `storage.status` / `storage.flush` and a create →
   delete round trip over the live server leaves the database clean.
+
+---
+
+## 2026-10-26 — UI consistency audit and visual regression system
+
+The goal was not a redesign. It was to find the places where the interface had
+drifted from its own rules, fix the ones that were clearly wrong, and leave a
+process that makes the next drift visible in a test instead of in a screenshot
+thread.
+
+### How the audit was done
+
+* One stylesheet (`src/renderer/styles/global.css`, ~4.6k lines) and one
+  primitives module (`components/ui.tsx`) hold the whole design system, so the
+  audit could be done by parsing rather than by eye: rules, declarations,
+  tokens, inline styles and class usage were all extracted and compared.
+* Every screen was read for inline styles: 205 `style={{ … }}` props across 13
+  renderer files, 17 of which carried a value that was not a token.
+* No headless browser exists in this project and adding one is a dependency
+  decision, so nothing here is a screenshot. **Layout findings are arithmetic
+  and static, not observed.** The window-size and 200 % zoom matrix is still a
+  manual pass (see "Still open").
+
+### Fixed: colour literals in the chrome (severity: medium)
+
+The chrome had picked up one-off `rgba()`/hex values for the same three ideas
+spelled many ways: tinted borders on chips, the error box, the transcript mark,
+the selection highlight, and two backdrops. The first pass moved them onto
+tokens; the guard then caught the last four stragglers.
+
+* New tokens: `--success-border`, `--warn-border`, `--danger-border`,
+  `--danger-border-strong`, `--mark`, `--selection`, `--scrim`, `--scrim-soft`.
+* Three backdrop opacities (`.55`, `.58`, `.6`, `.8`) became two scrim tokens.
+  `.editor-inspector-backdrop` and `.editor-tool-panel .asset-actions` had
+  drifted off the set; both now use `var(--scrim)`.
+* `.render-thumb` (renders list) used a raw `#000`; it is `var(--stage)`.
+* Chrome literals: **0**, now held by a test. The media/timeline layer
+  keeps its own clip colours deliberately; the test allows that area but counts
+  it (**87** literals) so the number can only go down.
+
+### Fixed: type scale bypasses (severity: medium)
+
+* Six `font:` shorthands (`font: 9px var(--mono)`, `font: inherit`, …) reset the
+  whole type scale and then only fixed the size. All are longhands now.
+* Two mono labels were set at 9px, off the scale (`--fs-micro` is 10px). They
+  now use the token.
+* Eight inline `lineHeight: 1.55 / 1.6` values (dialog bodies, section hints,
+  moment explanations) collapsed onto one rule pair: `.text-body` for running
+  text, `.section-hint` for the explanation under a section title.
+* Inline `fontWeight: 550` (a weight that exists in no token) became
+  `var(--fw-medium)`; inline `borderRadius: 8 / 4` became `var(--radius-lg)` and
+  `var(--radius)`.
+
+### Fixed: stacking, radii, states and containment
+
+* Nine raw `z-index` numbers in the timeline block were mapped onto the ladder
+  that already existed (`--z-raised`, `--z-clip`, `--z-marker`, `--z-handle`,
+  `--z-sticky`, `--z-top`), preserving each value exactly.
+* Four `border-radius: 50%` circles now use `--radius-round`.
+* `--speed: 120ms` was a second name for `--dur-fast: 120ms`; 20 uses retired,
+  the duplicate token deleted. `.btn:disabled` declared its opacity twice
+  (0.45 then 0.5, so only 0.5 ever applied); it is declared once now.
+* Two rules asked for truncation they could not perform: `.track-title input`
+  had `text-overflow` with no `overflow`, and `.save-state-text` had ellipsis
+  with no `nowrap`. Both fixed — the state text now truncates instead of
+  wrapping the top bar.
+* `.toasts` was pinned `16px` from the corner with a fixed width; it now uses
+  `--space-5` and `min(380px, calc(100vw - var(--space-8)))` so it cannot cross
+  the right edge on a narrow window. `.menu` gained `max-height: 60vh` with
+  scroll, so a long command menu cannot run off the bottom.
+* `.modal-foot` wraps its buttons. The command palette dropped a hint by
+  `nth-child(3)` (fragile); the hint carries a class now, and the small-screen
+  palette height is capped at `min(76vh, 560px)` instead of overriding the base
+  `min(62vh, 560px)` with a taller value.
+* `.render-thumb` replaced an inline-styled `<video>` in the renders list.
+
+### Fixed: accessibility (severity: high, small change)
+
+`Field` never bound its label to its control: `htmlFor` was absent, so clicking
+a settings label did nothing and a screen reader announced an unnamed select.
+`Field` now generates an id, binds the label, and points `aria-describedby` at
+the hint — but only when the child is a single native `input`/`select`/
+`textarea`. A composite child (a row of buttons) is left alone rather than given
+a label that points at nothing. Covered by `tests/unit/ui-a11y.test.ts`.
+
+### The regression system
+
+Three layers, all in the existing Vitest project, no new dependency:
+
+1. **`tests/unit/ui-consistency.test.ts`** (10 rules) — parses the stylesheet:
+   colour literals outside the named media layer, the `font` shorthand, the
+   z-index ladder, radii/shadows vs scale, truncation that cannot truncate,
+   dialog/menu/toast containment, required hover/focus/selected/disabled states,
+   semantic colour families (a `-border` must be the same hue as its base), and
+   duplicate declarations for one selector. Two frozen budgets: media-layer
+   literals **≤ 87**, duplicate declarations **≤ 26**.
+2. **`tests/unit/ui-visual-baseline.test.ts`** + `__snapshots__` — resolves the
+   visual contract (box, spacing, type, colour, radius, elevation, stacking, and
+   the responsive overrides) of 46 chrome classes, and snapshots the markup of
+   every shared primitive in its empty, error, loading, progress, selected and
+   disabled states. A change is a snapshot diff a human approves with
+   `npm run test:visual:update`.
+3. **`tests/unit/ui-a11y.test.ts`** (7) — label binding, switch state, dialog
+   naming, progress value, alert role, spinner name.
+
+Wired as `npm run test:visual`, `npm run test:visual:update`, and
+`npm run verify` (typecheck + full suite). They run inside `npm test`, so they
+are part of the existing workflow rather than a separate ritual.
+
+**What this cannot catch:** anything that depends on real layout — text growing
+past its box at a specific width, a menu that opens downward near the bottom
+edge, a 200 % zoom overflow, a hover state that never fires. Snapshots are
+strings; they protect consistency, not composition. Those need a browser, and a
+browser needs a dependency decision.
+
+### Still open
+
+| Location | Severity | Finding | Recommendation |
+| --- | --- | --- | --- |
+| `.editor-tool-panel .asset-*`, `.multi-track-lane`, `.multi-track-item.audio/.image`, `.source-track-clip`, `.editor-tool-button.active`, `.inspector-context-heading span` | medium | Most of the 26 duplicate declarations: a compatibility block at the end of the file silently overrides earlier definitions with different values (`min-height: 51px` vs `63px`; two `transition` spellings on `.btn`). | Merge each pair into one rule. Needs a visual check per component — doing it blind is how the current state happened. |
+| Media layer (87 literals) | low | Clip/trim/waveform colours are literals; two greens and two blues are in use for the same "audio"/"image" meaning. | Tokenise as `--clip-audio-*`, `--clip-image-*` when the media style is next touched. |
+| `.modal` 580 / `.modal.wide` 740 / `.palette` 620 / `.editor-tool-panel` 264 | low | Hand-picked widths next to a scale that has `--content-max`, `--form-max`. | Leave: these are deliberate measures, and changing them changes the app's proportions. |
+| `.asset-grid` etc. | low | ~30 class names defined in CSS with no reference in the renderer (dead selectors from earlier layouts). | Delete in a dedicated sweep with the class scan, after confirming no dynamic `className` build-up uses them. |
+| `Field` in `SettingsPage` | medium | Several settings still use native `window.prompt` for renaming (asset rename, caption preset). Inconsistent with `ConfirmDialog` and unreachable by keyboard users who dismiss prompts. | Replace with the existing `Modal` + `Field`, one call site at a time. |
+| Menus near the bottom edge | medium | `.menu` has a max-height but no flip; a dropdown opened in the last 60 % of the window can be clipped. | Needs measurement at runtime (portal or `getBoundingClientRect` flip). Not guessable statically. |
+| Responsive / zoom matrix | unknown | 1024×680 → 1920×1080, plus 200 % zoom, has not been seen. Two `.modal`/`.palette` caps and the `.create-bar` breakpoint are arithmetic only. | Manual pass; the caps are `min()` of viewport units, so they cannot overflow, but composition is unverified. |
+
+### Verification
+
+* `tsc --noEmit -p tsconfig.web.json` clean.
+* `electron-vite build` clean — `index-BToojEnT.js` / `index-Ccx-rffR.css`.
+* Full suite **44 files / 408 tests pass** (was 38 / 356 at the start of this
+  pass). New: `ui-consistency.test.ts` (10), `ui-visual-baseline.test.ts` (10 +
+  17 snapshots), `ui-a11y.test.ts` (7).
+* Preview backend on :8787 serves the rebuilt bundle.

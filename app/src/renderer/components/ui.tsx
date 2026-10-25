@@ -177,12 +177,40 @@ export function EmptyState(props: { icon: React.ReactNode; title: string; hint?:
   )
 }
 
+const LABELABLE = new Set(['input', 'select', 'textarea'])
+
+/**
+ * A label, a control and an optional hint.
+ *
+ * When the child is a single native control the label is bound to it, so
+ * clicking the label focuses the field and a screen reader announces both. A
+ * composite child (a row of buttons, a custom picker) is left alone rather than
+ * getting a label that points at nothing.
+ */
 export function Field(props: { label: string; hint?: string; children: React.ReactNode }) {
+  const generatedId = React.useId()
+  const hintId = `${generatedId}-hint`
+  const child = React.isValidElement(props.children) ? (props.children as React.ReactElement<Record<string, unknown>>) : null
+  const labelable = child && typeof child.type === 'string' && LABELABLE.has(child.type)
+  const controlId = labelable
+    ? typeof child.props.id === 'string' && child.props.id.length > 0
+      ? child.props.id
+      : generatedId
+    : undefined
+
+  const describedBy = labelable
+    ? [child.props['aria-describedby'], props.hint ? hintId : undefined].filter(Boolean).join(' ') || undefined
+    : undefined
+
+  const control = labelable
+    ? React.cloneElement(child, { id: controlId, 'aria-describedby': describedBy })
+    : props.children
+
   return (
     <div className="field">
-      <label className="field-label">{props.label}</label>
-      {props.children}
-      {props.hint && <div className="field-hint">{props.hint}</div>}
+      <label className="field-label" htmlFor={controlId}>{props.label}</label>
+      {control}
+      {props.hint && <div className="field-hint" id={labelable ? hintId : undefined}>{props.hint}</div>}
     </div>
   )
 }

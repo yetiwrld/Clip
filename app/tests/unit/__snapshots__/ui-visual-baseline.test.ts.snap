@@ -1,0 +1,361 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`visual baseline: component contract > keeps the documented box, type and colour of the chrome 1`] = `
+{
+  ".btn": "(base)
+  align-items: center
+  background: var(--surface-2)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius)
+  color: var(--text-1)
+  display: inline-flex
+  font-size: var(--fs-base)
+  font-weight: var(--fw-regular)
+  gap: var(--space-3)
+  height: var(--control-h)
+  justify-content: center
+  padding: 0 var(--space-4)
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease)
+  white-space: nowrap",
+  ".btn.danger": "(base)
+  background: transparent
+  color: var(--danger)",
+  ".btn.ghost": "(base)
+  background: transparent
+  color: var(--text-2)",
+  ".btn.icon": "(base)
+  flex: 0 0 auto
+  padding: 0
+  width: var(--control-h)",
+  ".btn.primary": "(base)
+  background: var(--accent)
+  color: var(--accent-contrast)
+  font-weight: var(--fw-medium)",
+  ".btn.sm": "(base)
+  font-size: var(--fs-sm)
+  gap: var(--space-2)
+  height: var(--control-h-sm)
+  padding: 0 var(--space-3)",
+  ".btn:disabled": "(base)
+  cursor: not-allowed
+  opacity: 0.5",
+  ".card": "(base)
+  background: var(--surface)
+  border: 1px solid var(--border)
+  border-radius: var(--radius-md)
+  padding: var(--pad-card) var(--pad-panel)",
+  ".chip": "(base)
+  align-items: center
+  background: var(--surface-2)
+  border: 1px solid var(--border)
+  border-radius: var(--radius-pill)
+  color: var(--text-2)
+  display: inline-flex
+  font-size: var(--fs-xs)
+  font-weight: var(--fw-regular)
+  gap: var(--space-2)
+  line-height: var(--lh-normal)
+  padding: 1px var(--space-3)
+  white-space: nowrap",
+  ".create-bar": "(base)
+  align-items: center
+  border-bottom: 1px solid var(--border-strong)
+  column-gap: var(--space-4)
+  display: grid
+  grid-template-columns: 92px minmax(180px, 420px) auto
+  justify-content: start
+  margin-bottom: var(--space-2)
+  padding-block: var(--space-4)
+  row-gap: var(--space-4)
+@media (max-width: 760px)
+  grid-template-columns: minmax(0, 1fr) auto
+  justify-content: stretch",
+  ".empty": "(base)
+  align-items: center
+  color: var(--text-3)
+  display: flex
+  flex-direction: column
+  font-size: var(--fs-sm)
+  gap: var(--space-3)
+  line-height: var(--lh-normal)
+  padding: var(--space-10) var(--space-6)
+  text-align: center",
+  ".empty-icon": "(base)
+  color: var(--text-3)
+  height: var(--icon-xl)
+  opacity: 0.35
+  width: var(--icon-xl)",
+  ".empty-title": "(base)
+  color: var(--text-1)
+  font-size: var(--fs-base)
+  font-weight: var(--fw-medium)",
+  ".error-box": "(base)
+  background: var(--danger-soft)
+  border: 1px solid var(--danger-border)
+  border-radius: var(--radius)
+  font-size: var(--fs-base)
+  line-height: var(--lh-normal)
+  padding: var(--space-4) var(--space-4)",
+  ".field": "(base)
+  display: flex
+  flex-direction: column
+  gap: var(--space-2)",
+  ".field-hint": "(base)
+  color: var(--text-3)
+  font-size: var(--fs-sm)
+  line-height: var(--lh-normal)",
+  ".field-label": "(base)
+  color: var(--text-2)
+  font-size: var(--fs-sm)
+  font-weight: var(--fw-medium)
+  letter-spacing: 0.2px",
+  ".input": "(base)
+  background: var(--surface-2)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius)
+  font-size: var(--fs-base)
+  height: var(--control-h)
+  padding: 0 var(--space-3)
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease)
+  width: 100%",
+  ".kbd": "(base)
+  background: var(--surface-3)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-xs)
+  font-family: var(--mono)
+  font-size: var(--fs-xs)
+  line-height: var(--lh-loose)
+  padding: 0 var(--space-2)",
+  ".menu": "(base)
+  background: var(--surface-2)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-md)
+  box-shadow: var(--shadow-2)
+  display: flex
+  flex-direction: column
+  max-height: 60vh
+  min-width: 150px
+  overflow-y: auto
+  padding: var(--space-2)
+  position: absolute
+  right: 0
+  top: calc(100% + var(--space-2))
+  z-index: var(--z-popover)",
+  ".menu button": "(base)
+  align-items: center
+  background: transparent
+  border: none
+  border-radius: var(--radius)
+  color: var(--text-1)
+  display: flex
+  font-size: var(--fs-base)
+  gap: var(--space-3)
+  padding: var(--space-3) var(--space-3)
+  text-align: left
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease)",
+  ".modal": "(base)
+  background: var(--surface)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-lg)
+  box-shadow: var(--shadow-2)
+  display: flex
+  flex-direction: column
+  max-height: min(82vh, 780px)
+  width: min(580px, 100%)",
+  ".modal-backdrop": "(base)
+  background: var(--scrim)
+  display: grid
+  inset: 0
+  padding: var(--space-8)
+  place-items: center
+  position: fixed
+  z-index: var(--z-modal)",
+  ".modal-body": "(base)
+  display: flex
+  flex-direction: column
+  gap: var(--space-4)
+  overflow-y: auto
+  padding: var(--space-6) var(--pad-dialog)",
+  ".modal-foot": "(base)
+  border-top: 1px solid var(--border)
+  display: flex
+  flex-wrap: wrap
+  gap: var(--space-3)
+  justify-content: flex-end
+  padding: var(--space-4) var(--pad-dialog) var(--space-5)",
+  ".modal-head": "(base)
+  align-items: center
+  display: flex
+  gap: var(--space-4)
+  padding: var(--space-5) var(--pad-dialog) 0",
+  ".modal-title": "(base)
+  font-size: var(--fs-md)
+  font-weight: var(--fw-medium)",
+  ".nav-item": "(base)
+  align-items: center
+  background: transparent
+  border: none
+  border-radius: var(--radius)
+  color: var(--text-2)
+  display: flex
+  font-size: var(--fs-base)
+  font-weight: var(--fw-regular)
+  gap: var(--space-3)
+  height: var(--control-h)
+  padding: 0 var(--space-4)
+  position: relative
+  text-align: left
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease)",
+  ".nav-item.active": "(base)
+  background: var(--surface-3)
+  color: var(--text-1)
+  font-weight: var(--fw-medium)",
+  ".palette": "(base)
+  background: var(--surface)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-lg)
+  box-shadow: var(--shadow-3)
+  display: flex
+  flex-direction: column
+  max-height: min(62vh, 560px)
+  overflow: hidden
+  width: min(620px, 100%)
+@media (max-width: 680px)
+  max-height: min(76vh, 560px)",
+  ".palette-foot": "(base)
+  align-items: center
+  border-top: 1px solid var(--border)
+  color: var(--text-3)
+  display: flex
+  flex: none
+  font-size: var(--fs-xs)
+  gap: var(--space-4)
+  padding: var(--space-3) var(--space-4)",
+  ".palette-search": "(base)
+  align-items: center
+  border-bottom: 1px solid var(--border)
+  display: flex
+  flex: none
+  gap: var(--space-3)
+  height: 46px
+  padding: 0 var(--space-4)",
+  ".panel": "(base)
+  background: var(--surface)
+  border: 1px solid var(--border)
+  border-radius: var(--radius-md)
+  padding: var(--pad-card) var(--pad-panel)",
+  ".progress-fill": "(base)
+  background: var(--accent)
+  border-radius: var(--radius-xs)
+  height: 100%
+  transition: width var(--dur-base) linear",
+  ".progress-fill.danger": "(base)
+  background: var(--danger)",
+  ".progress-fill.success": "(base)
+  background: var(--success)",
+  ".progress-track": "(base)
+  background: var(--surface-3)
+  border-radius: var(--radius-xs)
+  height: 4px
+  overflow: hidden",
+  ".section-hint": "(base)
+  line-height: var(--lh-normal)
+  margin-bottom: var(--space-3)",
+  ".section-title": "(base)
+  color: var(--text-3)
+  font-size: var(--fs-micro)
+  font-weight: var(--fw-medium)
+  letter-spacing: 0.7px
+  margin-bottom: var(--space-4)
+  text-transform: uppercase",
+  ".select": "(base)
+  background: var(--surface-2)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius)
+  font-size: var(--fs-base)
+  height: var(--control-h)
+  padding: 0 var(--space-3)
+  padding-right: var(--space-7)
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease)
+  width: 100%",
+  ".switch": "(base)
+  background: var(--surface-3)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-xs)
+  flex-shrink: 0
+  height: 18px
+  position: relative
+  transition: background var(--dur-fast), border-color var(--dur-fast)
+  width: 32px",
+  ".switch.on": "(base)
+  background: var(--accent)",
+  ".text-body": "(base)
+  font-size: var(--fs-base)
+  line-height: var(--lh-normal)",
+  ".toast": "(base)
+  align-items: flex-start
+  background: var(--surface-2)
+  border: 1px solid var(--border-strong)
+  border-left: 2px solid var(--text-3)
+  border-radius: var(--radius-md)
+  box-shadow: var(--shadow-1)
+  display: flex
+  font-size: var(--fs-base)
+  gap: var(--space-3)
+  padding: var(--space-4) var(--space-4)",
+  ".toast-msg": "(base)
+  flex: 1",
+  ".toasts": "(base)
+  bottom: var(--space-5)
+  display: flex
+  flex-direction: column
+  gap: var(--space-3)
+  position: fixed
+  right: var(--space-5)
+  width: min(380px, calc(100vw - var(--space-8)))
+  z-index: var(--z-toast)",
+}
+`;
+
+exports[`visual baseline: component markup > renders a labelled field 1`] = `"<div class="field"><label class="field-label" for="_R_0_">Whisper model</label><select class="select" id="_R_0_" aria-describedby="_R_0_-hint"><option value="base" selected="">base</option></select><div class="field-hint" id="_R_0_-hint">Bigger models are slower but more accurate.</div></div>"`;
+
+exports[`visual baseline: component markup > renders every progress state > progress-0 1`] = `"<div class="progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill  " style="width:0%"></div></div>"`;
+
+exports[`visual baseline: component markup > renders every progress state > progress-0.42 1`] = `"<div class="progress-track" role="progressbar" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill  " style="width:42%"></div></div>"`;
+
+exports[`visual baseline: component markup > renders every progress state > progress-1 1`] = `"<div class="progress-track" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill  " style="width:100%"></div></div>"`;
+
+exports[`visual baseline: component markup > renders every progress state > progress-danger 1`] = `"<div class="progress-track" role="progressbar" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill  danger" style="width:30%"></div></div>"`;
+
+exports[`visual baseline: component markup > renders every progress state > progress-success 1`] = `"<div class="progress-track" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill success " style="width:100%"></div></div>"`;
+
+exports[`visual baseline: component markup > renders the destructive confirmation dialog 1`] = `"<div class="modal-backdrop"><div class="modal " role="dialog" aria-label="Delete project"><div class="modal-head"><div class="modal-title">Delete project</div><div class="header-spacer"></div><button class="btn ghost sm icon" aria-label="Close dialog" title="Close"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div><div class="modal-body"><div class="text-body">This removes the project from the workspace.</div><div class="confirm-phrase"><label class="field-label" for="_R_0_">Type “Episode 42” to confirm</label><input id="_R_0_" class="input" autofocus="" autoComplete="off" spellCheck="false" value=""/></div></div><div class="modal-foot"><button class="btn">Cancel</button><button class="btn danger" disabled="">Delete project</button></div></div></div>"`;
+
+exports[`visual baseline: component markup > renders the dialog chrome 1`] = `"<div class="modal-backdrop"><div class="modal " role="dialog" aria-label="Export clip"><div class="modal-head"><div class="modal-title">Export clip</div><div class="header-spacer"></div><button class="btn ghost sm icon" aria-label="Close dialog" title="Close"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div><div class="modal-body"><div class="text-body">The export runs in the background.</div></div><div class="modal-foot"><button class="btn primary">Start export</button></div></div></div>"`;
+
+exports[`visual baseline: component markup > renders the empty state 1`] = `"<div class="empty"><div class="empty-icon"><svg width="28" height="28" aria-hidden="true"></svg></div><div class="empty-title">No clips yet</div><div class="muted text-body" style="max-width:400px">Pick a moment and the clip appears here.</div><button class="btn primary">Find moments</button></div>"`;
+
+exports[`visual baseline: component markup > renders the error state, with and without retry 1`] = `"<div class="error-box" role="alert"><div class="error-title"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert lucide-alert-triangle" aria-hidden="true" style="vertical-align:-1px;margin-right:var(--space-2)"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>[object Object]</div><div style="margin-top:var(--space-3)"><button class="btn sm">Retry</button></div></div>"`;
+
+exports[`visual baseline: component markup > renders the error state, with and without retry 2`] = `"<div class="error-box" role="alert"><div class="error-title"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-triangle-alert lucide-alert-triangle" aria-hidden="true" style="vertical-align:-1px;margin-right:var(--space-2)"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>[object Object]</div></div>"`;
+
+exports[`visual baseline: component markup > renders the loading spinner > spinner-large 1`] = `"<svg class="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-label="Loading"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="3"></circle><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg>"`;
+
+exports[`visual baseline: component markup > renders the loading spinner 1`] = `"<svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" aria-label="Loading"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="3"></circle><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg>"`;
+
+exports[`visual baseline: component markup > renders the switch in both states, including disabled > switch-disabled 1`] = `"<div class="switch-row"><div><div class="text-body" style="font-weight:var(--fw-medium)">Auto-save proxy</div><div class="field-hint">Renders use the small file.</div></div><button class="switch on" role="switch" aria-checked="true" aria-label="Auto-save proxy" disabled=""></button></div>"`;
+
+exports[`visual baseline: component markup > renders the switch in both states, including disabled > switch-off 1`] = `"<div class="switch-row"><div><div class="text-body" style="font-weight:var(--fw-medium)">Auto-save proxy</div><div class="field-hint">Renders use the small file.</div></div><button class="switch " role="switch" aria-checked="false" aria-label="Auto-save proxy"></button></div>"`;
+
+exports[`visual baseline: component markup > renders the switch in both states, including disabled > switch-on 1`] = `"<div class="switch-row"><div><div class="text-body" style="font-weight:var(--fw-medium)">Auto-save proxy</div><div class="field-hint">Renders use the small file.</div></div><button class="switch on" role="switch" aria-checked="true" aria-label="Auto-save proxy"></button></div>"`;

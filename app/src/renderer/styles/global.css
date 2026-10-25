@@ -160,7 +160,6 @@
   --shadow-3: 0 12px 40px rgba(0, 0, 0, 0.55);     /* the preview stage */
 
   /* ---- motion ---- */
-  --speed: 120ms;
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 240ms;
@@ -380,7 +379,7 @@ textarea {
   font-size: var(--fs-base);
   font-weight: var(--fw-regular);
   text-align: left;
-  transition: background var(--speed), color var(--speed);
+  transition: background var(--dur-fast), color var(--dur-fast);
 }
 
 .nav-item:hover {
@@ -663,7 +662,7 @@ textarea {
   color: var(--text-1);
   font-size: var(--fs-base);
   font-weight: var(--fw-regular);
-  transition: background var(--speed), border-color var(--speed);
+  transition: background var(--dur-fast), border-color var(--dur-fast);
   white-space: nowrap;
 }
 
@@ -677,7 +676,7 @@ textarea {
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  /* Opacity is declared once, in the compatibility pass at the end. */
   cursor: not-allowed;
 }
 
@@ -755,7 +754,7 @@ textarea {
   height: var(--control-h);
   font-size: var(--fs-base);
   width: 100%;
-  transition: border-color var(--speed), background var(--speed);
+  transition: border-color var(--dur-fast), background var(--dur-fast);
 }
 
 .textarea {
@@ -830,7 +829,7 @@ textarea {
   border-radius: var(--radius-xs);
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
-  transition: background var(--speed), border-color var(--speed);
+  transition: background var(--dur-fast), border-color var(--dur-fast);
   flex-shrink: 0;
 }
 
@@ -843,7 +842,7 @@ textarea {
   height: 12px;
   border-radius: var(--radius-xs);
   background: var(--text-2);
-  transition: transform var(--speed), background var(--speed);
+  transition: transform var(--dur-fast), background var(--dur-fast);
 }
 
 .switch.on {
@@ -1219,7 +1218,7 @@ input[type='checkbox'] {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
-  transition: color var(--speed);
+  transition: color var(--dur-fast);
 }
 
 .tab:hover {
@@ -2054,7 +2053,7 @@ details.error-details pre {
   margin-inline: var(--row-bleed);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background var(--speed);
+  transition: background var(--dur-fast);
 }
 
 .project-row:hover {
@@ -2242,7 +2241,7 @@ details.error-details pre {
   padding: var(--space-4) var(--row-pad-x);
   margin-inline: var(--row-bleed);
   cursor: pointer;
-  transition: background var(--speed);
+  transition: background var(--dur-fast);
 }
 
 .moment-head:hover {
@@ -3393,7 +3392,7 @@ details.error-details pre {
 
 .editor-tool-rail { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--space-3) var(--space-3); border-right: 1px solid var(--border); background: var(--surface); }
 
-.editor-tool-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); min-height: 56px; border: 1px solid transparent; border-radius: var(--radius-lg); background: transparent; color: var(--text-3); cursor: pointer; font-size: var(--fs-xs); transition: background var(--speed),color var(--speed),border-color var(--speed); font-weight: var(--fw-regular); letter-spacing: 0.15px; }
+.editor-tool-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); min-height: 56px; border: 1px solid transparent; border-radius: var(--radius-lg); background: transparent; color: var(--text-3); cursor: pointer; font-size: var(--fs-xs); transition: background var(--dur-fast),color var(--dur-fast),border-color var(--dur-fast); font-weight: var(--fw-regular); letter-spacing: 0.15px; }
 
 .editor-tool-button.active {
   color: var(--accent-strong);
@@ -3490,7 +3489,7 @@ details.error-details pre {
   border-radius: var(--radius-md);
   background: var(--scrim);
   opacity: 0;
-  transition: opacity var(--speed);
+  transition: opacity var(--dur-fast);
 }
 
 .editor-tool-panel .asset-card:hover .asset-actions,
@@ -3652,7 +3651,7 @@ details.error-details pre {
   color: var(--accent);
 }
 
-.inspector-section > summary .chev { margin-left: auto; color: var(--text-3); transition: transform var(--speed); }
+.inspector-section > summary .chev { margin-left: auto; color: var(--text-3); transition: transform var(--dur-fast); }
 
 .inspector-section .inspector-body { padding: 0 var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
 
@@ -4119,7 +4118,7 @@ button:disabled {
   height: 3px;
   border-radius: var(--radius-round);
   background: var(--border-strong);
-  transition: background var(--speed), width var(--speed);
+  transition: background var(--dur-fast), width var(--dur-fast);
 }
 
 .timeline-resize-handle:hover::after,
@@ -4568,9 +4567,11 @@ button:disabled {
     padding-inline: var(--space-3);
   }
   .palette {
-    max-height: 76vh;
+    /* A small screen gives the list more of its own height, still capped. */
+    max-height: min(76vh, 560px);
   }
-  .palette-foot-hint:nth-child(3) {
+  /* The narrowest phones drop the least useful hint first. */
+  .palette-foot-hint--optional {
     display: none;
   }
 }

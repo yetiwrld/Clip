@@ -270,7 +270,7 @@ export function CommandPalette() {
           <span className="palette-foot-hint">
             <kbd className="kbd"><CornerDownLeft size={12} aria-hidden="true" /></kbd> to {mode === 'commands' ? 'run' : 'search'}
           </span>
-          <span className="palette-foot-hint">
+          <span className="palette-foot-hint palette-foot-hint--optional">
             <kbd className="kbd">Esc</kbd> to close
           </span>
           <button
