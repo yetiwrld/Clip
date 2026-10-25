@@ -155,7 +155,7 @@ export function DashboardPage() {
         </button>
       </div>
 
-      <div className="row wrap" style={{ gap: 8, padding: '10px 8px 14px', borderBottom: '1px solid var(--border-strong)' }}>
+      <div className="row wrap" style={{ gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border-strong)' }}>
         <Link2 size={13} className="muted" />
         <input
           className="input"
@@ -180,7 +180,7 @@ export function DashboardPage() {
       {activeTasks.length > 0 && (
         <div className="section">
           {activeTasks.slice(0, 4).map((t) => (
-            <div key={t.id} className="row" style={{ padding: '2px 8px', fontSize: 12.5 }}>
+            <div key={t.id} className="row" style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 12.5 }}>
               <span className="status working">
                 <span className="dot" /> {t.message ?? `${t.type}…`}
               </span>
@@ -191,14 +191,14 @@ export function DashboardPage() {
       )}
 
       {sorted.length === 0 ? (
-        <div className="empty" style={{ padding: '80px 20px' }}>
+        <div className="empty" style={{ padding: 'var(--space-12) var(--space-6)' }}>
           <Clapperboard size={28} className="empty-icon" />
           <div style={{ fontWeight: 600, fontSize: 13.5 }}>No projects yet</div>
           <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
             Create a project and import a long-form video — a podcast, interview, lecture or stream. Clipwright transcribes it,
             finds the strong moments, and helps you turn them into vertical clips.
           </div>
-          <button className="btn primary" style={{ marginTop: 6 }} onClick={() => document.getElementById('new-project-name')?.focus()}>
+          <button className="btn primary" style={{ marginTop: 'var(--space-3)' }} onClick={() => document.getElementById('new-project-name')?.focus()}>
             <Plus size={14} /> New project
           </button>
         </div>

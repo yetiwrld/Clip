@@ -108,7 +108,7 @@ export function MomentsTab() {
 
   if (data.transcript.length === 0) {
     return (
-      <div className="empty" style={{ padding: '72px 20px' }}>
+      <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
         <BarChart3 size={28} className="empty-icon" />
         <div style={{ fontWeight: 600, fontSize: 13.5 }}>Analysis needs a transcript</div>
         <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
@@ -120,7 +120,7 @@ export function MomentsTab() {
 
   return (
     <div className="stack">
-      <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 8 }}>
+      <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 'var(--space-3)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
           <strong style={{ color: 'var(--text-1)' }}>{moments.length}</strong> moment{moments.length === 1 ? '' : 's'}
           <span style={{ color: 'var(--text-3)' }}> · {data.candidates.filter((c) => c.status !== 'rejected').length} candidates</span>
@@ -131,14 +131,14 @@ export function MomentsTab() {
           </span>
         )}
         {activeSectionTask && (
-          <span className="row" style={{ fontSize: 12, color: 'var(--text-2)', gap: 7 }}>
+          <span className="row" style={{ fontSize: 12, color: 'var(--text-2)', gap: 'var(--space-3)' }}>
             <Spinner size={12} /> {activeSectionTask.message ?? 'Fetching selected video section'}
             {activeSectionTask.progress != null && ` · ${Math.round(activeSectionTask.progress * 100)}%`}
             <button className="btn danger sm" onClick={() => void cancelSectionDownload()}>Cancel</button>
           </span>
         )}
         {analyzeTask?.message && (
-          <span className="row" style={{ fontSize: 12, color: 'var(--text-2)', gap: 7 }}>
+          <span className="row" style={{ fontSize: 12, color: 'var(--text-2)', gap: 'var(--space-3)' }}>
             <Spinner size={12} /> {analyzeTask.message} {analyzeTask.progress != null && `· ${Math.round(analyzeTask.progress * 100)}%`}
           </span>
         )}
@@ -159,7 +159,7 @@ export function MomentsTab() {
       {error ? <ErrorBox error={error} onRetry={() => void analyze(retryProvider)} retryLabel={`Retry ${retryProvider === 'heuristic-local' ? 'local' : 'AI'} analysis`} /> : null}
 
       {moments.length === 0 && !analyzing ? (
-        <div className="empty" style={{ padding: '72px 20px' }}>
+        <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
           <BarChart3 size={28} className="empty-icon" />
           <div style={{ fontWeight: 600, fontSize: 13.5 }}>No moments discovered yet</div>
           <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
@@ -240,7 +240,7 @@ function MomentRow({
 
       {expanded && (
         <div className="moment-body">
-          <div className="row wrap" style={{ gap: 8 }}>
+          <div className="row wrap" style={{ gap: 'var(--space-3)' }}>
             <span className="chip">{candidate.clipType.replace(/-/g, ' ')}</span>
             <span className="tiny" title={isHeuristic ? 'Produced by the offline heuristic analyzer — not an AI model' : `Produced by ${candidate.provider}`}>
               source: {isHeuristic ? 'local heuristic (not an AI model)' : candidate.provider}
@@ -248,7 +248,7 @@ function MomentRow({
             {candidate.status === 'converted' && <span className="chip success">clipped</span>}
             <span style={{ flex: 1 }} />
             {candidates.length > 1 && (
-              <span className="row" style={{ gap: 8 }}>
+              <span className="row" style={{ gap: 'var(--space-3)' }}>
                 <span className="tiny">variations</span>
                 <span className="segmented">
                   {candidates.map((c, i) => (
@@ -268,7 +268,7 @@ function MomentRow({
 
           {candidate.hook && (
             <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
-              <span className="audit-label" style={{ marginRight: 8 }}>Hook</span>
+              <span className="audit-label" style={{ marginRight: 'var(--space-3)' }}>Hook</span>
               <em>“{candidate.hook}”</em>
             </div>
           )}
@@ -286,7 +286,7 @@ function MomentRow({
             {candidate.transcriptExcerpt.length > 460 ? '…' : ''}”
           </div>
 
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 'var(--space-3)' }}>
             <button className="btn primary sm" onClick={() => onCreate(candidate)} disabled={existingClip != null || sectionBusy}>
               {sectionBusy ? <Spinner size={12} /> : <Scissors size={12} />} {existingClip ? 'Clip created' : createLabel}
             </button>
@@ -318,7 +318,7 @@ export function ScoreBreakdownView({ scores, explanation, provider }: { scores: 
         </div>
       ))}
       {explanation && (
-        <div className="tiny" style={{ lineHeight: 1.55, color: 'var(--text-2)', marginTop: 4 }}>
+        <div className="tiny" style={{ lineHeight: 1.55, color: 'var(--text-2)', marginTop: 'var(--space-2)' }}>
           <strong>Why this score</strong> — {explanation}
         </div>
       )}

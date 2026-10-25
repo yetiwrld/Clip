@@ -152,7 +152,7 @@ export function SourceTab() {
         {project.sourceMode === 'audio-first' && (
           <div className="panel" style={{ borderColor: 'var(--accent)', lineHeight: 1.55 }}>
             <strong>Audio-first URL project</strong>
-            <div className="tiny" style={{ marginTop: 5 }}>
+            <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>
               Only an audio stream was downloaded. Transcription and local moment discovery can run on this audio; choosing a moment fetches only its video section. Audio still uses data, and some sources may require keyframe padding or refuse section downloads. No full-video fallback is used.
             </div>
           </div>
@@ -160,7 +160,7 @@ export function SourceTab() {
         <div className="panel flush source-player">
           {project.sourcePath && project.status !== 'importing' ? (
             project.sourceMode === 'audio-first' ? (
-              <div style={{ aspectRatio: '16/9', display: 'grid', placeItems: 'center', background: 'var(--bg-2)', padding: 20 }}>
+              <div style={{ aspectRatio: '16/9', display: 'grid', placeItems: 'center', background: 'var(--bg-2)', padding: 'var(--space-6)' }}>
                 <audio
                   key={project.sourcePath}
                   src={mediaUrl(project.sourcePath)}
@@ -224,18 +224,18 @@ export function SourceTab() {
             <div style={{ aspectRatio: '16/9', display: 'grid', placeItems: 'center', background: 'var(--bg-2)' }}>
               {importing ? (
                 <div style={{ width: '70%' }}>
-                  <div className="muted" style={{ textAlign: 'center', marginBottom: 10, fontSize: 13 }}>
+                  <div className="muted" style={{ textAlign: 'center', marginBottom: 'var(--space-4)', fontSize: 13 }}>
                     {importTask?.message ?? 'Importing media…'}
                   </div>
                   {importTask?.progress != null && <ProgressBar value={importTask.progress} />}
                   {importTask && (
-                    <button className="btn sm" style={{ display: 'flex', margin: '12px auto 0' }} onClick={() => void cancelImport()}>
+                    <button className="btn sm" style={{ display: 'flex', margin: 'var(--space-4) auto 0' }} onClick={() => void cancelImport()}>
                       <X size={12} /> Cancel download
                     </button>
                   )}
                 </div>
               ) : (
-                <div className="empty" style={{ padding: 30 }}>
+                <div className="empty" style={{ padding: 'var(--space-8)' }}>
                   <Film size={36} className="empty-icon" />
                   <div className="muted" style={{ fontSize: 13 }}>No media imported yet</div>
                 </div>
@@ -256,9 +256,9 @@ export function SourceTab() {
                 {playback?.verdict === 'proxy' && playback.proxyExists && !useProxy && (
                   <button className="btn primary sm" onClick={() => { setUseProxy(true); setMediaError(null) }}>Play preview copy</button>
                 )}
-                <details style={{ marginTop: 8 }}>
+                <details style={{ marginTop: 'var(--space-3)' }}>
                   <summary className="tiny">View playback diagnostics</summary>
-                  <div className="tiny" style={{ marginTop: 5 }}>
+                  <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>
                     Codec: {project.videoCodec ?? 'unknown'} / {project.audioCodec ?? 'no audio'} · Duration: {Number.isFinite(mediaState.duration) ? `${mediaState.duration.toFixed(2)}s` : 'unknown'} · Ready state: {mediaState.readyState}
                     <br />{playback?.reason ?? 'Compatibility check pending'}
                   </div>
@@ -267,7 +267,7 @@ export function SourceTab() {
             </div>
           )}
           {project.sourcePath && !mediaError && (
-            <div className="tiny muted" style={{ padding: '6px 10px' }} aria-live="polite">
+            <div className="tiny muted" style={{ padding: 'var(--space-3) var(--space-4)' }} aria-live="polite">
               {mediaState.currentTime.toFixed(1)}s / {(mediaState.duration || project.duration || 0).toFixed(1)}s{mediaState.seeking ? ' · seeking' : ''}{useProxy ? ' · preview copy' : ''}
             </div>
           )}
@@ -297,15 +297,15 @@ export function SourceTab() {
           </div>
           <div className="divider" />
           <div className="section-title">Low-data: download a time range</div>
-          <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 9 }}>
+          <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 'var(--space-3)' }}>
             Fetch only a chosen video interval from compatible URLs. Requires yt-dlp and FFmpeg; the source may include nearby keyframes. It will not fall back to a full download.
           </div>
           <div className="row wrap">
-            <label className="tiny" style={{ display: 'grid', gap: 4 }}>
+            <label className="tiny" style={{ display: 'grid', gap: 'var(--space-2)' }}>
               Start
               <input className="input" style={{ width: 118 }} value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="00:01:20" />
             </label>
-            <label className="tiny" style={{ display: 'grid', gap: 4 }}>
+            <label className="tiny" style={{ display: 'grid', gap: 'var(--space-2)' }}>
               End
               <input className="input" style={{ width: 118 }} value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} placeholder="00:01:50" />
             </label>
@@ -315,18 +315,18 @@ export function SourceTab() {
           </div>
           <div className="divider" />
           <div className="section-title">Low-data: audio-first discovery</div>
-          <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 9 }}>
+          <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 'var(--space-3)' }}>
             Downloads an audio-only stream first. Transcription runs locally unless you explicitly choose a cloud provider; select a discovered moment to fetch only that video section. Audio still transfers, and URL support varies.
           </div>
           <button className="btn primary" onClick={() => void importUrlAudio()} disabled={importing || !url.trim() || Boolean(project.sourcePath)}>
             <Link2 size={14} /> Download audio only
           </button>
           {project.sourcePath && (
-            <div className="tiny" style={{ color: 'var(--text-3)', marginTop: 7 }}>
+            <div className="tiny" style={{ color: 'var(--text-3)', marginTop: 'var(--space-3)' }}>
               This project already has source media. Create a new project to use another URL or time range without replacing it.
             </div>
           )}
-          <div className="tiny" style={{ color: 'var(--text-3)', marginTop: 7 }}>Only download content you have the right to use.</div>
+          <div className="tiny" style={{ color: 'var(--text-3)', marginTop: 'var(--space-3)' }}>Only download content you have the right to use.</div>
         </div>
       </div>
 
@@ -366,7 +366,7 @@ export function SourceTab() {
               ))}
             </select>
           </Field>
-          <div style={{ marginTop: 10 }}>
+          <div style={{ marginTop: 'var(--space-4)' }}>
             <Field label="Max candidates" hint="How many moments the analyzer may propose.">
               <input
                 className="input"
@@ -399,7 +399,7 @@ export function SourceTab() {
             {project.sourcePath && (
               <button
                 className="btn sm"
-                style={{ marginTop: 10 }}
+                style={{ marginTop: 'var(--space-4)' }}
                 onClick={() => void api['system.revealPath']({ path: data.activeProject!.sourcePath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
               >
                 <FolderOpen size={13} /> Reveal source file

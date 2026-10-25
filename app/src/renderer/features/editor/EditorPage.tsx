@@ -1357,7 +1357,7 @@ export function EditorPage() {
   } : undefined
 
   return (
-    <div className="editor-shell">
+    <div className="editor-shell" data-density="compact">
       {/* ------------------------------------------------------- top bar -- */}
       <div className="editor-topbar">
         <div className="topbar-left">
@@ -1626,16 +1626,16 @@ export function EditorPage() {
                     </button>
                   )}
                   {playback?.verdict === 'proxy' && playback.proxyExists && (
-                    <p style={{ marginTop: 8 }}>
+                    <p style={{ marginTop: 'var(--space-3)' }}>
                       A proxy exists — reloading the preview.
                       <br />
-                      <button className="btn sm" style={{ marginTop: 6 }} onClick={() => setVideoError(null)}>
+                      <button className="btn sm" style={{ marginTop: 'var(--space-3)' }} onClick={() => setVideoError(null)}>
                         Retry playback
                       </button>
                     </p>
                   )}
                   {playback?.verdict === 'native' && (
-                    <p style={{ marginTop: 8, color: 'var(--text-3)' }}>
+                    <p style={{ marginTop: 'var(--space-3)', color: 'var(--text-3)' }}>
                       Rendering and silence detection still work — only in-app preview playback is affected.
                     </p>
                   )}
@@ -2034,36 +2034,36 @@ function TextLayerInspector(props: {
     {props.layers.length > 0 && <div className="stack xs">{props.layers.map((item, index) => <button key={item.id} className={`btn sm ${item.id === props.selectedId ? 'primary' : ''}`} onClick={() => props.onSelect(item)}>{index + 1}. {item.text || 'Untitled text'} · {formatClock(item.startTime, true)}–{formatClock(item.endTime, true)}</button>)}</div>}
     {!layer ? <div className="field-hint">Add a text layer, then drag it in the preview. Double-click its preview text to edit it.</div> : <>
       <Field label="Text"><textarea className="textarea" rows={3} maxLength={2000} value={layer.text} onChange={(e) => props.onChange(layer.id, { text: e.target.value })} /></Field>
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label="Start (sec)"><input className="input" type="number" step="0.1" value={layer.startTime} onChange={(e) => props.onChange(layer.id, { startTime: Math.min(Number(e.target.value), layer.endTime - 0.1) })} /></Field>
         <Field label="End (sec)"><input className="input" type="number" step="0.1" value={layer.endTime} onChange={(e) => props.onChange(layer.id, { endTime: Math.max(Number(e.target.value), layer.startTime + 0.1) })} /></Field>
       </div>
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label={`X · ${Math.round(layer.x * 100)}%`}><input type="range" min="0" max="1" step="0.01" value={layer.x} onChange={(e) => props.onChange(layer.id, { x: Number(e.target.value) })} /></Field>
         <Field label={`Y · ${Math.round(layer.y * 100)}%`}><input type="range" min="0" max="1" step="0.01" value={layer.y} onChange={(e) => props.onChange(layer.id, { y: Number(e.target.value) })} /></Field>
       </div>
       <Field label={`Size · ${layer.fontSize}px`}><input type="range" min="16" max="160" step="1" value={layer.fontSize} onChange={(e) => props.onChange(layer.id, { fontSize: Number(e.target.value) })} /></Field>
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label="Font"><select className="select" value={layer.fontFamily} onChange={(e) => { const family = e.target.value; const first = CAPTION_FONTS.find((face) => face.family === family)!; props.onChange(layer.id, { fontFamily: family, fontWeight: first.weight }) }}>{[...new Set(CAPTION_FONTS.map((face) => face.family))].map((family) => <option key={family}>{family}</option>)}</select></Field>
         <Field label="Weight"><select className="select" value={layer.fontWeight} onChange={(e) => props.onChange(layer.id, { fontWeight: Number(e.target.value) })}>{CAPTION_FONTS.filter((face) => face.family === layer.fontFamily).map((face) => <option key={`${face.weight}-${face.file}`} value={face.weight}>{face.style} ({face.weight})</option>)}</select></Field>
       </div>
-      <div className="row" style={{ gap: 12 }}>
+      <div className="row" style={{ gap: 'var(--space-4)' }}>
         <label className="tiny">Text color <input type="color" className="color-input" value={layer.color} onChange={(e) => props.onChange(layer.id, { color: e.target.value })} /></label>
         <label className="tiny">Box color <input type="color" className="color-input" value={layer.backgroundColor} onChange={(e) => props.onChange(layer.id, { backgroundColor: e.target.value })} /></label>
         <Field label={`Scale · ${layer.scale.toFixed(2)}×`}><input type="range" min="0.25" max="3" step="0.05" value={layer.scale} onChange={(e) => props.onChange(layer.id, { scale: Number(e.target.value) })} /></Field>
       </div>
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label={`Rotation · ${Math.round(layer.rotation)}°`}><input type="range" min="-180" max="180" step="1" value={layer.rotation} onChange={(e) => props.onChange(layer.id, { rotation: Number(e.target.value) })} /></Field>
         <Field label={`Opacity · ${Math.round(layer.opacity * 100)}%`}><input type="range" min="0" max="1" step="0.05" value={layer.opacity} onChange={(e) => props.onChange(layer.id, { opacity: Number(e.target.value) })} /></Field>
       </div>
       <Field label={`Background · ${Math.round(layer.backgroundOpacity * 100)}%`}><input type="range" min="0" max="1" step="0.05" value={layer.backgroundOpacity} onChange={(e) => props.onChange(layer.id, { backgroundOpacity: Number(e.target.value) })} /></Field>
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label="Animate in"><select className="select" value={layer.animationIn} onChange={(e) => props.onChange(layer.id, { animationIn: e.target.value as TextLayer['animationIn'] })}>{['none','fade','rise','pop','slide'].map((a) => <option key={a}>{a}</option>)}</select></Field>
         <Field label="Animate out"><select className="select" value={layer.animationOut} onChange={(e) => props.onChange(layer.id, { animationOut: e.target.value as TextLayer['animationOut'] })}>{['none','fade','slide'].map((a) => <option key={a}>{a}</option>)}</select></Field>
       </div>
-      <div className="row" style={{ gap: 6 }}><button className="btn sm" onClick={props.onAddKeyframe}>Add keyframe at {formatClock(props.currentTime, true)}</button><button className="btn danger sm" onClick={props.onDelete}><Trash2 size={12} /> Delete</button></div>
+      <div className="row" style={{ gap: 'var(--space-3)' }}><button className="btn sm" onClick={props.onAddKeyframe}>Add keyframe at {formatClock(props.currentTime, true)}</button><button className="btn danger sm" onClick={props.onDelete}><Trash2 size={12} /> Delete</button></div>
       <div className="field-hint">Keyframes animate position, scale, rotation, and opacity between saved points.</div>
-      {layer.keyframes.map((keyframe) => <div key={keyframe.time} className="row" style={{ gap: 5 }}><button className="btn ghost sm" onClick={() => props.onSeek(keyframe.time)}>◆ {formatClock(keyframe.time, true)} · X {Math.round(keyframe.x * 100)}% · Y {Math.round(keyframe.y * 100)}% · {keyframe.scale.toFixed(2)}×</button><button className="btn ghost sm" aria-label="Delete text keyframe" onClick={() => props.onChange(layer.id, { keyframes: layer.keyframes.filter((item) => item.time !== keyframe.time) })}>×</button></div>)}
+      {layer.keyframes.map((keyframe) => <div key={keyframe.time} className="row" style={{ gap: 'var(--space-2)' }}><button className="btn ghost sm" onClick={() => props.onSeek(keyframe.time)}>◆ {formatClock(keyframe.time, true)} · X {Math.round(keyframe.x * 100)}% · Y {Math.round(keyframe.y * 100)}% · {keyframe.scale.toFixed(2)}×</button><button className="btn ghost sm" aria-label="Delete text keyframe" onClick={() => props.onChange(layer.id, { keyframes: layer.keyframes.filter((item) => item.time !== keyframe.time) })}>×</button></div>)}
     </>}
   </div>
 }
@@ -2093,7 +2093,7 @@ function CameraPanel(props: {
   const hasKeys = props.clip.cameraKeyframes.length > 0
   return (
     <div className="stack sm">
-      <div className="row" style={{ gap: 6 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <button className={`btn sm ${props.editing ? 'primary' : ''}`} onClick={props.onToggleEditing} style={{ flex: 1 }}>
           <Crop size={12} /> {props.editing ? 'Done framing' : 'Edit camera frame'}
         </button>
@@ -2102,7 +2102,7 @@ function CameraPanel(props: {
         </button>
       </div>
       {props.editing && <div className="field-hint">Drag the outlined frame to position it. Drag its lower-right handle to change scale. These edits create or update a keyframe here.</div>}
-      <div className="row" style={{ gap: 6 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <button className="btn ghost sm" onClick={props.onPrevious} disabled={!hasKeys} title="Previous camera keyframe">Previous</button>
         <button className="btn ghost sm" onClick={props.onNext} disabled={!hasKeys} title="Next camera keyframe">Next</button>
         <span className="tiny mono" style={{ marginLeft: 'auto' }}>{hasKeys ? `${props.clip.cameraKeyframes.length} keys` : 'Static camera'}</span>
@@ -2121,7 +2121,7 @@ function CameraPanel(props: {
           <input type="range" min={-45} max={45} step={1} value={value.rotation} onChange={(e) => props.onChange({ rotation: Number(e.target.value) })} />
         </Field>
       </div>
-      <div className="row" style={{ gap: 6 }}>
+      <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label="Keyframe time (source seconds)">
           <input className="input mono" type="number" min={props.clip.startTime} max={props.clip.endTime} step={0.01} value={(props.selectedKeyframe?.time ?? props.currentTime).toFixed(3)} disabled={!props.selectedKeyframe} onChange={(e) => props.onChangeTime(Number(e.target.value))} />
         </Field>
@@ -2136,7 +2136,7 @@ function CameraPanel(props: {
           </select>
         </Field>
       </div>
-      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+      <div className="row" style={{ gap: 'var(--space-3)', flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={props.onDuplicate} disabled={!hasKeys}>Duplicate</button>
         <button className="btn ghost sm" onClick={props.onCopy}><Copy size={11} /> Copy camera</button>
         <button className="btn ghost sm" onClick={props.onPaste} disabled={!props.canPaste} title={props.canPaste ? 'Paste copied camera position, scale, rotation and interpolation' : 'Copy a camera keyframe first'}>Paste camera</button>
@@ -2239,7 +2239,7 @@ function TrimPanel(props: {
   }
   return (
     <>
-      <div className="row" style={{ marginBottom: 8 }}>
+      <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
         <button
           className="btn sm"
           style={{ flex: 1 }}
@@ -2260,7 +2260,7 @@ function TrimPanel(props: {
       <div className="row">
         <div className="field" style={{ flex: 1 }}>
           <label className="field-label">Start (set with <span className="kbd">I</span>)</label>
-          <div className="row" style={{ gap: 4 }}>
+          <div className="row" style={{ gap: 'var(--space-2)' }}>
             <button className="btn sm" onClick={() => nudge('startTime', -0.5)} aria-label="Nudge start earlier">−0.5s</button>
             <input
               className="input"
@@ -2280,7 +2280,7 @@ function TrimPanel(props: {
       <div className="row">
         <div className="field" style={{ flex: 1 }}>
           <label className="field-label">End (set with <span className="kbd">O</span>)</label>
-          <div className="row" style={{ gap: 4 }}>
+          <div className="row" style={{ gap: 'var(--space-2)' }}>
             <button className="btn sm" onClick={() => nudge('endTime', -0.5)} aria-label="Nudge end earlier">−0.5s</button>
             <input
               className="input"
@@ -2298,13 +2298,13 @@ function TrimPanel(props: {
       </div>
 
       <div className="divider" />
-      <div className="section-title" style={{ marginBottom: 8 }}>Captions in range <span style={{ color: 'var(--text-3)', textTransform: 'none', letterSpacing: 0 }}>(click to seek)</span></div>
+      <div className="section-title" style={{ marginBottom: 'var(--space-3)' }}>Captions in range <span style={{ color: 'var(--text-3)', textTransform: 'none', letterSpacing: 0 }}>(click to seek)</span></div>
       <div style={{ maxHeight: 220, overflowY: 'auto' }} className="stack sm">
         {props.cues.map((cue) => (
           <button
             key={cue.key}
             className="btn ghost"
-            style={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 12, padding: '4px 8px', height: 'auto' }}
+            style={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 12, padding: 'var(--space-2) var(--space-3)', height: 'auto' }}
             onClick={() => props.onSeek(cue.startTime + 0.05)}
             title="Seek to this caption"
           >
@@ -2366,10 +2366,10 @@ function SilencePanel(props: {
 
   return (
     <>
-      <div className="field-hint" style={{ marginBottom: 8 }}>
+      <div className="field-hint" style={{ marginBottom: 'var(--space-3)' }}>
         Detected pauses stay editable. Drag a red timeline edge to adjust the cut; preview and render use the current boundaries.
       </div>
-      <div className="row" style={{ marginBottom: 8 }}>
+      <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('auto')}>
           {detecting === 'auto' ? <Spinner size={11} /> : <AudioLines size={12} />} Detect (standard)
         </button>
@@ -2379,7 +2379,7 @@ function SilencePanel(props: {
       </div>
       {cuts.length > 0 ? (
         <>
-          <div className="row tiny" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
+          <div className="row tiny" style={{ justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
             <span><strong style={{ color: 'var(--text-2)' }}>{cuts.length}</strong> detected pauses ? <strong style={{ color: 'var(--danger)' }}>-{cuts.filter((c) => c.status !== 'kept').reduce((sum, c) => sum + (c.end - c.start), 0).toFixed(1)}s</strong> removed</span>
             <button className="btn ghost sm" onClick={() => props.onCutsChanged(cuts.map((c) => ({ ...c, status: 'kept' })))}><RotateCcw size={11} /> Restore all</button>
           </div>
@@ -2390,16 +2390,16 @@ function SilencePanel(props: {
               const isRemoved = c.status !== 'kept'
               const selected = props.selectedIndex === i
               return (
-                <div key={`${detectedStart}-${i}`} className="panel" style={{ padding: 8, borderColor: selected ? 'var(--accent)' : undefined }}>
+                <div key={`${detectedStart}-${i}`} className="panel" style={{ padding: 'var(--space-3)', borderColor: selected ? 'var(--accent)' : undefined }}>
                   <button className="btn ghost sm" style={{ width: '100%', justifyContent: 'space-between' }} onClick={() => props.onSelect(i)}>
                     <span className="mono">Pause {formatClock(detectedStart, true)} - {formatClock(detectedEnd, true)}</span>
                     <span className="tiny" style={{ color: isRemoved ? 'var(--danger)' : 'var(--text-3)' }}>{isRemoved ? 'Removed' : 'Kept'}</span>
                   </button>
-                  <div className="tiny muted" style={{ padding: '2px 5px 6px' }}>
+                  <div className="tiny muted" style={{ padding: 'var(--space-1) var(--space-2) var(--space-3)' }}>
                     Detected {(detectedEnd - detectedStart).toFixed(2)}s; removing {isRemoved ? (c.end - c.start).toFixed(2) : '0.00'}s; keeping {(detectedEnd - detectedStart - (isRemoved ? c.end - c.start : 0)).toFixed(2)}s
                   </div>
                   {selected && <>
-                    <div className="row" style={{ marginBottom: 6 }}>
+                    <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
                       <button className="btn ghost sm" onClick={() => props.onPreviewRange(Math.max(clip.startTime, detectedStart - 0.7), detectedStart)}>Play before</button>
                       <button className="btn ghost sm" onClick={() => props.onPreviewRange(detectedStart, detectedEnd)}>Play pause</button>
                       <button className="btn ghost sm" onClick={() => props.onPreviewRange(detectedEnd, Math.min(clip.endTime, detectedEnd + 0.7))}>Play after</button>
@@ -2418,7 +2418,7 @@ function SilencePanel(props: {
                         }} />
                       </label>
                     </div>}
-                    <button className="btn sm" style={{ marginTop: 6, width: '100%' }} onClick={() => props.onCutsChanged(cuts.map((x, j) => j === i ? { ...x, status: isRemoved ? 'kept' : 'removed' } : x))}>
+                    <button className="btn sm" style={{ marginTop: 'var(--space-3)', width: '100%' }} onClick={() => props.onCutsChanged(cuts.map((x, j) => j === i ? { ...x, status: isRemoved ? 'kept' : 'removed' } : x))}>
                       {isRemoved ? 'Restore this pause' : 'Remove pause'}
                     </button>
                   </>}
@@ -2573,7 +2573,7 @@ function CaptionsPanel(props: {
             <button
               key="none"
               className={`btn sm ${clip.captionStyleId === 'none' ? 'primary' : ''}`}
-              style={{ flexDirection: 'column', padding: '6px 4px', height: 68, gap: 2 }}
+              style={{ flexDirection: 'column', padding: 'var(--space-3) var(--space-2)', height: 68, gap: 'var(--space-1)' }}
               onClick={() => props.updateClip({ captionStyleId: 'none' })}
               title="Render without captions"
             >
@@ -2584,7 +2584,7 @@ function CaptionsPanel(props: {
             <div key={s.id} className="cap-template-card">
               <button
                 className={`btn sm ${clip.captionStyleId === s.id ? 'primary' : ''}`}
-                style={{ flexDirection: 'column', padding: '3px', height: 68, gap: 2, alignItems: 'stretch' }}
+                style={{ flexDirection: 'column', padding: 'var(--space-2)', height: 68, gap: 'var(--space-1)', alignItems: 'stretch' }}
                 onClick={() => applyTemplate(s as import('@shared/constants').CaptionStylePreset)}
                 title={s.description ?? ''}
               >
@@ -2606,7 +2606,7 @@ function CaptionsPanel(props: {
         </summary>
         <div className="inspector-body">
         <input className="input" value={fontSearch} onChange={(e) => setFontSearch(e.target.value)} placeholder="Search fonts" aria-label="Search caption fonts" />
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 'var(--space-3)' }}>
           <label className="tiny">Font
             <select className="input" value={overrides.fontFamily ?? style.fontFamily ?? 'Inter'} onChange={(e) => {
               const family = e.target.value
@@ -2629,7 +2629,7 @@ function CaptionsPanel(props: {
           <button className="btn sm" onClick={savePreset}>Save as preset</button>
         </div>
 <div className="field-hint">Fonts are bundled under the SIL Open Font License. The weight list only shows available font files.</div>
-        <div className="row" style={{ gap: 6 }}>
+        <div className="row" style={{ gap: 'var(--space-3)' }}>
           <button className="btn sm" onClick={() => { localStorage.setItem('clipwright.captionStyleClipboard', JSON.stringify({ id: clip.captionStyleId, overrides })); setCanPasteStyle(true) }}>Copy style</button>
           <button className="btn sm" disabled={!canPasteStyle} title={canPasteStyle ? 'Paste the copied caption style' : 'Copy a caption style first'} onClick={() => {
             try {
@@ -2695,11 +2695,11 @@ function CaptionsPanel(props: {
             onChange={(v) => setOverride({ uppercase: v })}
           />
 
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 'var(--space-3)' }}>
             <Field label="Capitalization"><select className="select" value={overrides.capitalization ?? style.capitalization ?? 'original'} onChange={(e) => setOverride({ capitalization: e.target.value as NonNullable<CaptionOverrides['capitalization']> })}>{['original','uppercase','lowercase','sentence'].map((value) => <option key={value}>{value}</option>)}</select></Field>
             <Field label="Word emphasis"><select className="select" value={overrides.emphasisBehavior ?? style.emphasisBehavior ?? 'all'} onChange={(e) => setOverride({ emphasisBehavior: e.target.value as NonNullable<CaptionOverrides['emphasisBehavior']> })}><option value="all">Spoken word</option><option value="keywords">Keywords</option><option value="none">Off</option></select></Field>
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 'var(--space-3)' }}>
             <Field label="Animation in"><select className="select" value={overrides.animationIn ?? style.animationIn ?? 'none'} onChange={(e) => setOverride({ animationIn: e.target.value as NonNullable<CaptionOverrides['animationIn']> })}>{['none','fade','rise','pop','slide'].map((value) => <option key={value}>{value}</option>)}</select></Field>
             <Field label="Animation out"><select className="select" value={overrides.animationOut ?? style.animationOut ?? 'none'} onChange={(e) => setOverride({ animationOut: e.target.value as NonNullable<CaptionOverrides['animationOut']> })}>{['none','fade','slide'].map((value) => <option key={value}>{value}</option>)}</select></Field>
             <Field label="Word animation"><select className="select" value={overrides.wordAnimation ?? style.wordAnimation ?? 'none'} onChange={(e) => setOverride({ wordAnimation: e.target.value as NonNullable<CaptionOverrides['wordAnimation']> })}>{['none','highlight','pop','bounce','typewriter'].map((value) => <option key={value}>{value}</option>)}</select></Field>
@@ -2713,8 +2713,8 @@ function CaptionsPanel(props: {
               <Tags size={12} /> Colours, outline &amp; alignment <ChevronRight size={13} className="chev" />
             </summary>
             <div className="inspector-body cap-group">
-          <div className="row" style={{ gap: 10 }}>
-            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div className="row" style={{ gap: 'var(--space-4)' }}>
+            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               Text
               <input
                 type="color"
@@ -2723,7 +2723,7 @@ function CaptionsPanel(props: {
                 onChange={(e) => setOverride({ textColor: e.target.value })}
               />
             </label>
-            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               Highlight
               <input
                 type="color"
@@ -2732,12 +2732,12 @@ function CaptionsPanel(props: {
                 onChange={(e) => setOverride({ highlightColor: e.target.value })}
               />
             </label>
-            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Stroke<input type="color" className="color-input" value={overrides.outlineColor ?? style.outlineColor} onChange={(e) => setOverride({ outlineColor: e.target.value })} /></label>
-            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Box<input type="color" className="color-input" value={overrides.boxColor ?? style.boxColor} onChange={(e) => setOverride({ boxColor: e.target.value })} /></label>
+            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>Stroke<input type="color" className="color-input" value={overrides.outlineColor ?? style.outlineColor} onChange={(e) => setOverride({ outlineColor: e.target.value })} /></label>
+            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>Box<input type="color" className="color-input" value={overrides.boxColor ?? style.boxColor} onChange={(e) => setOverride({ boxColor: e.target.value })} /></label>
             {(overrides.textColor !== undefined || overrides.highlightColor !== undefined) && (
               <button
                 className="btn ghost sm"
-                style={{ padding: '2px 6px' }}
+                style={{ padding: 'var(--space-1) var(--space-3)' }}
                 onClick={() => {
                   const next = { ...overrides }
                   delete next.textColor
@@ -2762,7 +2762,7 @@ function CaptionsPanel(props: {
           <Field label={`Stroke opacity · ${Math.round((overrides.strokeOpacity ?? style.strokeOpacity ?? 1) * 100)}%`}><input type="range" min="0" max="1" step="0.05" value={overrides.strokeOpacity ?? style.strokeOpacity ?? 1} onChange={(e) => setOverride({ strokeOpacity: Number(e.target.value) })} /></Field>
           <Field label={`Shadow opacity · ${Math.round((overrides.shadowOpacity ?? style.shadowOpacity ?? 0.75) * 100)}%`}><input type="range" min="0" max="1" step="0.05" value={overrides.shadowOpacity ?? style.shadowOpacity ?? 0.75} onChange={(e) => setOverride({ shadowOpacity: Number(e.target.value) })} /></Field>
           <Field label={`Background corner radius · ${overrides.cornerRadius ?? style.cornerRadius ?? 0}px`}><input type="range" min="0" max="32" step="1" value={overrides.cornerRadius ?? style.cornerRadius ?? 0} onChange={(e) => setOverride({ cornerRadius: Number(e.target.value) })} /></Field>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row" style={{ gap: 'var(--space-3)' }}>
             <Field label="Alignment"><select className="select" value={overrides.alignment ?? style.alignment ?? 'center'} onChange={(e) => setOverride({ alignment: e.target.value as NonNullable<CaptionOverrides['alignment']> })}>{['left','center','right'].map((value) => <option key={value}>{value}</option>)}</select></Field>
             <Field label="Safe position"><select className="select" value={overrides.safeAreaPosition ?? style.safeAreaPosition ?? 'custom'} onChange={(e) => { const position = e.target.value as NonNullable<CaptionOverrides['safeAreaPosition']>; const y = ({ top: 0.16, 'upper-center': 0.32, center: 0.5, 'lower-center': 0.74, bottom: 0.84, custom: overrides.positionY ?? style.positionY } as const)[position]; setOverride({ safeAreaPosition: position, positionY: y }) }}>{['top','upper-center','center','lower-center','bottom','custom'].map((value) => <option key={value}>{value}</option>)}</select></Field>
           </div>
@@ -2826,7 +2826,7 @@ const TemplatePreview = React.memo(function TemplatePreview(props: {
           paintOrder: 'stroke fill',
           textShadow: s.shadow > 0 ? `0 1px 3px rgba(0,0,0,${s.shadowOpacity ?? 0.8})` : undefined,
           background: boxOpacity > 0 ? `rgba(${parseInt(s.boxColor.slice(1, 3), 16)},${parseInt(s.boxColor.slice(3, 5), 16)},${parseInt(s.boxColor.slice(5, 7), 16)},${boxOpacity})` : undefined,
-          padding: boxOpacity > 0 ? '2px 6px' : undefined,
+          padding: boxOpacity > 0 ? 'var(--space-1) var(--space-3)' : undefined,
           borderRadius: boxOpacity > 0 ? s.cornerRadius ?? 3 : undefined
         }}
       >
@@ -2882,8 +2882,8 @@ function OutputPanel(props: {
           ))}
         </select>
         {upscaling && (
-          <div className="field-hint" style={{ color: 'var(--warn)', display: 'flex', gap: 5, alignItems: 'flex-start' }}>
-            <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div className="field-hint" style={{ color: 'var(--warn)', display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+            <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: '1px' }} />
             The selected source crop is {sourceCrop?.w}×{sourceCrop?.h}px; this output will be upscaled and cannot add real detail.
           </div>
         )}
@@ -2941,7 +2941,7 @@ function OutputPanel(props: {
         <span style={{ color: 'var(--text-3)' }}>Encoder</span>
         <span>H.264 + AAC 48 kHz</span>
       </div>
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row" style={{ marginTop: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} onClick={() => props.updateClip({ outputResolution: '1080p', outputQuality: 'standard', outputFps: 'source' })}>
           <RotateCcw size={11} /> Reset
         </button>
@@ -3007,7 +3007,7 @@ function CropPanel(props: {
   return (
     <>
       <Field label="Composition aspect ratio">
-        <div className="row" style={{ flexWrap: 'wrap', gap: 5 }}>
+        <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--space-2)' }}>
           {(['9:16', '16:9', '1:1', '4:5', '4:3', '21:9'] as const).map((id) => (
             <button key={id} className={`btn sm${clip.aspectRatio === id ? ' primary' : ''}`} onClick={() => setAspect(id)} aria-pressed={clip.aspectRatio === id}>{id}</button>
           ))}
@@ -3015,7 +3015,7 @@ function CropPanel(props: {
           <button className="btn sm" onClick={setOriginalAspect}>Original</button>
         </div>
         <div className="field-hint">The canvas changes shape; the source is scaled proportionally and cropped without distortion.</div>
-        {clip.aspectRatio === 'custom' && <div className="row" style={{ gap: 6, marginTop: 6 }}>
+        {clip.aspectRatio === 'custom' && <div className="row" style={{ gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
           <input className="input mono" aria-label="Custom aspect ratio" placeholder="e.g. 2.39:1 or 1080:1920" value={customText} onChange={(event) => setCustomText(event.target.value)} onBlur={applyCustomAspect} onKeyDown={(event) => { if (event.key === 'Enter') { applyCustomAspect(); event.currentTarget.blur() } }} />
           <button className="btn sm" onClick={applyCustomAspect}>Apply</button>
         </div>}
@@ -3023,7 +3023,7 @@ function CropPanel(props: {
       </Field>
 
       <Field label="Source fit">
-        <div className="row" style={{ gap: 6 }}>
+        <div className="row" style={{ gap: 'var(--space-3)' }}>
           <button className={`btn sm${clip.fitMode !== 'fit' ? ' primary' : ''}`} onClick={() => props.updateClip({ fitMode: 'fill' })}>Fill canvas</button>
           <button className={`btn sm${clip.fitMode === 'fit' ? ' primary' : ''}`} onClick={() => props.updateClip({ fitMode: 'fit', zoom: 1, cropX: 0.5, cropY: 0.5 })}>Fit entire source</button>
         </div>
@@ -3037,7 +3037,7 @@ function CropPanel(props: {
         </Field>
       )}
 
-      <button className={`btn sm${props.showSafeArea ? ' active' : ''}`} onClick={props.onToggleSafeArea} style={{ marginBottom: 8 }} aria-pressed={props.showSafeArea}>
+      <button className={`btn sm${props.showSafeArea ? ' active' : ''}`} onClick={props.onToggleSafeArea} style={{ marginBottom: 'var(--space-3)' }} aria-pressed={props.showSafeArea}>
         {props.showSafeArea ? 'Hide social safe-area guides' : 'Show social safe-area guides'}
       </button>
 
@@ -3051,7 +3051,7 @@ function CropPanel(props: {
         <div className="field-hint">Manual crop is non-destructive. Drag the preview to move the crop window; framing and tracking remain separate from overlays and captions.</div>
       </Field>
 
-      {clip.fitMode !== 'fit' && <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+      {clip.fitMode !== 'fit' && <div className="row" style={{ gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
         <button
           className={`btn sm${props.cropEditing ? ' primary' : ''}`}
           onClick={props.onToggleCropEditing}
@@ -3063,7 +3063,7 @@ function CropPanel(props: {
         {props.cropEditing && <span className="tiny muted">Drag inside to move; handles resize with the ratio locked.</span>}
       </div>}
 
-      <div className="stack sm" style={{ marginBottom: 10 }}>
+      <div className="stack sm" style={{ marginBottom: 'var(--space-4)' }}>
         <button className={`btn sm ${props.selectingSubject ? 'primary' : ''}`} onClick={props.selectingSubject ? props.onCancelSubjectSelection : props.onBeginSubjectSelection}>
           {props.selectingSubject ? <X size={12} /> : <Target size={12} />}
           {props.selectingSubject ? 'Cancel selection' : 'Select person or object'}
@@ -3081,7 +3081,7 @@ function CropPanel(props: {
 
       {clip.cropMode === 'manual' && clip.fitMode !== 'fit' && (
         <>
-          <div className="field-hint" style={{ marginBottom: 8 }}>Drag the source in the preview or use these position controls. X and Y stay saved independently.</div>
+          <div className="field-hint" style={{ marginBottom: 'var(--space-3)' }}>Drag the source in the preview or use these position controls. X and Y stay saved independently.</div>
           <Field label={`Position X · ${Math.round(clip.cropX * 100)}%`}>
             <input type="range" min={0} max={1} step={0.005} value={clip.cropX} onChange={(e) => cropPosition({ cropX: parseFloat(e.target.value) })} />
           </Field>
@@ -3091,7 +3091,7 @@ function CropPanel(props: {
           <Field label={`Zoom - ${clip.zoom.toFixed(2)}x`}>
             <input type="range" min={1} max={3} step={0.05} value={clip.zoom} onChange={(e) => cropPosition({ zoom: parseFloat(e.target.value) })} />
           </Field>
-          <div className="row" style={{ gap: 6 }}>
+          <div className="row" style={{ gap: 'var(--space-3)' }}>
             <button className="btn sm" onClick={() => props.updateClip({ cropMode: 'center', cropX: 0.5, cropY: 0.5, zoom: 1, fitMode: 'fill' })}><RotateCcw size={11} /> Reset crop</button>
             <button className="btn sm" onClick={() => props.updateClip({ cropX: 0.5, cropY: 0.5, zoom: 1, cameraKeyframes: [], trackingKeyframes: [], fitMode: 'fill' })}>Reset all framing</button>
           </div>

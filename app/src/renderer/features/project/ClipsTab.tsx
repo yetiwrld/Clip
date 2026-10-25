@@ -59,7 +59,7 @@ export function ClipsTab() {
 
   if (data.clips.length === 0) {
     return (
-      <div className="empty" style={{ padding: '72px 20px' }}>
+      <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
         <Scissors size={28} className="empty-icon" />
         <div style={{ fontWeight: 600, fontSize: 13.5 }}>No clips yet</div>
         <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
@@ -78,7 +78,7 @@ export function ClipsTab() {
     <div className="stack">
       {error ? <ErrorBox error={error} /> : null}
       {renderable.length > 0 && (
-        <div className="row" style={{ padding: '0 8px 8px' }}>
+        <div className="row" style={{ padding: '0 var(--space-3) var(--space-3)' }}>
           <span className="tiny">{renderable.length} rendered clip{renderable.length === 1 ? '' : 's'} ready to export</span>
           <span style={{ flex: 1 }} />
           <button className="btn sm" onClick={() => void exportClips(renderable.map((c) => c.id))} disabled={exporting}>
@@ -148,7 +148,7 @@ function ClipRow({
 
       <div style={{ minWidth: 0 }}>
         <div className="clip-title">{clip.title || <span className="muted">Untitled clip</span>}</div>
-        <div className="row wrap mono" style={{ marginTop: 4, gap: 8, fontSize: 11, color: 'var(--text-3)' }}>
+        <div className="row wrap mono" style={{ marginTop: 'var(--space-2)', gap: 'var(--space-3)', fontSize: 11, color: 'var(--text-3)' }}>
           <span>{formatClock(clip.startTime)} → {formatClock(clip.endTime)}</span>
           <span>{`${Math.round(clip.endTime - clip.startTime)}s`}</span>
           <span title={`Caption style: ${style.label}`}>{style.label}</span>
@@ -162,13 +162,13 @@ function ClipRow({
             : <span style={{ color: 'var(--text-3)' }}>No description yet — generate or write one in the editor.</span>}
         </div>
         {activeRender && (
-          <div style={{ marginTop: 7, maxWidth: 320 }}>
+          <div style={{ marginTop: 'var(--space-3)', maxWidth: 320 }}>
             <ProgressBar value={activeRender.progress} />
-            <div className="tiny" style={{ marginTop: 3 }}>Rendering · {Math.round(activeRender.progress * 100)}%</div>
+            <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>Rendering · {Math.round(activeRender.progress * 100)}%</div>
           </div>
         )}
         {failedRender && !activeRender && !doneRender && failedRender.error && (
-          <div style={{ marginTop: 7, maxWidth: 520 }}>
+          <div style={{ marginTop: 'var(--space-3)', maxWidth: 520 }}>
             <ErrorBox
               error={{ message: failedRender.error.message, hint: failedRender.error.hint, code: failedRender.error.code, details: failedRender.error.details }}
               onRetry={() => void api['renders.retry']({ id: failedRender.id })}

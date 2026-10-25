@@ -35,7 +35,7 @@ export function SettingsPage() {
   ]
 
   return (
-    <div className="page">
+    <div className="page" data-density="compact">
       <div className="page-header">
         <div>
           <div className="page-title">Settings</div>
@@ -186,7 +186,7 @@ function AiSection() {
           <ShieldCheck size={14} color="var(--success)" />
           <strong style={{ fontSize: 13 }}>Privacy — exactly what leaves this machine</strong>
         </div>
-        <div className="field-hint" style={{ lineHeight: 1.7, marginTop: 6 }}>
+        <div className="field-hint" style={{ lineHeight: 1.7, marginTop: 'var(--space-3)' }}>
           Import, inspection, thumbnails, reframing, caption burn-in and rendering: <strong>always local</strong>.
           Local Whisper transcription: <strong>always local</strong>. Cloud transcription (only if you select it): the extracted
           audio track is sent to the endpoint you configured. AI analysis and metadata generation (only if you select a provider):
@@ -224,7 +224,7 @@ function ProviderForm(props: {
       </div>
       <div className="tiny">{props.providers}</div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
         <Field
           label={props.providerId === 'anthropic' ? 'Base URL (blank = official API)' : 'Base URL (e.g. https://api.gonkarouter.io/v1)'}
           hint={props.providerId === 'anthropic' ? undefined : 'OpenAI-compatible chat endpoint. Usually ends with /v1 — /chat/completions is appended automatically.'}
@@ -270,7 +270,7 @@ function ProviderForm(props: {
         <div className="field-hint">Keys are stored in a protected local file inside the workspace — never in the database, logs, or diagnostics.</div>
       </Field>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
         <Field label={`Temperature — ${local.temperature}`}>
           <input type="range" min={0} max={1} step={0.05} defaultValue={local.temperature}
             onChange={(e) => setLocal({ ...local, temperature: parseFloat(e.target.value) })}
@@ -360,7 +360,7 @@ function TranscriptionSection() {
         <div className="error-box">
           <div className="error-title">{local.message}</div>
           <div className="field-hint">After installing, press Re-check — no app restart needed.</div>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 'var(--space-3)' }}>
             <button className="btn sm" onClick={() => void recheck()} disabled={rechecking}>
               {rechecking ? <Spinner size={11} /> : <RefreshCw size={12} />} {rechecking ? 'Checking…' : 'Re-check'}
             </button>
@@ -377,7 +377,7 @@ function TranscriptionSection() {
       <Field label="Language" hint="“auto” detects per video.">
         <input className="input" defaultValue={t.language} onBlur={(e) => void app.saveSettings({ transcription: { language: e.target.value } })} placeholder="auto" />
       </Field>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
         <Field label="Local Whisper model" hint="tiny/fast → medium/accurate. Downloads once, then cached offline.">
           <select className="select" value={t.whisperModel} onChange={(e) => void app.saveSettings({ transcription: { whisperModel: e.target.value } })}>
             <option value="tiny">tiny — fastest</option>
@@ -426,7 +426,7 @@ function VideoSection() {
           <option value="mixed">Mixed · 15–90s</option>
         </select>
       </Field>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
         <Field label="Default output resolution" hint="Applied to new clips; each clip can override it in the editor.">
           <select className="select" value={v.defaultResolution} onChange={(e) => void app.saveSettings({ video: { defaultResolution: e.target.value } })}>
             {RESOLUTION_PRESETS.map((r) => (
@@ -468,7 +468,7 @@ function VideoSection() {
         </select>
       </Field>
       {v.silence.mode !== 'off' && (
-        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}>
           <Field label={`Min silence — ${v.silence.minSilenceMs} ms`}>
             <input type="range" min={200} max={2000} step={50} defaultValue={v.silence.minSilenceMs}
               onMouseUp={(e) => void app.saveSettings({ video: { silence: { minSilenceMs: parseInt((e.target as HTMLInputElement).value, 10) } } })} />
@@ -646,7 +646,7 @@ function StorageSection() {
               <span className="tiny">Available to reclaim</span>
               <strong>{formatBytes(cleanupReport.reclaimableBytes)}</strong>
             </div>
-            <div className="stack" style={{ gap: 8 }}>
+            <div className="stack" style={{ gap: 'var(--space-3)' }}>
               {cleanupReport.categories.map((category) => {
                 const checked = selectedCategories.has(category.id)
                 return (
@@ -654,7 +654,7 @@ function StorageSection() {
                     key={category.id}
                     className="row"
                     style={{
-                      alignItems: 'flex-start', gap: 10, padding: 10,
+                      alignItems: 'flex-start', gap: 'var(--space-4)', padding: 'var(--space-4)',
                       border: '1px solid var(--border)', borderRadius: 8,
                       opacity: category.fileCount === 0 ? 0.55 : 1,
                       cursor: category.fileCount === 0 ? 'default' : 'pointer'
@@ -670,14 +670,14 @@ function StorageSection() {
                         else next.delete(category.id)
                         return next
                       })}
-                      style={{ marginTop: 3 }}
+                      style={{ marginTop: 'var(--space-2)' }}
                     />
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span className="row" style={{ justifyContent: 'space-between', gap: 10 }}>
+                      <span className="row" style={{ justifyContent: 'space-between', gap: 'var(--space-4)' }}>
                         <strong style={{ fontSize: 12 }}>{category.label}</strong>
                         <span className="chip">{category.fileCount} files · {formatBytes(category.bytes)}</span>
                       </span>
-                      <span className="tiny" style={{ display: 'block', marginTop: 4 }}>{category.description}</span>
+                      <span className="tiny" style={{ display: 'block', marginTop: 'var(--space-2)' }}>{category.description}</span>
                     </span>
                   </label>
                 )
@@ -725,14 +725,14 @@ function StorageSection() {
           )}
         >
           <p>This will remove up to <strong>{formatBytes(selectedBytes)}</strong> across {selectedFiles} generated file(s).</p>
-          <ul style={{ marginTop: 8, paddingLeft: 22 }}>
+          <ul style={{ marginTop: 'var(--space-3)', paddingLeft: 'var(--space-7)' }}>
             {selectedSummary.map((category) => (
-              <li key={category.id} style={{ marginBottom: 8 }}>
+              <li key={category.id} style={{ marginBottom: 'var(--space-3)' }}>
                 {category.label}: {category.fileCount} file(s), {formatBytes(category.bytes)}
                 {category.examples.length > 0 && (
-                  <details style={{ marginTop: 4 }}>
+                  <details style={{ marginTop: 'var(--space-2)' }}>
                     <summary className="tiny" style={{ cursor: 'pointer' }}>Review workspace-relative file locations</summary>
-                    <ul className="mono tiny" style={{ paddingLeft: 18, marginTop: 4, wordBreak: 'break-all' }}>
+                    <ul className="mono tiny" style={{ paddingLeft: 'var(--space-6)', marginTop: 'var(--space-2)', wordBreak: 'break-all' }}>
                       {category.examples.map((example) => <li key={example}>{example}</li>)}
                       {category.additionalFileCount > 0 && <li>and {category.additionalFileCount} more file(s)</li>}
                     </ul>
@@ -741,7 +741,7 @@ function StorageSection() {
               </li>
             ))}
           </ul>
-          <div className="field-hint" style={{ marginTop: 12 }}>
+          <div className="field-hint" style={{ marginTop: 'var(--space-4)' }}>
             The app will rescan immediately before deleting and abort if the reviewed file set changed. Active project jobs,
             original media, final renders and exports are protected by the cleanup allowlist.
           </div>

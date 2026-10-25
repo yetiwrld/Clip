@@ -57,7 +57,7 @@ export function QueuePage() {
   const projectById = new Map(data.projects.map((p) => [p.id, p.name]))
 
   return (
-    <div className="page">
+    <div className="page" data-density="compact">
       <div className="page-header">
         <div>
           <div className="page-title">Render queue</div>
@@ -70,7 +70,7 @@ export function QueuePage() {
           <div className="queue-group-title" style={{ color: 'var(--warn)' }}>
             <History size={12} /> Interrupted processing · {interrupted.length}
           </div>
-          <div className="tiny" style={{ padding: '6px 6px 8px', maxWidth: 560 }}>
+          <div className="tiny" style={{ padding: 'var(--space-3) var(--space-3) var(--space-3)', maxWidth: 560 }}>
             These operations were in flight when the application last closed. Nothing was corrupted — choose whether to run them
             again.
           </div>
@@ -120,7 +120,7 @@ export function QueuePage() {
         </div>
       )}
 
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 'var(--space-6)' }}>
         <RenderList />
       </div>
 

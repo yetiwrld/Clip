@@ -40,7 +40,7 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
 
   if (renders.length === 0) {
     return (
-      <div className="empty" style={{ padding: '72px 20px' }}>
+      <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
         <ListVideo size={28} className="empty-icon" />
         <div style={{ fontWeight: 600, fontSize: 13.5 }}>No renders yet</div>
         <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
@@ -120,7 +120,7 @@ function RenderRow({
       <div style={{ minWidth: 0 }}>
         <div className="q-title">
           {clipTitle || 'Clip'}
-          {render.preview && <span className="tl-badge preview" style={{ marginLeft: 6 }}>preview</span>}
+          {render.preview && <span className="tl-badge preview" style={{ marginLeft: 'var(--space-3)' }}>preview</span>}
         </div>
         {projectName && <div className="tiny" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{projectName}</div>}
       </div>
@@ -141,7 +141,7 @@ function RenderRow({
             <span className={`status ${isCompleted ? 'success' : render.status === 'cancelled' ? 'warn' : 'danger'}`}>
               <span className="dot" /> {render.status}
             </span>
-            <span className="tiny" style={{ marginLeft: 8 }}>{new Date(render.createdAt).toLocaleString()}</span>
+            <span className="tiny" style={{ marginLeft: 'var(--space-3)' }}>{new Date(render.createdAt).toLocaleString()}</span>
           </span>
         )}
       </div>

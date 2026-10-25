@@ -92,7 +92,7 @@ export function ProjectPage() {
       </div>
 
       {project.statusMessage && (project.status.endsWith('failed') || !project.hasAudio) && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 'var(--space-5)' }}>
           <ErrorBox error={{ message: project.statusMessage, code: project.status }} />
         </div>
       )}

@@ -248,7 +248,7 @@ export function TranscriptTab() {
 
   return (
     <div className="stack">
-      <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 10 }}>
+      <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 'var(--space-4)' }}>
         <div className="row wrap">
           <div className="row" style={{ flex: 1, minWidth: 200 }}>
             <Search size={14} className="muted" />
@@ -280,7 +280,7 @@ export function TranscriptTab() {
           </button>
         </div>
         {transcribing && !localTranscription && (
-          <div className="row" style={{ marginTop: 10 }}>
+          <div className="row" style={{ marginTop: 'var(--space-4)' }}>
             <Spinner />
             <span className="muted" style={{ fontSize: 12.5 }}>
               {activeTask?.message ?? 'Starting transcription…'}
@@ -291,14 +291,14 @@ export function TranscriptTab() {
           </div>
         )}
         {!localAvailable && !transcribing && (
-          <div className="tiny" style={{ marginTop: 8 }}>
+          <div className="tiny" style={{ marginTop: 'var(--space-3)' }}>
             Local Whisper unavailable here — {localDependency?.message ?? 'check Python and faster-whisper in Settings → Transcription'}, or import an
             existing SRT/VTT/JSON transcript.
           </div>
         )}
         {speakerBusy && (
           <div className="speaker-task-status" role="status" aria-live="polite">
-            <div className="row" style={{ gap: 8 }}>
+            <div className="row" style={{ gap: 'var(--space-3)' }}>
               <Spinner size={13} />
               <strong>{activeSpeakerTask?.message ?? 'Preparing local speaker analysis…'}</strong>
               <span className="tiny" style={{ marginLeft: 'auto' }}>{Math.round((activeSpeakerTask?.progress ?? 0) * 100)}%</span>
@@ -309,7 +309,7 @@ export function TranscriptTab() {
           </div>
         )}
         {data.transcript.length > 0 && !speakerAvailable && (
-          <div className="tiny" style={{ marginTop: 8 }}>
+          <div className="tiny" style={{ marginTop: 'var(--space-3)' }}>
             Local speaker grouping unavailable — {speakerDependency?.fixHint ?? speakerDependency?.message ?? 'install the optional resemblyzer package'}.
             You can still assign and rename any existing transcript speaker labels.
           </div>
@@ -331,7 +331,7 @@ export function TranscriptTab() {
       )}
 
       {data.transcript.length === 0 && !transcribing ? (
-        <div className="empty" style={{ padding: '72px 20px' }}>
+        <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
           <FileText size={28} className="empty-icon" />
           <div style={{ fontWeight: 600, fontSize: 13.5 }}>{project.hasAudio ? 'No transcript yet' : 'This video has no audio track'}</div>
           <div className="muted" style={{ maxWidth: 420, fontSize: 12.5, lineHeight: 1.55 }}>
@@ -342,13 +342,13 @@ export function TranscriptTab() {
         </div>
       ) : data.transcript.length === 0 && localTranscription ? null : (
         <div className="grid" style={{ gridTemplateColumns: 'minmax(260px, 380px) minmax(0, 1fr)', alignItems: 'start' }}>
-          <div className="panel" style={{ padding: 10, position: 'sticky', top: 0 }}>
+          <div className="panel" style={{ padding: 'var(--space-4)', position: 'sticky', top: 0 }}>
             {project.sourceMode === 'audio-first' ? (
               <audio
                 ref={audioRef}
                 src={project.sourcePath ? mediaUrl(project.sourcePath) : undefined}
                 controls
-                style={{ width: '100%', marginTop: 16 }}
+                style={{ width: '100%', marginTop: 'var(--space-5)' }}
                 preload="metadata"
               />
             ) : (
@@ -360,15 +360,15 @@ export function TranscriptTab() {
                 preload="metadata"
               />
             )}
-            <div className="row" style={{ justifyContent: 'space-between', marginTop: 8, padding: '0 2px' }}>
+            <div className="row" style={{ justifyContent: 'space-between', marginTop: 'var(--space-3)', padding: '0 var(--space-1)' }}>
               <span className="tiny">{formatClock(currentTime)}</span>
-              <label className="row tiny" style={{ gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+              <label className="row tiny" style={{ gap: 'var(--space-3)', cursor: 'pointer', userSelect: 'none' }}>
                 <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Follow playback
               </label>
             </div>
           </div>
 
-          <div className="panel" ref={listRef} style={{ maxHeight: '64vh', overflowY: 'auto', padding: '10px 6px' }}>
+          <div className="panel" ref={listRef} style={{ maxHeight: '64vh', overflowY: 'auto', padding: 'var(--space-4) var(--space-3)' }}>
             <div className="transcript-list">
               {filtered.map((seg) => (
                 <TranscriptRow
@@ -389,11 +389,11 @@ export function TranscriptTab() {
                 />
               ))}
               {filtered.length === 0 && (
-                <div className="muted" style={{ padding: 20, textAlign: 'center' }}>No matches for “{query}”.</div>
+                <div className="muted" style={{ padding: 'var(--space-6)', textAlign: 'center' }}>No matches for “{query}”.</div>
               )}
             </div>
             {filtered.length > 0 && (
-              <div className="row" style={{ justifyContent: 'center', paddingTop: 8 }}>
+              <div className="row" style={{ justifyContent: 'center', paddingTop: 'var(--space-3)' }}>
                 <span className="tiny">
                   {filtered.length} segment{filtered.length === 1 ? '' : 's'}
                   {query && ` of ${data.transcript.length}`} · click a line to play from there
@@ -555,7 +555,7 @@ function TranscriptRow({
       title="Play from this timestamp"
     >
       <span className="ts">
-        <Play size={8} style={{ verticalAlign: 1, marginRight: 3, opacity: active ? 1 : 0.35 }} />
+        <Play size={8} style={{ verticalAlign: 1, marginRight: 'var(--space-2)', opacity: active ? 1 : 0.35 }} />
         {formatClock(segment.startTime)}
       </span>
       <span

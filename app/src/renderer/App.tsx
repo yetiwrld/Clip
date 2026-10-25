@@ -107,7 +107,7 @@ export function App() {
           </button>
 
           <div className="sidebar-footer">
-            {isPreview && <div style={{ color: 'var(--warn)', marginBottom: 3 }}>Browser preview · full app runs on the desktop</div>}
+            {isPreview && <div style={{ color: 'var(--warn)', marginBottom: 'var(--space-2)' }}>Browser preview · full app runs on the desktop</div>}
             <div>v{useAppStore.getState().appInfo?.version ?? '…'}</div>
             <div>{useAppStore.getState().appInfo?.workspaceRoot}</div>
             <div className="developer-credit">Developed by yetiwrld</div>

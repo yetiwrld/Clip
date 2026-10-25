@@ -50,7 +50,7 @@ export function ErrorBox(props: { error: unknown; onRetry?: () => void; retryLab
   return (
     <div className="error-box" role="alert">
       <div className="error-title">
-        <AlertTriangle size={12} style={{ verticalAlign: -1, marginRight: 5 }} />
+        <AlertTriangle size={12} style={{ verticalAlign: -1, marginRight: 'var(--space-2)' }} />
         {message}
       </div>
       {hint && <div className="error-hint">{hint}</div>}
@@ -61,13 +61,13 @@ export function ErrorBox(props: { error: unknown; onRetry?: () => void; retryLab
         </details>
       )}
       {props.onRetry && (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 'var(--space-3)' }}>
           <button className="btn sm" onClick={props.onRetry}>
             {props.retryLabel ?? 'Retry'}
           </button>
         </div>
       )}
-      {code && <div className="tiny" style={{ marginTop: 6 }}>Code: {code}</div>}
+      {code && <div className="tiny" style={{ marginTop: 'var(--space-3)' }}>Code: {code}</div>}
     </div>
   )
 }
