@@ -108,6 +108,7 @@ Honest caveat: I authored the target, so this shows REA's *mechanics*, not its p
 ```
 rea-lab/
 ├── REA_INSTALL.md                         current install + verified results (2026-10-25)
+├── APP_ARCHITECTURE.md                    how the app in app/ is actually built (verified)
 ├── CAPCUT_STYLE_ANALYSIS.md               what CapCut's style is vs what this app has
 ├── CAPCUT_REFERENCE_1022_1013.md          analysis of the two real CapCut projects  <-- start here
 ├── CAPCUT_EXPORT_1022.md                  measured breakdown of the finished 1022 video

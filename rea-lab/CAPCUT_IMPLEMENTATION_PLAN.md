@@ -86,10 +86,13 @@ work needs it in the tree:
 └── docs/                # extracted app docs, if you want them kept
 ```
 
-`Step 0` tasks: extract, add `app/` to git, confirm `npm ci` + `npm run build` + a baseline
-`npm run start` work in this sandbox, and capture **baseline render fixtures** (three sample
-projects + their expected ffprobe output) so every later change can be diffed against today's
-output. Nothing else starts until the baseline renders reproducibly.
+`Step 0` is **done** — see [`APP_ARCHITECTURE.md`](APP_ARCHITECTURE.md). `app/` is in the repo
+(commit `8b56157`), and the whole loop works here: typecheck clean, **291/291 tests pass**, the
+production build succeeds, and `server/preview.ts` serves the real backend over HTTP. Fixtures are
+generated with `npm run fixtures`.
+
+Note the one thing Step 0 changed: because the app runs here, every change below can be verified
+by typecheck + tests + build + a live browser session before you ever run it on Windows.
 
 ---
 
