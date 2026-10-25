@@ -1,5 +1,12 @@
 # CapCut editing style → Clipwright Studio: analysis
 
+> **Framing note (later):** this document measures CapCut's style against this app, which is
+> useful, but its *ranking* of what to build was derived from two sample videos. Read
+> [`CAPCUT_PRODUCT_ANALYSIS.md`](CAPCUT_PRODUCT_ANALYSIS.md) for the correct product framing —
+> CapCut's vocabulary delivered through Clipwright's automation — and a priority order justified
+> by that, not by the samples.
+
+
 **Date:** 2026-10-25 · **Branch:** `arena/e01784c4-clip`
 **Status:** analysis only. No code changed yet — this is the "analyse first" pass you asked for.
 

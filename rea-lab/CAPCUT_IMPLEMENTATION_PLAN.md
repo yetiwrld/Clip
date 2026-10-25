@@ -1,5 +1,10 @@
 # CapCut-style editing in Clipwright Studio — implementation plan
 
+> **Framing note (later):** the workstream mechanics below are still valid, but the *ordering*
+> is superseded by [`CAPCUT_PRODUCT_ANALYSIS.md`](CAPCUT_PRODUCT_ANALYSIS.md) §6, which ranks by
+> "does the automatic output look finished" rather than by what appeared in two sample exports.
+
+
 **Status:** plan for approval. No production code written yet.
 **Prereq reading:** [`CAPCUT_STYLE_ANALYSIS.md`](CAPCUT_STYLE_ANALYSIS.md) (what CapCut's style is, and what your
 app has/doesn't).
