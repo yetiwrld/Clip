@@ -156,7 +156,7 @@ export function DashboardPage() {
       </div>
 
       <div className="row wrap" style={{ gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border-strong)' }}>
-        <Link2 size={13} className="muted" />
+        <Link2 size={14} className="muted" />
         <input
           className="input"
           style={{ flex: 1, minWidth: 220, maxWidth: 420 }}
@@ -180,7 +180,7 @@ export function DashboardPage() {
       {activeTasks.length > 0 && (
         <div className="section">
           {activeTasks.slice(0, 4).map((t) => (
-            <div key={t.id} className="row" style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 12.5 }}>
+            <div key={t.id} className="row" style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 'var(--fs-base)' }}>
               <span className="status working">
                 <span className="dot" /> {t.message ?? `${t.type}…`}
               </span>
@@ -193,8 +193,8 @@ export function DashboardPage() {
       {sorted.length === 0 ? (
         <div className="empty" style={{ padding: 'var(--space-12) var(--space-6)' }}>
           <Clapperboard size={28} className="empty-icon" />
-          <div style={{ fontWeight: 600, fontSize: 13.5 }}>No projects yet</div>
-          <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No projects yet</div>
+          <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
             Create a project and import a long-form video — a podcast, interview, lecture or stream. Clipwright transcribes it,
             finds the strong moments, and helps you turn them into vertical clips.
           </div>
@@ -268,7 +268,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
         {summary.thumbnail ? (
           <img src={mediaUrl(summary.thumbnail)} alt="" />
         ) : (
-          <Film size={18} strokeWidth={1.5} />
+          <Film size={20} strokeWidth={1.5} />
         )}
       </div>
 
@@ -329,11 +329,11 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
               <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={(event) => { event.stopPropagation(); setMenuOpen(false) }} />
               <div className="menu" onClick={(event) => event.stopPropagation()}>
                 <button type="button" onClick={() => { setMenuOpen(false); renameCommittedRef.current = false; renameCancelledRef.current = false; setRenameValue(summary.name); setRenaming(true) }}>
-                  <Pencil size={13} /> Rename
+                  <Pencil size={14} /> Rename
                 </button>
                 <div className="menu-sep" />
                 <button className="danger" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}>
-                  <Trash2 size={13} /> Delete…
+                  <Trash2 size={14} /> Delete…
                 </button>
               </div>
             </>
@@ -349,12 +349,12 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
             <>
               <button className="btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
               <button className="btn danger" onClick={() => void doDelete()}>
-                <Trash2 size={13} /> Delete permanently
+                <Trash2 size={14} /> Delete permanently
               </button>
             </>
           }
         >
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
             <strong>“{summary.name}”</strong> and all of its imported media, transcripts, clips and renders will be removed from
             the workspace. Files already exported to the exports folder are kept.
           </div>

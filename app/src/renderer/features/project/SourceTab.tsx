@@ -224,7 +224,7 @@ export function SourceTab() {
             <div style={{ aspectRatio: '16/9', display: 'grid', placeItems: 'center', background: 'var(--bg-2)' }}>
               {importing ? (
                 <div style={{ width: '70%' }}>
-                  <div className="muted" style={{ textAlign: 'center', marginBottom: 'var(--space-4)', fontSize: 13 }}>
+                  <div className="muted" style={{ textAlign: 'center', marginBottom: 'var(--space-4)', fontSize: 'var(--fs-base)' }}>
                     {importTask?.message ?? 'Importing media…'}
                   </div>
                   {importTask?.progress != null && <ProgressBar value={importTask.progress} />}
@@ -236,8 +236,8 @@ export function SourceTab() {
                 </div>
               ) : (
                 <div className="empty" style={{ padding: 'var(--space-8)' }}>
-                  <Film size={36} className="empty-icon" />
-                  <div className="muted" style={{ fontSize: 13 }}>No media imported yet</div>
+                  <Film size={28} className="empty-icon" />
+                  <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>No media imported yet</div>
                 </div>
               )}
             </div>
@@ -249,7 +249,7 @@ export function SourceTab() {
                 <p>{mediaError}</p>
                 {playback?.verdict === 'proxy' && !playback.proxyExists && (
                   <button className="btn primary sm" onClick={() => void createPreviewCopy()} disabled={Boolean(proxyTaskId)}>
-                    {proxyTaskId ? <Spinner size={11} /> : <Film size={12} />}
+                    {proxyTaskId ? <Spinner size={12} /> : <Film size={12} />}
                     {proxyTaskId ? 'Creating preview copy…' : 'Create preview copy'}
                   </button>
                 )}
@@ -277,13 +277,13 @@ export function SourceTab() {
           <div className="section-title">Import media</div>
           <div className="row wrap">
             <button className="btn" onClick={() => void importFile()} disabled={importing}>
-              <Film size={15} /> From file…
+              <Film size={16} /> From file…
             </button>
             <span className="tiny">MP4 · MOV · MKV · WebM · AVI · common audio</span>
           </div>
           <div className="divider" />
           <div className="row wrap">
-            <Link2 size={15} className="muted" />
+            <Link2 size={16} className="muted" />
             <input
               className="input"
               style={{ flex: 1, minWidth: 200 }}
@@ -334,7 +334,7 @@ export function SourceTab() {
         <div className="section">
           <div className="section-title">Source information</div>
           {project.status === 'created' ? (
-            <div className="muted" style={{ fontSize: 13 }}>Import media to see duration, resolution, codecs and audio status.</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>Import media to see duration, resolution, codecs and audio status.</div>
           ) : (
             <table className="table">
               <tbody>
@@ -384,7 +384,7 @@ export function SourceTab() {
           <div className="section">
             <div className="section-title">
               <span className="row">
-                <HardDrive size={13} /> Project storage
+                <HardDrive size={14} /> Project storage
               </span>
             </div>
             <table className="table">
@@ -402,7 +402,7 @@ export function SourceTab() {
                 style={{ marginTop: 'var(--space-4)' }}
                 onClick={() => void api['system.revealPath']({ path: data.activeProject!.sourcePath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
               >
-                <FolderOpen size={13} /> Reveal source file
+                <FolderOpen size={14} /> Reveal source file
               </button>
             )}
           </div>
@@ -410,7 +410,7 @@ export function SourceTab() {
 
         <div className="section">
           <button className="btn danger sm" onClick={() => setConfirmDelete(true)}>
-            <Trash2 size={13} /> Delete project…
+            <Trash2 size={14} /> Delete project…
           </button>
         </div>
       </div>
@@ -430,7 +430,7 @@ export function SourceTab() {
             </>
           }
         >
-          <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
             <strong>“{project.name}”</strong> and all of its imported media, transcripts, clips and renders will be removed from
             the workspace. Files already exported to the exports folder are kept.
           </div>

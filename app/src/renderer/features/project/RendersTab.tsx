@@ -42,8 +42,8 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
     return (
       <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
         <ListVideo size={28} className="empty-icon" />
-        <div style={{ fontWeight: 600, fontSize: 13.5 }}>No renders yet</div>
-        <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
+        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No renders yet</div>
+        <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
           Render a clip to produce a vertical MP4 with burned-in captions. Renders run locally with FFmpeg — you can queue
           several and keep working.
         </div>

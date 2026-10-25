@@ -86,15 +86,15 @@ export function App() {
 
         <div className="nav-group-label">Workspace</div>
         <button className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => navigate('dashboard')}>
-          <FolderOpen size={15} strokeWidth={1.75} /> Projects
+          <FolderOpen size={16} strokeWidth={1.75} /> Projects
         </button>
         <button className={`nav-item ${view === 'queue' ? 'active' : ''}`} onClick={() => navigate('queue')}>
-          <ListVideo size={15} strokeWidth={1.75} /> Render queue
+          <ListVideo size={16} strokeWidth={1.75} /> Render queue
           {activeRenders > 0 && <span className="nav-badge active-count">{activeRenders}</span>}
         </button>
         {interrupted > 0 && (
           <button className="nav-item" onClick={() => navigate('queue')} title="Interrupted processing detected — review in the render queue">
-            <TriangleAlert size={15} strokeWidth={1.75} style={{ color: 'var(--warn)' }} /> {interrupted} to recover
+            <TriangleAlert size={16} strokeWidth={1.75} style={{ color: 'var(--warn)' }} /> {interrupted} to recover
           </button>
         )}
 
@@ -103,7 +103,7 @@ export function App() {
             version/workspace/preview lines instead of floating mid-gap. */}
         <div className="sidebar-bottom">
           <button className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')} style={{ width: '100%' }}>
-            <SettingsIcon size={15} strokeWidth={1.75} /> Settings
+            <SettingsIcon size={16} strokeWidth={1.75} /> Settings
           </button>
 
           <div className="sidebar-footer">
@@ -143,7 +143,7 @@ export function App() {
               </button>
             )}
             <button className="toast-close" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
-              <X size={13} />
+              <X size={14} />
             </button>
           </div>
         ))}

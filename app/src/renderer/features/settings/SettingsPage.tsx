@@ -19,7 +19,7 @@ export function SettingsPage() {
   if (!settings) {
     return (
       <div className="page" style={{ display: 'grid', placeItems: 'center' }}>
-        <Spinner size={22} />
+        <Spinner size={20} />
       </div>
     )
   }
@@ -184,7 +184,7 @@ function AiSection() {
       <div className="settings-section">
         <div className="row">
           <ShieldCheck size={14} color="var(--success)" />
-          <strong style={{ fontSize: 13 }}>Privacy — exactly what leaves this machine</strong>
+          <strong style={{ fontSize: 'var(--fs-base)' }}>Privacy — exactly what leaves this machine</strong>
         </div>
         <div className="field-hint" style={{ lineHeight: 1.7, marginTop: 'var(--space-3)' }}>
           Import, inspection, thumbnails, reframing, caption burn-in and rendering: <strong>always local</strong>.
@@ -220,7 +220,7 @@ function ProviderForm(props: {
       <div className="row">
         <div className="section-title" style={{ marginBottom: 0 }}>{props.title}</div>
         <span style={{ flex: 1 }} />
-        {props.hint && <span className="chip" title="Stored API key (masked)"><KeyRound size={11} /> {props.hint}</span>}
+        {props.hint && <span className="chip" title="Stored API key (masked)"><KeyRound size={12} /> {props.hint}</span>}
       </div>
       <div className="tiny">{props.providers}</div>
 
@@ -259,11 +259,11 @@ function ProviderForm(props: {
             onChange={(e) => props.onKeyDraft(e.target.value)}
           />
           <button className="btn" onClick={() => props.onSaveKey(props.keyDraft)} disabled={!props.keyDraft.trim() && !props.hint}>
-            <Save size={13} /> Save
+            <Save size={14} /> Save
           </button>
           {props.hint && (
             <button className="btn ghost" title="Remove stored key" onClick={() => props.onSaveKey('')}>
-              <Trash2 size={13} />
+              <Trash2 size={14} />
             </button>
           )}
         </div>
@@ -308,7 +308,7 @@ function ProviderForm(props: {
 
       <div className="row">
         <button className="btn" onClick={props.onTest} disabled={props.testing}>
-          {props.testing ? <Spinner size={12} /> : <TestTube2 size={13} />} {props.testing ? 'Testing…' : 'Test connection'}
+          {props.testing ? <Spinner size={12} /> : <TestTube2 size={14} />} {props.testing ? 'Testing…' : 'Test connection'}
         </button>
         {props.testResult && (
           <span className={`status ${props.testResult.ok ? 'success' : 'danger'}`}>
@@ -362,7 +362,7 @@ function TranscriptionSection() {
           <div className="field-hint">After installing, press Re-check — no app restart needed.</div>
           <div style={{ marginTop: 'var(--space-3)' }}>
             <button className="btn sm" onClick={() => void recheck()} disabled={rechecking}>
-              {rechecking ? <Spinner size={11} /> : <RefreshCw size={12} />} {rechecking ? 'Checking…' : 'Re-check'}
+              {rechecking ? <Spinner size={12} /> : <RefreshCw size={12} />} {rechecking ? 'Checking…' : 'Re-check'}
             </button>
           </div>
         </div>
@@ -674,7 +674,7 @@ function StorageSection() {
                     />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span className="row" style={{ justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-                        <strong style={{ fontSize: 12 }}>{category.label}</strong>
+                        <strong style={{ fontSize: 'var(--fs-sm)' }}>{category.label}</strong>
                         <span className="chip">{category.fileCount} files · {formatBytes(category.bytes)}</span>
                       </span>
                       <span className="tiny" style={{ display: 'block', marginTop: 'var(--space-2)' }}>{category.description}</span>
@@ -706,7 +706,7 @@ function StorageSection() {
             disabled={selectedCategories.size === 0 || selectedFiles === 0 || cleaning || scanning}
             onClick={() => setConfirmCleanup(true)}
           >
-            {cleaning ? <Spinner size={13} /> : <Trash2 size={13} />} Review removal{selectedBytes > 0 ? ` · ${formatBytes(selectedBytes)}` : ''}
+            {cleaning ? <Spinner size={14} /> : <Trash2 size={14} />} Review removal{selectedBytes > 0 ? ` · ${formatBytes(selectedBytes)}` : ''}
           </button>
         </div>
       </div>
@@ -719,7 +719,7 @@ function StorageSection() {
             <>
               <button className="btn" onClick={() => setConfirmCleanup(false)} disabled={cleaning}>Keep files</button>
               <button className="btn danger" onClick={() => void removeSelectedCaches()} disabled={cleaning || selectedCategories.size === 0}>
-                {cleaning ? <Spinner size={13} /> : <Trash2 size={13} />} Remove {selectedFiles} file(s)
+                {cleaning ? <Spinner size={14} /> : <Trash2 size={14} />} Remove {selectedFiles} file(s)
               </button>
             </>
           )}

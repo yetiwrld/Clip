@@ -1362,7 +1362,7 @@ export function EditorPage() {
       <div className="editor-topbar">
         <div className="topbar-left">
           <button className="btn ghost sm icon" onClick={() => app.openProject(project.id)} aria-label="Back to project" title="Back to project">
-            <ArrowLeft size={15} />
+            <ArrowLeft size={16} />
           </button>
           <div className="topbar-title">
             <span className="editor-project-name" title={project.name}>{project.name}</span>
@@ -1376,7 +1376,7 @@ export function EditorPage() {
             />
           </div>
           <span className={`save-state ${saveState === 'dirty' ? 'dirty' : ''}`}>
-            {saveState === 'saving' && <Spinner size={11} />}
+            {saveState === 'saving' && <Spinner size={12} />}
             {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Unsaved changes'}
           </span>
         </div>
@@ -1393,7 +1393,7 @@ export function EditorPage() {
           </button>
           <span className="topbar-divider" aria-hidden="true" />
           <button className="btn primary topbar-export" onClick={() => void queueRender(false)} disabled={renderQueued}>
-            {renderQueued ? <Spinner size={12} /> : <Upload size={13} />} Export
+            {renderQueued ? <Spinner size={12} /> : <Upload size={14} />} Export
           </button>
           <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open inspector" title="Open inspector" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
             <SlidersHorizontal size={14} />
@@ -1405,9 +1405,9 @@ export function EditorPage() {
       <div className="editor-body">
         <nav className="editor-tool-rail" aria-label="Editor tools">
           {([
-            ['media', 'Media', <Library size={17} />], ['audio', 'Audio', <Music2 size={17} />],
-            ['moments', 'Moments', <Sparkles size={17} />], ['camera', 'Camera', <Target size={17} />],
-            ['clip', 'Clip', <Scissors size={17} />]
+            ['media', 'Media', <Library size={16} />], ['audio', 'Audio', <Music2 size={16} />],
+            ['moments', 'Moments', <Sparkles size={16} />], ['camera', 'Camera', <Target size={16} />],
+            ['clip', 'Clip', <Scissors size={16} />]
           ] as const).map(([tool, label, icon]) => <button key={tool} className={`editor-tool-button${activeTool === tool ? ' active' : ''}`}
             onClick={() => { setActiveTool(tool); setSourceClipSelected(tool === 'clip'); setSelectedTimelineItem(null); if (tool === 'clip') { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }} title={label} aria-label={label} aria-pressed={activeTool === tool}>{icon}<span>{label}</span></button>)}
         </nav>
@@ -1616,12 +1616,12 @@ export function EditorPage() {
             {videoError && (
               <div className="playback-error">
                 <div>
-                  <AlertTriangle size={26} className="icon-big" />
+                  <AlertTriangle size={28} className="icon-big" />
                   <h4>Playback problem</h4>
                   <p>{videoError}</p>
                   {playback?.verdict === 'proxy' && !playback.proxyExists && (
                     <button className="btn primary sm" onClick={() => void createProxy()} disabled={proxyRunning}>
-                      {proxyRunning ? <Spinner size={11} /> : <Zap size={12} />}
+                      {proxyRunning ? <Spinner size={12} /> : <Zap size={12} />}
                       {proxyRunning ? 'Building proxy…' : 'Create preview proxy'}
                     </button>
                   )}
@@ -1675,7 +1675,7 @@ export function EditorPage() {
                 <SkipBack size={14} />
               </button>
               <button className="btn transport-play" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} title={playing ? 'Pause (Space)' : 'Play (Space)'}>
-                {playing ? <Pause size={15} /> : <Play size={15} />}
+                {playing ? <Pause size={16} /> : <Play size={16} />}
               </button>
               <button className="btn ghost sm icon" onClick={() => setMuted(!muted)} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
                 {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -1696,7 +1696,7 @@ export function EditorPage() {
 
         {inspectorOpen && <button className="editor-inspector-backdrop" aria-label="Close inspector" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} />}
         <aside id="editor-inspector" className={`editor-inspector${inspectorOpen ? ' mobile-open' : ''}`} aria-label="Edit properties">
-          <div className="inspector-mobile-heading"><strong>Properties</strong><button ref={inspectorCloseRef} className="btn ghost sm icon" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} aria-label="Close properties"><CloseIcon size={15} /></button></div>
+          <div className="inspector-mobile-heading"><strong>Properties</strong><button ref={inspectorCloseRef} className="btn ghost sm icon" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} aria-label="Close properties"><CloseIcon size={16} /></button></div>
           {selectedTimelineItem ? <>
             <div className="inspector-context-heading"><span>{selectedTimelineAsset?.mediaType ?? 'Media'} properties</span><strong>{selectedTimelineAsset?.name ?? 'Missing media'}</strong></div>
             <TimelineInspector item={selectedTimelineItem} asset={selectedTimelineAsset} onChange={(patch) => {
@@ -1716,13 +1716,13 @@ export function EditorPage() {
             </div>
           </> : selectedMoment ? <div className="inspector-moment-details"><div className="inspector-context-heading"><span>AI moment</span><strong>{selectedMoment.title}</strong></div>
             <p>{selectedMoment.reason}</p><p>{selectedMoment.transcriptExcerpt}</p><div className="inspector-moment-meta">{formatClock(selectedMoment.startTime, true)} – {formatClock(selectedMoment.endTime, true)} · Score {Math.round(selectedMoment.overallScore ?? 0)}</div>
-          </div> : <div className="inspector-empty"><Film size={24} /><strong>Select a clip to edit</strong><span>Choose a media item, text, caption, or moment to see its controls here.</span></div>}
+          </div> : <div className="inspector-empty"><Film size={28} /><strong>Select a clip to edit</strong><span>Choose a media item, text, caption, or moment to see its controls here.</span></div>}
           <details className="inspector-advanced">
             <summary>Clip, camera &amp; export settings</summary>
             <div className="inspector-advanced-content">
           <details className="inspector-section" open>
             <summary>
-              <Scissors size={12} /> Trim <ChevronRight size={13} className="chev" />
+              <Scissors size={12} /> Trim <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <TrimPanel
@@ -1758,7 +1758,7 @@ export function EditorPage() {
 
           <details className="inspector-section" open>
             <summary>
-              <Eraser size={12} /> Silence removal <ChevronRight size={13} className="chev" />
+              <Eraser size={12} /> Silence removal <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <SilencePanel
@@ -1773,7 +1773,7 @@ export function EditorPage() {
 
           <details className="inspector-section" open>
             <summary>
-              <Headphones size={12} /> Audio restoration <ChevronRight size={13} className="chev" />
+              <Headphones size={12} /> Audio restoration <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <AudioRestorationPanel clip={clip} hasAudio={project.hasAudio} updateClip={updateClip} />
@@ -1782,7 +1782,7 @@ export function EditorPage() {
 
           {!selectedCueKey && <details className="inspector-section" open>
             <summary>
-              <Type size={12} /> Captions <ChevronRight size={13} className="chev" />
+              <Type size={12} /> Captions <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <CaptionsPanel
@@ -1798,7 +1798,7 @@ export function EditorPage() {
 
           <details className="inspector-section">
             <summary>
-              <Crop size={12} /> Crop &amp; framing <ChevronRight size={13} className="chev" />
+              <Crop size={12} /> Crop &amp; framing <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <CropPanel
@@ -1826,7 +1826,7 @@ export function EditorPage() {
 
           <details className="inspector-section" open>
             <summary>
-              <Target size={12} /> Camera keyframes <ChevronRight size={13} className="chev" />
+              <Target size={12} /> Camera keyframes <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <CameraPanel
@@ -1888,7 +1888,7 @@ export function EditorPage() {
           </details>
 
           {!selectedTextLayerId && <details className="inspector-section" open>
-            <summary><Type size={12} /> Text / graphics <ChevronRight size={13} className="chev" /></summary>
+            <summary><Type size={12} /> Text / graphics <ChevronRight size={14} className="chev" /></summary>
             <div className="inspector-body">
               <TextLayerInspector layers={clip.textLayers} selectedId={selectedTextLayerId} currentTime={currentTime}
                 onAdd={addTextLayer} onSelect={(layer) => { setSelectedTextLayerId(layer.id); seekTo(layer.startTime) }}
@@ -1898,7 +1898,7 @@ export function EditorPage() {
 
           <details className="inspector-section" open>
             <summary>
-              <Gauge size={12} /> Output &amp; quality <ChevronRight size={13} className="chev" />
+              <Gauge size={12} /> Output &amp; quality <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <OutputPanel
@@ -1914,7 +1914,7 @@ export function EditorPage() {
 
           <details className="inspector-section">
             <summary>
-              <Tags size={12} /> Metadata <ChevronRight size={13} className="chev" />
+              <Tags size={12} /> Metadata <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body">
               <MetadataPanel clip={clip} updateClip={updateClip} />
@@ -1927,7 +1927,7 @@ export function EditorPage() {
 
       {/* -------------------------------------------------- timeline + tp -- */}
       <div className="editor-bottom" style={{ height: timelineHeight }}>
-        <div className="timeline-resize-handle" role="separator" aria-label="Resize timeline panel" aria-orientation="horizontal" title="Drag to resize timeline" onPointerDown={beginTimelineResize}><MoveVertical size={13} /><span>Drag to resize workspace</span></div>
+        <div className="timeline-resize-handle" role="separator" aria-label="Resize timeline panel" aria-orientation="horizontal" title="Drag to resize timeline" onPointerDown={beginTimelineResize}><MoveVertical size={14} /><span>Drag to resize workspace</span></div>
 
         <MultiTrackTimeline
           timeline={clipTimeline}
@@ -2138,10 +2138,10 @@ function CameraPanel(props: {
       </div>
       <div className="row" style={{ gap: 'var(--space-3)', flexWrap: 'wrap' }}>
         <button className="btn ghost sm" onClick={props.onDuplicate} disabled={!hasKeys}>Duplicate</button>
-        <button className="btn ghost sm" onClick={props.onCopy}><Copy size={11} /> Copy camera</button>
+        <button className="btn ghost sm" onClick={props.onCopy}><Copy size={12} /> Copy camera</button>
         <button className="btn ghost sm" onClick={props.onPaste} disabled={!props.canPaste} title={props.canPaste ? 'Paste copied camera position, scale, rotation and interpolation' : 'Copy a camera keyframe first'}>Paste camera</button>
-        <button className="btn ghost sm" onClick={props.onDelete} disabled={!props.selectedKeyframe}><X size={11} /> Delete</button>
-        <button className="btn ghost sm" onClick={props.onReset}><RotateCcw size={11} /> Reset camera</button>
+        <button className="btn ghost sm" onClick={props.onDelete} disabled={!props.selectedKeyframe}><X size={12} /> Delete</button>
+        <button className="btn ghost sm" onClick={props.onReset}><RotateCcw size={12} /> Reset camera</button>
       </div>
       <div className="field-hint">Camera keyframes use source time, so silence cuts remap them with the retained video segments. Tracking creates editable camera control points.</div>
     </div>
@@ -2254,7 +2254,7 @@ function TrimPanel(props: {
           }}
           title="Snap the clip edges to sentence boundaries and add lead-in context where the opener needs setup"
         >
-          {optimizing ? <Spinner size={11} /> : <Wand2 size={12} />} Optimize boundaries
+          {optimizing ? <Spinner size={12} /> : <Wand2 size={12} />} Optimize boundaries
         </button>
       </div>
       <div className="row">
@@ -2304,7 +2304,7 @@ function TrimPanel(props: {
           <button
             key={cue.key}
             className="btn ghost"
-            style={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 12, padding: 'var(--space-2) var(--space-3)', height: 'auto' }}
+            style={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'var(--fs-sm)', padding: 'var(--space-2) var(--space-3)', height: 'auto' }}
             onClick={() => props.onSeek(cue.startTime + 0.05)}
             title="Seek to this caption"
           >
@@ -2371,17 +2371,17 @@ function SilencePanel(props: {
       </div>
       <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('auto')}>
-          {detecting === 'auto' ? <Spinner size={11} /> : <AudioLines size={12} />} Detect (standard)
+          {detecting === 'auto' ? <Spinner size={12} /> : <AudioLines size={12} />} Detect (standard)
         </button>
         <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('aggressive')} title="Lower thresholds - removes shorter pauses too">
-          {detecting === 'aggressive' ? <Spinner size={11} /> : <AudioLines size={12} />} Aggressive
+          {detecting === 'aggressive' ? <Spinner size={12} /> : <AudioLines size={12} />} Aggressive
         </button>
       </div>
       {cuts.length > 0 ? (
         <>
           <div className="row tiny" style={{ justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
             <span><strong style={{ color: 'var(--text-2)' }}>{cuts.length}</strong> detected pauses ? <strong style={{ color: 'var(--danger)' }}>-{cuts.filter((c) => c.status !== 'kept').reduce((sum, c) => sum + (c.end - c.start), 0).toFixed(1)}s</strong> removed</span>
-            <button className="btn ghost sm" onClick={() => props.onCutsChanged(cuts.map((c) => ({ ...c, status: 'kept' })))}><RotateCcw size={11} /> Restore all</button>
+            <button className="btn ghost sm" onClick={() => props.onCutsChanged(cuts.map((c) => ({ ...c, status: 'kept' })))}><RotateCcw size={12} /> Restore all</button>
           </div>
           <div className="stack sm" style={{ maxHeight: 260, overflowY: 'auto' }}>
             {cuts.map((c, i) => {
@@ -2589,7 +2589,7 @@ function CaptionsPanel(props: {
                 title={s.description ?? ''}
               >
                 <TemplatePreview style={s as import('@shared/constants').CaptionStylePreset} text={sampleText} safeArea={showSafeArea} active={clip.captionStyleId === s.id} />
-                <span style={{ fontSize: 10 }}>{s.label}</span>
+                <span style={{ fontSize: 'var(--fs-micro)' }}>{s.label}</span>
                 <span className="cap-template-animation">{(s as import('@shared/constants').CaptionStylePreset).wordAnimation}</span>
               </button>
               <button className={`cap-template-favorite ${favoriteIds.includes(s.id) ? 'active' : ''}`} onClick={() => toggleFavorite(s.id)} aria-label={`${favoriteIds.includes(s.id) ? 'Remove' : 'Add'} ${s.label} ${favoriteIds.includes(s.id) ? 'from' : 'to'} favorites`} title="Favorite preset"><Star size={12} fill={favoriteIds.includes(s.id) ? 'currentColor' : 'none'} /></button>
@@ -2602,7 +2602,7 @@ function CaptionsPanel(props: {
 
       <details className="inspector-section">
         <summary>
-          <Type size={12} /> Typeface <ChevronRight size={13} className="chev" />
+          <Type size={12} /> Typeface <ChevronRight size={14} className="chev" />
         </summary>
         <div className="inspector-body">
         <input className="input" value={fontSearch} onChange={(e) => setFontSearch(e.target.value)} placeholder="Search fonts" aria-label="Search caption fonts" />
@@ -2710,7 +2710,7 @@ function CaptionsPanel(props: {
 
           <details className="inspector-section">
             <summary>
-              <Tags size={12} /> Colours, outline &amp; alignment <ChevronRight size={13} className="chev" />
+              <Tags size={12} /> Colours, outline &amp; alignment <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body cap-group">
           <div className="row" style={{ gap: 'var(--space-4)' }}>
@@ -2943,7 +2943,7 @@ function OutputPanel(props: {
       </div>
       <div className="row" style={{ marginTop: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} onClick={() => props.updateClip({ outputResolution: '1080p', outputQuality: 'standard', outputFps: 'source' })}>
-          <RotateCcw size={11} /> Reset
+          <RotateCcw size={12} /> Reset
         </button>
         <button
           className="btn sm"
@@ -2952,7 +2952,7 @@ function OutputPanel(props: {
           onClick={props.onQuickPreview}
           title="Render a fast 720p draft to check the cut, captions and framing"
         >
-          {props.previewQueued ? <Spinner size={11} /> : <Zap size={11} />} Quick preview render
+          {props.previewQueued ? <Spinner size={12} /> : <Zap size={12} />} Quick preview render
         </button>
       </div>
     </>
@@ -3070,7 +3070,7 @@ function CropPanel(props: {
         </button>
         {props.selectingSubject && <div className="field-hint">The preview shows the full source. Drag a box around the target, or click it to make a face-sized selection.</div>}
         {props.hasSubjectSelection && <button className="btn primary sm" onClick={props.onTrackSubject} disabled={props.trackingBusy}>
-          {props.trackingBusy ? <Spinner size={11} /> : <Target size={12} />}
+          {props.trackingBusy ? <Spinner size={12} /> : <Target size={12} />}
           {props.trackingBusy ? 'Tracking subject...' : 'Track selected subject'}
         </button>}
         {clip.trackingKeyframes.length > 0 && <>
@@ -3092,7 +3092,7 @@ function CropPanel(props: {
             <input type="range" min={1} max={3} step={0.05} value={clip.zoom} onChange={(e) => cropPosition({ zoom: parseFloat(e.target.value) })} />
           </Field>
           <div className="row" style={{ gap: 'var(--space-3)' }}>
-            <button className="btn sm" onClick={() => props.updateClip({ cropMode: 'center', cropX: 0.5, cropY: 0.5, zoom: 1, fitMode: 'fill' })}><RotateCcw size={11} /> Reset crop</button>
+            <button className="btn sm" onClick={() => props.updateClip({ cropMode: 'center', cropX: 0.5, cropY: 0.5, zoom: 1, fitMode: 'fill' })}><RotateCcw size={12} /> Reset crop</button>
             <button className="btn sm" onClick={() => props.updateClip({ cropX: 0.5, cropY: 0.5, zoom: 1, cameraKeyframes: [], trackingKeyframes: [], fitMode: 'fill' })}>Reset all framing</button>
           </div>
           <div className="field-hint">Tracking can guide the camera, and its generated path stays editable in Camera keyframes. Captions and timeline overlays remain in canvas space.</div>
@@ -3146,7 +3146,7 @@ function MetadataPanel(props: { clip: Clip; updateClip: (patch: Partial<Clip>, i
           <Copy size={12} /> Copy all
         </button>
         <button className="btn primary sm" onClick={() => void generate()} disabled={generating}>
-          {generating ? <Spinner size={11} /> : <Wand2 size={12} />} Generate
+          {generating ? <Spinner size={12} /> : <Wand2 size={12} />} Generate
         </button>
       </div>
 

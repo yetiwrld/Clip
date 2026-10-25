@@ -61,8 +61,8 @@ export function ClipsTab() {
     return (
       <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
         <Scissors size={28} className="empty-icon" />
-        <div style={{ fontWeight: 600, fontSize: 13.5 }}>No clips yet</div>
-        <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
+        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No clips yet</div>
+        <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
           Create a clip from a discovered moment in the Moments tab, then trim, caption and render it here.
         </div>
       </div>
@@ -82,7 +82,7 @@ export function ClipsTab() {
           <span className="tiny">{renderable.length} rendered clip{renderable.length === 1 ? '' : 's'} ready to export</span>
           <span style={{ flex: 1 }} />
           <button className="btn sm" onClick={() => void exportClips(renderable.map((c) => c.id))} disabled={exporting}>
-            {exporting ? <Spinner size={11} /> : <Package size={12} />} {exporting ? 'Exporting…' : 'Export all rendered'}
+            {exporting ? <Spinner size={12} /> : <Package size={12} />} {exporting ? 'Exporting…' : 'Export all rendered'}
           </button>
         </div>
       )}
@@ -142,13 +142,13 @@ function ClipRow({
         {doneRender?.outputPath ? (
           <video src={mediaUrl(doneRender.outputPath)} muted preload="metadata" />
         ) : (
-          <Film size={15} strokeWidth={1.5} />
+          <Film size={16} strokeWidth={1.5} />
         )}
       </div>
 
       <div style={{ minWidth: 0 }}>
         <div className="clip-title">{clip.title || <span className="muted">Untitled clip</span>}</div>
-        <div className="row wrap mono" style={{ marginTop: 'var(--space-2)', gap: 'var(--space-3)', fontSize: 11, color: 'var(--text-3)' }}>
+        <div className="row wrap mono" style={{ marginTop: 'var(--space-2)', gap: 'var(--space-3)', fontSize: 'var(--fs-xs)', color: 'var(--text-3)' }}>
           <span>{formatClock(clip.startTime)} → {formatClock(clip.endTime)}</span>
           <span>{`${Math.round(clip.endTime - clip.startTime)}s`}</span>
           <span title={`Caption style: ${style.label}`}>{style.label}</span>
@@ -183,7 +183,7 @@ function ClipRow({
           <Pencil size={12} /> Edit
         </button>
         <button className="btn primary sm" onClick={onRender} disabled={busy || Boolean(activeRender)}>
-          {busy || activeRender ? <Spinner size={11} /> : <Play size={12} />} Render
+          {busy || activeRender ? <Spinner size={12} /> : <Play size={12} />} Render
         </button>
         {doneRender && (
           <>

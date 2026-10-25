@@ -55,7 +55,7 @@ export function ProjectPage() {
   if (loading && !project) {
     return (
       <div className="page" style={{ display: 'grid', placeItems: 'center' }}>
-        <Spinner size={22} />
+        <Spinner size={20} />
       </div>
     )
   }
@@ -87,7 +87,7 @@ export function ProjectPage() {
         <div className="header-spacer" />
         <Pipeline status={status} />
         <button className="btn ghost" onClick={() => void data.loadProject(project.id)} aria-label="Refresh project" title="Refresh">
-          <RefreshCw size={15} />
+          <RefreshCw size={16} />
         </button>
       </div>
 
@@ -161,7 +161,7 @@ function Pipeline({ status }: { status: string }) {
           <React.Fragment key={s.id}>
             {i > 0 && <span className="pipeline-arrow">›</span>}
             <span className={`pipeline-step ${state}`}>
-              {state === 'done' ? <Check size={10} strokeWidth={2.5} className="p-check" /> : <span className="p-dot" />}
+              {state === 'done' ? <Check size={12} strokeWidth={2.5} className="p-check" /> : <span className="p-dot" />}
               {s.label}
             </span>
           </React.Fragment>

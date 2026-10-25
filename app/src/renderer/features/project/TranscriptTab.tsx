@@ -282,7 +282,7 @@ export function TranscriptTab() {
         {transcribing && !localTranscription && (
           <div className="row" style={{ marginTop: 'var(--space-4)' }}>
             <Spinner />
-            <span className="muted" style={{ fontSize: 12.5 }}>
+            <span className="muted" style={{ fontSize: 'var(--fs-base)' }}>
               {activeTask?.message ?? 'Starting transcription…'}
             </span>
             {activeTask && <button className="btn danger" onClick={() => void cancelTranscription()} style={{ marginLeft: 'auto' }}>
@@ -299,7 +299,7 @@ export function TranscriptTab() {
         {speakerBusy && (
           <div className="speaker-task-status" role="status" aria-live="polite">
             <div className="row" style={{ gap: 'var(--space-3)' }}>
-              <Spinner size={13} />
+              <Spinner size={14} />
               <strong>{activeSpeakerTask?.message ?? 'Preparing local speaker analysis…'}</strong>
               <span className="tiny" style={{ marginLeft: 'auto' }}>{Math.round((activeSpeakerTask?.progress ?? 0) * 100)}%</span>
               {activeSpeakerTask && <button className="btn danger sm" onClick={() => void cancelSpeakerIdentification()}><X size={12} /> Cancel</button>}
@@ -333,8 +333,8 @@ export function TranscriptTab() {
       {data.transcript.length === 0 && !transcribing ? (
         <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
           <FileText size={28} className="empty-icon" />
-          <div style={{ fontWeight: 600, fontSize: 13.5 }}>{project.hasAudio ? 'No transcript yet' : 'This video has no audio track'}</div>
-          <div className="muted" style={{ maxWidth: 420, fontSize: 12.5, lineHeight: 1.55 }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{project.hasAudio ? 'No transcript yet' : 'This video has no audio track'}</div>
+          <div className="muted" style={{ maxWidth: 420, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
             {project.hasAudio
               ? `Transcribe the ${project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} (locally with Whisper, or via your explicitly selected cloud provider), or import an existing SRT/VTT/JSON transcript. Moment discovery, captions and editing all work from this transcript.`
               : 'Speech transcription needs audio. You can still import an existing transcript file to continue the workflow.'}
@@ -431,7 +431,7 @@ function TranscriptionProgress({
     >
       <div className="transcription-progress-top">
         <div className="transcription-progress-icon" aria-hidden="true">
-          <Spinner size={25} />
+          <Spinner size={28} />
         </div>
         <div className="transcription-progress-copy">
           <div className="transcription-progress-eyebrow"><Cpu size={12} /> Local Whisper</div>
@@ -555,7 +555,7 @@ function TranscriptRow({
       title="Play from this timestamp"
     >
       <span className="ts">
-        <Play size={8} style={{ verticalAlign: 1, marginRight: 'var(--space-2)', opacity: active ? 1 : 0.35 }} />
+        <Play size={12} style={{ verticalAlign: 1, marginRight: 'var(--space-2)', opacity: active ? 1 : 0.35 }} />
         {formatClock(segment.startTime)}
       </span>
       <span

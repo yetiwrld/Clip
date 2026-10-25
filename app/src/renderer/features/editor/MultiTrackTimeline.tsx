@@ -512,20 +512,20 @@ export function MultiTrackTimeline(props: {
     <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete remove">
       <div className="row timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
         <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title="Toggle magnetic snapping" aria-label={`Snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
-          <Magnet size={13} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
+          <Magnet size={14} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
         </button>
         <details className="timeline-add-track-menu" ref={trackMenuRef}>
-          <summary className="btn sm timeline-add-track-summary" aria-label="Add timeline track" aria-haspopup="menu"><Plus size={13} /> Add track <ChevronDown size={12} /></summary>
+          <summary className="btn sm timeline-add-track-summary" aria-label="Add timeline track" aria-haspopup="menu"><Plus size={14} /> Add track <ChevronDown size={12} /></summary>
           <div className="timeline-add-track-options" role="menu" aria-label="Track type">
-            <button type="button" role="menuitem" onClick={() => addTrack('video')}><Film size={13} /> Video track</button>
-            <button type="button" role="menuitem" onClick={() => addTrack('audio')}><AudioLines size={13} /> Audio track</button>
-            <button type="button" role="menuitem" onClick={() => addTrack('image')}><ImageIcon size={13} /> Graphics track</button>
+            <button type="button" role="menuitem" onClick={() => addTrack('video')}><Film size={14} /> Video track</button>
+            <button type="button" role="menuitem" onClick={() => addTrack('audio')}><AudioLines size={14} /> Audio track</button>
+            <button type="button" role="menuitem" onClick={() => addTrack('image')}><ImageIcon size={14} /> Graphics track</button>
           </div>
         </details>
         <span className="timeline-toolbar-divider" aria-hidden="true" />
-        <button type="button" className="btn ghost sm icon" onClick={splitSelected} disabled={!canSplit} title="Split selected clip at the playhead · Ctrl/⌘+B" aria-label="Split selected clip at playhead"><Scissors size={13} /></button>
-        <button type="button" className="btn ghost sm icon" onClick={duplicateSelected} disabled={!selected || selectedLocked} title="Duplicate selected clip after itself · Ctrl/⌘+D" aria-label="Duplicate selected clip"><Copy size={13} /></button>
-        <button type="button" className="btn ghost sm icon danger" onClick={deleteSelected} disabled={!selected || selectedLocked} title="Remove selected timeline item · Delete" aria-label="Delete selected timeline item"><Trash2 size={13} /></button>
+        <button type="button" className="btn ghost sm icon" onClick={splitSelected} disabled={!canSplit} title="Split selected clip at the playhead · Ctrl/⌘+B" aria-label="Split selected clip at playhead"><Scissors size={14} /></button>
+        <button type="button" className="btn ghost sm icon" onClick={duplicateSelected} disabled={!selected || selectedLocked} title="Duplicate selected clip after itself · Ctrl/⌘+D" aria-label="Duplicate selected clip"><Copy size={14} /></button>
+        <button type="button" className="btn ghost sm icon danger" onClick={deleteSelected} disabled={!selected || selectedLocked} title="Remove selected timeline item · Delete" aria-label="Delete selected timeline item"><Trash2 size={14} /></button>
       </div>
       <div className="timeline-toolbar-right">
         <label className="timeline-zoom-control">
@@ -533,14 +533,14 @@ export function MultiTrackTimeline(props: {
           <input type="range" aria-label="Timeline zoom" min="0" max="100" step="1" value={timelineZoomSliderValue(pixelsPerSecond)} onChange={(event) => setZoomFromSlider(Number(event.target.value))} />
           <ZoomIn size={12} aria-hidden="true" />
         </label>
-        <button type="button" className="btn ghost sm icon" onClick={fitTimeline} title="Fit full project in the timeline" aria-label="Fit full project in timeline"><Maximize2 size={13} /></button>
+        <button type="button" className="btn ghost sm icon" onClick={fitTimeline} title="Fit full project in the timeline" aria-label="Fit full project in timeline"><Maximize2 size={14} /></button>
       </div>
     </div>
     <div className="multi-track-scroll" ref={scrollRef} onPointerMove={updateHoverCursor} onPointerLeave={() => { if (!cursorDraggingRef.current) positionCursor(pinnedTimeRef.current ?? props.currentTime, false) }} onPointerDownCapture={beginCursorDrag} onWheel={zoomAtPointer}>
       <div className="multi-track-canvas" style={{ width, '--timeline-grid-size': `${pixelsPerSecond * gridStep}px` } as React.CSSProperties}>
         <div className="multi-track-ruler"><div className="multi-track-label">TRACKS</div><div className="multi-track-ruler-body">{ticks.map((time) => <button type="button" key={time} style={{ left: time * pixelsPerSecond }} aria-label={`Seek to ${formatClock(time, true)}`} title={`Seek to ${formatClock(time, true)}`} onClick={() => seekTo(time)}>{formatClock(time, true)}<i /></button>)}</div></div>
         {props.sourceClip && <div className="multi-track-row source-track-row">
-          <div className="multi-track-label"><span className="track-title"><Film size={13} /> Main source</span><small>{props.sourceClip.name}</small></div>
+          <div className="multi-track-label"><span className="track-title"><Film size={14} /> Main source</span><small>{props.sourceClip.name}</small></div>
           <div className="multi-track-lane">
             <button type="button" className={`source-track-clip${props.selectedSource ? ' selected' : ''}`} style={{ left: props.sourceClip.startTime * pixelsPerSecond, width: Math.max(18, (props.sourceClip.endTime - props.sourceClip.startTime) * pixelsPerSecond) }} aria-label={`Main source ${props.sourceClip.name} · ${formatClock(props.sourceClip.startTime, true)} to ${formatClock(props.sourceClip.endTime, true)}`} title="Main source clip · drag its edges to trim; click to select" onClick={() => { seekTo(props.sourceClip!.startTime); props.onSelectSource?.() }}>
               {props.sourceWaveform && <AudioWaveform peaks={props.sourceWaveform.peaks} duration={props.sourceWaveform.duration} sourceIn={props.sourceClip.startTime} sourceOut={props.sourceClip.endTime} />}
@@ -563,7 +563,7 @@ export function MultiTrackTimeline(props: {
         </div>}
         {props.captions && props.captions.length > 0 ? (
           <div className="multi-track-row caption-track-row">
-            <div className="multi-track-label"><span className="track-title"><Type size={13} /> Captions</span><small>{props.captions.length} blocks</small></div>
+            <div className="multi-track-label"><span className="track-title"><Type size={14} /> Captions</span><small>{props.captions.length} blocks</small></div>
             <div className="multi-track-lane">
               {props.captions.map((caption) => (
                 <div key={caption.key} role="group" className={`timeline-caption-block${props.selectedCaptionKey === caption.key ? ' selected' : ''}`}
@@ -590,7 +590,7 @@ export function MultiTrackTimeline(props: {
           </div>
         ) : null}
         {props.textLayers && <div className="multi-track-row text-track-row">
-          <div className="multi-track-label"><span className="track-title"><Type size={13} /> Text / graphics</span><small>{props.textLayers.length} layers</small></div>
+          <div className="multi-track-label"><span className="track-title"><Type size={14} /> Text / graphics</span><small>{props.textLayers.length} layers</small></div>
           <div className="multi-track-lane">
             {props.textLayers.length === 0 && <span className="timeline-empty-track">Add a layer from Text to place it here.</span>}
             {props.textLayers.map((layer) => <div key={layer.id} role="group" className={`timeline-text-block${props.selectedTextLayerId === layer.id ? ' selected' : ''}`} style={{ left: layer.startTime * pixelsPerSecond, width: Math.max(24, (layer.endTime - layer.startTime) * pixelsPerSecond) }}>
@@ -600,7 +600,7 @@ export function MultiTrackTimeline(props: {
             </div>)}
           </div>
         </div>}
-        {(props.cameraKeyframes?.length || props.trackingKeyframes?.length) ? <div className="multi-track-row camera-track-row"><div className="multi-track-label"><span className="track-title"><Film size={13} /> Camera / tracking</span><small>{props.cameraKeyframes?.length ?? 0} keyframes</small></div><div className="multi-track-lane">{props.trackingKeyframes?.map((keyframe, index) => <button type="button" key={`track-${keyframe.time}-${index}`} className={`timeline-tracking-marker${selectedTrackingTime === keyframe.time ? ' selected' : ''}`} style={{ left: keyframe.time * pixelsPerSecond }} aria-label={`Tracking sample at ${formatClock(keyframe.time, true)}, ${Math.round(keyframe.score * 100)} percent confidence`} title={`Tracking sample · ${formatClock(keyframe.time, true)} · ${Math.round(keyframe.score * 100)}% confidence`} onClick={() => { setSelectedTrackingTime(keyframe.time); if (props.onSelectTrackingKeyframe) props.onSelectTrackingKeyframe(keyframe); else seekTo(keyframe.time) }}>•</button>)}{props.cameraKeyframes?.map((keyframe, index) => <button type="button" key={`${keyframe.time}-${index}`} className={`timeline-keyframe-marker${props.selectedCameraKeyframeTime !== null && Math.abs(keyframe.time - (props.selectedCameraKeyframeTime ?? -100)) < frameTimeTolerance(props.fps) ? ' selected' : ''}`} style={{ left: keyframe.time * pixelsPerSecond }} aria-label={`Camera keyframe at ${formatClock(keyframe.time, true)}`} title={`Camera keyframe ${formatClock(keyframe.time, true)} · ${keyframe.easing}`} onClick={(event) => { if (event.detail === 0) props.onSelectCameraKeyframe?.(keyframe.time) }} onPointerDown={(event) => { props.onSelectCameraKeyframe?.(keyframe.time); beginEditDrag(event, { mode: 'camera', startX: event.clientX, time: keyframe.time }) }}>◆</button>)}</div></div> : null}
+        {(props.cameraKeyframes?.length || props.trackingKeyframes?.length) ? <div className="multi-track-row camera-track-row"><div className="multi-track-label"><span className="track-title"><Film size={14} /> Camera / tracking</span><small>{props.cameraKeyframes?.length ?? 0} keyframes</small></div><div className="multi-track-lane">{props.trackingKeyframes?.map((keyframe, index) => <button type="button" key={`track-${keyframe.time}-${index}`} className={`timeline-tracking-marker${selectedTrackingTime === keyframe.time ? ' selected' : ''}`} style={{ left: keyframe.time * pixelsPerSecond }} aria-label={`Tracking sample at ${formatClock(keyframe.time, true)}, ${Math.round(keyframe.score * 100)} percent confidence`} title={`Tracking sample · ${formatClock(keyframe.time, true)} · ${Math.round(keyframe.score * 100)}% confidence`} onClick={() => { setSelectedTrackingTime(keyframe.time); if (props.onSelectTrackingKeyframe) props.onSelectTrackingKeyframe(keyframe); else seekTo(keyframe.time) }}>•</button>)}{props.cameraKeyframes?.map((keyframe, index) => <button type="button" key={`${keyframe.time}-${index}`} className={`timeline-keyframe-marker${props.selectedCameraKeyframeTime !== null && Math.abs(keyframe.time - (props.selectedCameraKeyframeTime ?? -100)) < frameTimeTolerance(props.fps) ? ' selected' : ''}`} style={{ left: keyframe.time * pixelsPerSecond }} aria-label={`Camera keyframe at ${formatClock(keyframe.time, true)}`} title={`Camera keyframe ${formatClock(keyframe.time, true)} · ${keyframe.easing}`} onClick={(event) => { if (event.detail === 0) props.onSelectCameraKeyframe?.(keyframe.time) }} onPointerDown={(event) => { props.onSelectCameraKeyframe?.(keyframe.time); beginEditDrag(event, { mode: 'camera', startX: event.clientX, time: keyframe.time }) }}>◆</button>)}</div></div> : null}
         {[...props.timeline.tracks].sort((a, b) => a.order - b.order).map((track) => {
           const TrackIcon = track.type === 'audio' ? AudioLines : track.type === 'image' ? Eye : Volume2
           return <div className={`multi-track-row ${dragTarget === track.id ? 'drop-target' : ''} ${track.hidden ? 'track-hidden' : ''} ${track.locked ? 'track-locked' : ''}`} key={track.id}
@@ -608,7 +608,7 @@ export function MultiTrackTimeline(props: {
             onDragLeave={(event) => { if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return; setDragTarget(null); setDropTime(null) }}
             onDrop={(event) => onDrop(event, track)}>
             <div className="multi-track-label">
-              <span className="track-title"><TrackIcon size={13} /> <input aria-label={`Name for ${track.name}`} value={track.name} onChange={(event) => updateTrack(track.id, { name: event.target.value })} /></span>
+              <span className="track-title"><TrackIcon size={14} /> <input aria-label={`Name for ${track.name}`} value={track.name} onChange={(event) => updateTrack(track.id, { name: event.target.value })} /></span>
               <span className="track-tools">
                 {(track.type === 'audio' || track.type === 'video') && <button type="button" aria-label={`${track.muted ? 'Unmute' : 'Mute'} ${track.name}`} aria-pressed={track.muted} title={track.muted ? 'Unmute track' : 'Mute track'} onClick={() => updateTrack(track.id, { muted: !track.muted })}>{track.muted ? <VolumeX size={12} /> : <Volume2 size={12} />}</button>}
                 {(track.type === 'video' || track.type === 'image') && <button type="button" aria-label={`${track.hidden ? 'Show' : 'Hide'} ${track.name}`} aria-pressed={track.hidden} title={track.hidden ? 'Show track' : 'Hide track'} onClick={() => updateTrack(track.id, { hidden: !track.hidden })}>{track.hidden ? <EyeOff size={12} /> : <Eye size={12} />}</button>}

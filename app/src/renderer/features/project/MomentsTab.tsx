@@ -110,8 +110,8 @@ export function MomentsTab() {
     return (
       <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
         <BarChart3 size={28} className="empty-icon" />
-        <div style={{ fontWeight: 600, fontSize: 13.5 }}>Analysis needs a transcript</div>
-        <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
+        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>Analysis needs a transcript</div>
+        <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
           Transcribe the {project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} or import a transcript first — the analyzer reads transcript text, never the raw video.
         </div>
       </div>
@@ -121,7 +121,7 @@ export function MomentsTab() {
   return (
     <div className="stack">
       <div className="toolbar" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 'var(--space-3)' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+        <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-2)' }}>
           <strong style={{ color: 'var(--text-1)' }}>{moments.length}</strong> moment{moments.length === 1 ? '' : 's'}
           <span style={{ color: 'var(--text-3)' }}> · {data.candidates.filter((c) => c.status !== 'rejected').length} candidates</span>
         </span>
@@ -131,24 +131,24 @@ export function MomentsTab() {
           </span>
         )}
         {activeSectionTask && (
-          <span className="row" style={{ fontSize: 12, color: 'var(--text-2)', gap: 'var(--space-3)' }}>
+          <span className="row" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-2)', gap: 'var(--space-3)' }}>
             <Spinner size={12} /> {activeSectionTask.message ?? 'Fetching selected video section'}
             {activeSectionTask.progress != null && ` · ${Math.round(activeSectionTask.progress * 100)}%`}
             <button className="btn danger sm" onClick={() => void cancelSectionDownload()}>Cancel</button>
           </span>
         )}
         {analyzeTask?.message && (
-          <span className="row" style={{ fontSize: 12, color: 'var(--text-2)', gap: 'var(--space-3)' }}>
+          <span className="row" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-2)', gap: 'var(--space-3)' }}>
             <Spinner size={12} /> {analyzeTask.message} {analyzeTask.progress != null && `· ${Math.round(analyzeTask.progress * 100)}%`}
           </span>
         )}
         <span style={{ flex: 1 }} />
         <button className="btn" onClick={() => void analyze('heuristic-local')} disabled={analyzing || busy}>
-          <Cpu size={13} /> Analyze — local heuristic
+          <Cpu size={14} /> Analyze — local heuristic
         </button>
         {canUseAi && (
           <button className="btn primary" onClick={() => void analyze(aiProvider)} disabled={analyzing || busy}>
-            <ScanSearch size={13} /> Analyze — {aiProvider === 'anthropic' ? 'Anthropic' : 'AI endpoint'}
+            <ScanSearch size={14} /> Analyze — {aiProvider === 'anthropic' ? 'Anthropic' : 'AI endpoint'}
           </button>
         )}
         {canUseAi && (
@@ -161,8 +161,8 @@ export function MomentsTab() {
       {moments.length === 0 && !analyzing ? (
         <div className="empty" style={{ padding: 'calc(var(--space-11) + var(--space-3)) var(--space-6)' }}>
           <BarChart3 size={28} className="empty-icon" />
-          <div style={{ fontWeight: 600, fontSize: 13.5 }}>No moments discovered yet</div>
-          <div className="muted" style={{ maxWidth: 400, fontSize: 12.5, lineHeight: 1.55 }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>No moments discovered yet</div>
+          <div className="muted" style={{ maxWidth: 400, fontSize: 'var(--fs-base)', lineHeight: 1.55 }}>
             Run the analyzer to find candidate clips. The local heuristic works offline; a configured AI provider gives better
             semantic quality.
           </div>
@@ -267,7 +267,7 @@ function MomentRow({
           </div>
 
           {candidate.hook && (
-            <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+            <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-2)' }}>
               <span className="audit-label" style={{ marginRight: 'var(--space-3)' }}>Hook</span>
               <em>“{candidate.hook}”</em>
             </div>

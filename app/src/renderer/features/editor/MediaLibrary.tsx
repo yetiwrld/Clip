@@ -43,11 +43,11 @@ export function MediaLibrary(props: {
     <div className="asset-library-head">
       <div><strong>{props.sectionTitle ?? 'Media library'}</strong><span className="tiny muted">{props.assets.length} assets · reusable in this project</span></div>
       <button className="btn sm" onClick={props.onImport} disabled={props.importing}>
-        <Upload size={13} /> {props.importing ? 'Importing…' : props.importLabel ?? 'Import media'}
+        <Upload size={14} /> {props.importing ? 'Importing…' : props.importLabel ?? 'Import media'}
       </button>
     </div>
     <div className="asset-library-tools">
-      <label className="asset-search"><Search size={13} /><input aria-label="Search media assets" placeholder="Search assets" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
+      <label className="asset-search"><Search size={14} /><input aria-label="Search media assets" placeholder="Search assets" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
       {!props.filterOverride && <select className="select sm" aria-label="Filter media assets" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
         <option value="all">All media</option><option value="video">Video</option><option value="audio">Audio</option><option value="image">Images</option>
       </select>}
@@ -56,7 +56,7 @@ export function MediaLibrary(props: {
       <div className="asset-grid">{assets.map((asset) => {
         const Icon = asset.mediaType === 'audio' ? AudioLines : asset.mediaType === 'image' ? ImageIcon : FileVideo2
         return <article key={asset.id} className={`asset-card${asset.missing ? ' missing' : ''}`} draggable={!asset.missing} onDragStart={(event) => beginDrag(event, asset)} title="Drag onto a compatible timeline track">
-          <div className="asset-thumb">{asset.mediaType !== 'audio' && !asset.missing && asset.thumbnailPath ? <img src={mediaUrl(asset.thumbnailPath)} alt="" draggable={false} /> : asset.mediaType === 'audio' && props.waveforms?.[asset.id] ? <MiniWaveform peaks={props.waveforms[asset.id].peaks} /> : <Icon size={23} />}</div>
+          <div className="asset-thumb">{asset.mediaType !== 'audio' && !asset.missing && asset.thumbnailPath ? <img src={mediaUrl(asset.thumbnailPath)} alt="" draggable={false} /> : asset.mediaType === 'audio' && props.waveforms?.[asset.id] ? <MiniWaveform peaks={props.waveforms[asset.id].peaks} /> : <Icon size={20} />}</div>
           <div className="asset-copy"><strong title={asset.name}>{asset.name}</strong><span className="tiny muted">{asset.mediaType.toUpperCase()} · {asset.duration ? `${asset.duration.toFixed(1)}s · ` : ''}{(asset.sizeBytes / 1048576).toFixed(1)} MB</span>{asset.missing && <span className="tiny danger">Media Missing</span>}</div>
           <div className="asset-actions">
             {asset.mediaType === 'audio' && !asset.missing && <button className="btn ghost sm icon" title={previewId === asset.id ? 'Stop audio preview' : 'Preview audio'} aria-label={`${previewId === asset.id ? 'Stop' : 'Preview'} ${asset.name}`} onClick={(event) => {
