@@ -176,6 +176,20 @@ describe('the shipped command set', () => {
     expect(matchesShortcut({ key: 'k', mod: true }, key({ ctrlKey: true }))).toBe(true)
   })
 
+  it('behaves in text fields: typing never edits the clip, but Ctrl+K still opens the palette', () => {
+    const editable = context({ inEditable: true })
+    expect(pickCommand(all, key({ key: 'j' }), editable)).toBeNull()
+    expect(pickCommand(all, key({ key: ' ' }), editable)).toBeNull()
+    expect(pickCommand(all, key({ key: 'i' }), editable)).toBeNull()
+    expect(pickCommand(all, key({ key: 'k', ctrlKey: true }), editable)?.id).toBe('palette.open')
+  })
+
+  it('lets a dialog keep every key, including the palette shortcut', () => {
+    const inDialog = context({ inModal: true })
+    expect(pickCommand(all, key({ key: 'k', ctrlKey: true }), inDialog)).toBeNull()
+    expect(pickCommand(all, key({ key: 'Delete' }), inDialog)).toBeNull()
+  })
+
   it('keeps viewer shortcuts on plain keys that typing cannot trigger', () => {
     const typing = all.filter((command) => {
       if (command.allowInInput) return false
