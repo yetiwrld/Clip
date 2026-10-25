@@ -75,7 +75,7 @@ export function UpdatePrompt({ enabled }: { enabled: boolean }) {
       ? 'Downloading update'
       : status.state === 'downloaded'
         ? 'Ready to install'
-        : 'Update download failed'
+        : 'Update could not be downloaded'
 
   return (
     <Modal
@@ -87,7 +87,7 @@ export function UpdatePrompt({ enabled }: { enabled: boolean }) {
             <>
               <button className="btn" onClick={close}>Later</button>
               <button className="btn primary" onClick={() => void downloadUpdate()} disabled={busy}>
-                {busy ? 'Starting…' : 'Download update'}
+                {busy ? 'Starting download…' : 'Download update'}
               </button>
             </>
           )}
@@ -116,7 +116,7 @@ export function UpdatePrompt({ enabled }: { enabled: boolean }) {
       {status.state === 'available' && (
         <div className="update-prompt-copy">
           <p>Clipwright Studio <strong>v{version}</strong> is available.</p>
-          <p>Download it now? The app will ask before restarting to install the update.</p>
+          <p>Download it now? Clipwright Studio asks before restarting to install.</p>
         </div>
       )}
       {status.state === 'downloading' && (
@@ -129,13 +129,13 @@ export function UpdatePrompt({ enabled }: { enabled: boolean }) {
       {status.state === 'downloaded' && (
         <div className="update-prompt-copy">
           <p>Clipwright Studio <strong>v{version}</strong> is downloaded and ready.</p>
-          <p>Restart the app now to finish installing, or choose Later to keep working.</p>
+          <p>Restart now to finish installing, or choose Later and keep working.</p>
         </div>
       )}
       {status.state === 'error' && (
         <div className="update-prompt-copy" role="alert">
           <p>{status.message}</p>
-          <p>You can continue using Clipwright Studio and try again later.</p>
+          <p>Keep working as usual. You can check for the update again later.</p>
         </div>
       )}
     </Modal>

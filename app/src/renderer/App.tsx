@@ -109,8 +109,8 @@ export function App() {
           {activeRenders > 0 && <span className="nav-badge active-count">{activeRenders}</span>}
         </button>
         {interrupted > 0 && (
-          <button className="nav-item" onClick={() => navigate('queue')} title="Interrupted processing detected — review in the render queue">
-            <TriangleAlert size={16} style={{ color: 'var(--warn)' }} /> {interrupted} to recover
+          <button className="nav-item" onClick={() => navigate('queue')} title="The last session closed with unfinished work — review it in the render queue">
+            <TriangleAlert size={16} style={{ color: 'var(--warn)' }} /> {interrupted} interrupted job{interrupted === 1 ? '' : 's'}
           </button>
         )}
 
@@ -164,7 +164,7 @@ export function App() {
                 {t.actionLabel}
               </button>
             )}
-            <button className="toast-close" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
+            <button className="toast-close" onClick={() => dismissToast(t.id)} aria-label="Dismiss notification" title="Dismiss">
               <X size={14} />
             </button>
           </div>

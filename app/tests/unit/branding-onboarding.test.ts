@@ -43,7 +43,7 @@ describe('Clipwright v0.0.4 branding and first-run welcome', () => {
     expect(welcome.match(/className="welcome-step"/g)).toHaveLength(3)
     expect(welcome).toContain('Import a video')
     expect(welcome).toContain('Find the moments')
-    expect(welcome).toContain('Edit and export')
+    expect(welcome).toContain('Edit and render')
     expect(welcome).toContain('Check setup')
     expect(welcome).toContain('Start creating')
   })

@@ -23,12 +23,12 @@ export async function pickUpload(accept?: string[]): Promise<string | null> {
         })
         const json = (await res.json()) as { ok: boolean; value?: { path: string }; error?: { message: string } }
         if (!json.ok) {
-          alert(json.error?.message ?? 'The upload failed.')
+          alert(json.error?.message ?? 'The file could not be uploaded. Try again.')
           return resolve(null)
         }
         resolve(json.value!.path)
       } catch {
-        alert('The upload failed — is the preview server still running?')
+        alert('The file could not be uploaded. The preview server may have stopped — restart it, then try again.')
         resolve(null)
       }
     }

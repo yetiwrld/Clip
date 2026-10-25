@@ -4,6 +4,7 @@ import { api, errMessage } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { RenderList } from '../project/RendersTab'
+import { renderStageLabel, taskStateLabel, taskTypeLabel } from '../../copy/labels'
 
 /**
  * Global queue view: renders across projects + the task/recovery list.
@@ -30,7 +31,7 @@ export function QueuePage() {
     try {
       await api['tasks.resume']({ id })
       await data.loadTasks()
-      app.toast({ level: 'info', message: 'Task restarted.' })
+      app.toast({ level: 'success', message: 'Job restarted.', hint: 'It is running again from the beginning.' })
     } catch (err) {
       app.toast({ level: 'error', ...errMessage(err) })
     }
@@ -61,24 +62,24 @@ export function QueuePage() {
       <div className="page-header">
         <div className="page-heading">
           <div className="page-title">Render queue</div>
-          <div className="page-subtitle">Renders run locally with FFmpeg. Concurrency is configurable in Settings → Video.</div>
+          <div className="page-subtitle">Renders and other jobs run locally with FFmpeg. Set how many run at once in Settings → Video.</div>
         </div>
       </div>
 
       {interrupted.length > 0 && (
         <div className="queue-group">
           <div className="queue-group-title" style={{ color: 'var(--warn)' }}>
-            <History size={12} /> Interrupted processing · {interrupted.length}
+            <History size={12} /> Interrupted jobs · {interrupted.length}
           </div>
           <div className="tiny queue-note">
-            These operations were in flight when the application last closed. Nothing was corrupted — choose whether to run them
-            again.
+            These jobs were still running when the app last closed. Nothing was corrupted. Run them again, or discard them to
+            clear the list.
           </div>
           {interrupted.map((t) => (
             <div className="queue-row" key={t.id}>
               <div className="q-main">
                 <div className="q-title">{projectById.get(t.projectId ?? '') ?? t.projectId?.slice(0, 8) ?? '—'}</div>
-                <div className="tiny">{t.type}</div>
+                <div className="tiny">{taskTypeLabel(t.type)}</div>
               </div>
               <div className="q-meta tiny">{t.message ?? ''}</div>
               <div />
@@ -101,11 +102,11 @@ export function QueuePage() {
           {running.map((t) => (
             <div className="queue-row" key={t.id}>
               <div className="q-main">
-                <div className="q-title">{t.type}</div>
+                <div className="q-title">{taskTypeLabel(t.type)}</div>
                 <div className="tiny">{projectById.get(t.projectId ?? '') ?? '—'}</div>
               </div>
               <div className="q-meta tiny">
-                <span className="status working"><span className="dot" /> {t.message ?? t.stage ?? 'Working…'}</span>
+                <span className="status working"><span className="dot" /> {t.message ?? (renderStageLabel(t.stage) || 'Working…')}</span>
               </div>
               <div className="q-value tiny">
                 {t.progress != null ? `${Math.round(t.progress * 100)}%` : ''}
@@ -126,26 +127,26 @@ export function QueuePage() {
 
       {history.length > 0 && (
         <div className="queue-group">
-          <div className="queue-group-title">Recent operations</div>
+          <div className="queue-group-title">Recent jobs</div>
           <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Type</th>
+                <th>Job</th>
                 <th>Project</th>
-                <th>State</th>
-                <th>Message</th>
-                <th>When</th>
+                <th>Status</th>
+                <th>Details</th>
+                <th>Finished</th>
               </tr>
             </thead>
             <tbody>
               {history.map((t) => (
                 <tr key={t.id}>
-                  <td>{t.type}</td>
+                  <td>{taskTypeLabel(t.type)}</td>
                   <td>{projectById.get(t.projectId ?? '') ?? '—'}</td>
                   <td>
                     <span className={`status ${t.state === 'completed' ? 'success' : t.state === 'failed' ? 'danger' : 'warn'}`}>
-                      <span className="dot" /> {t.state}
+                      <span className="dot" /> {taskStateLabel(t.state)}
                     </span>
                   </td>
                   <td className="tiny truncate">

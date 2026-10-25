@@ -4,6 +4,7 @@ import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, Modal, ProgressBar, Spinner } from '../../components/ui'
+import { clipStatusLabel, plural } from '../../copy/labels'
 import { getCaptionStyle } from '@shared/constants'
 import { formatClock } from '@shared/utils/time'
 
@@ -21,7 +22,13 @@ export function ClipsTab() {
     try {
       await api['renders.queue']({ clipId })
       await data.loadRenders(project.id)
-      app.toast({ level: 'info', message: 'Render queued — watch progress in the Render queue.' })
+      app.toast({
+        level: 'info',
+        message: 'Render queued.',
+        hint: 'Progress appears in the Render queue. Export the finished file from this tab.',
+        actionLabel: 'Open queue',
+        action: () => app.navigate('queue')
+      })
     } catch (err) {
       setError(err)
     } finally {
@@ -46,8 +53,9 @@ export function ClipsTab() {
       const result = await api['exports.run']({ clipIds, includeMetadata: true })
       app.toast({
         level: 'success',
-        message: `Exported ${clipIds.length} clip${clipIds.length === 1 ? '' : 's'} with metadata.`,
-        actionLabel: 'Reveal folder',
+        message: `Exported ${plural(clipIds.length, 'clip')} to the exports folder.`,
+        hint: 'A .txt and .json metadata file sits next to each video.',
+        actionLabel: 'Show in folder',
         action: () => void api['system.revealPath']({ path: result.dir }).catch(() => undefined)
       })
     } catch (err) {
@@ -63,7 +71,7 @@ export function ClipsTab() {
         <Scissors size={28} className="empty-icon" />
         <div className="empty-title">No clips yet</div>
         <div className="empty-copy">
-          Create a clip from a discovered moment in the Moments tab, then trim, caption and render it here.
+          Create a clip from a moment in the Moments tab, then trim, caption and render it here.
         </div>
       </div>
     )
@@ -79,10 +87,10 @@ export function ClipsTab() {
       {error ? <ErrorBox error={error} /> : null}
       {renderable.length > 0 && (
         <div className="row export-bar">
-          <span className="tiny">{renderable.length} rendered clip{renderable.length === 1 ? '' : 's'} ready to export</span>
+          <span className="tiny">{plural(renderable.length, 'rendered clip')} ready to export</span>
           <span className="spacer" />
           <button className="btn sm" onClick={() => void exportClips(renderable.map((c) => c.id))} disabled={exporting}>
-            {exporting ? <Spinner size={12} /> : <Package size={12} />} {exporting ? 'Exporting…' : 'Export all rendered'}
+            {exporting ? <Spinner size={12} /> : <Package size={12} />} {exporting ? 'Exporting…' : 'Export all rendered clips'}
           </button>
         </div>
       )}
@@ -135,7 +143,9 @@ function ClipRow({
   async function copyDescription() {
     const text = [clip.title, '', clip.description, clip.cta ? `\n${clip.cta}` : '', '', clip.hashtags.join(' ')].join('\n').trim()
     const ok = await copyText(text)
-    app.toast(ok ? { level: 'success', message: 'Description + hashtags copied.' } : { level: 'warn', message: 'Copy failed.' })
+    app.toast(ok
+      ? { level: 'success', message: 'Copied the title, description and hashtags.' }
+      : { level: 'warn', message: 'Could not copy to the clipboard.', hint: 'Your browser may block clipboard access. Select the text and copy it by hand.' })
   }
 
   return (
@@ -155,7 +165,7 @@ function ClipRow({
           <span>{`${Math.round(clip.endTime - clip.startTime)}s`}</span>
           <span title={`Caption style: ${style.label}`}>{style.label}</span>
           <span className={`status ${clip.status === 'rendered' ? 'success' : ''}`}>
-            <span className="dot" /> {clip.status}
+            <span className="dot" /> {clipStatusLabel(clip.status)}
           </span>
         </div>
         <div className="clip-desc">
@@ -166,7 +176,7 @@ function ClipRow({
         {activeRender && (
           <div style={{ marginTop: 'var(--space-3)', maxWidth: 320 }}>
             <ProgressBar value={activeRender.progress} />
-            <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>Rendering · {Math.round(activeRender.progress * 100)}%</div>
+            <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>Rendering · {Math.round(activeRender.progress * 100)}% complete</div>
           </div>
         )}
         {failedRender && !activeRender && !doneRender && failedRender.error && (
@@ -181,14 +191,14 @@ function ClipRow({
       </div>
 
       <div className="clip-actions">
-        <button className="btn sm" onClick={onEdit} title="Open this clip in the editor">
+        <button className="btn sm" onClick={onEdit} title="Edit this clip">
           <Pencil size={12} /> Edit
         </button>
-        <button className="btn primary sm" onClick={onRender} disabled={busy || Boolean(activeRender)} title="Queue a render for this clip">
+        <button className="btn primary sm" onClick={onRender} disabled={busy || Boolean(activeRender)} title="Render this clip">
           {busy || activeRender ? <Spinner size={12} /> : <Play size={12} />} Render
         </button>
         {doneRender && (
-          <button className="btn sm" onClick={onExport} disabled={exporting} title="Export the finished file">
+          <button className="btn sm" onClick={onExport} disabled={exporting} title="Export this rendered file">
             <Package size={12} /> Export
           </button>
         )}
@@ -212,11 +222,11 @@ function ClipRow({
               <div className="menu" role="menu" onClick={(event) => event.stopPropagation()}>
                 {doneRender?.outputPath && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void api['system.revealPath']({ path: doneRender.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) })) }}>
-                    <FolderOpen size={14} /> Open folder
+                    <FolderOpen size={14} /> Show in folder
                   </button>
                 )}
                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void copyDescription() }}>
-                  <Copy size={14} /> Copy title, description
+                  <Copy size={14} /> Copy title, description and hashtags
                 </button>
                 <div className="menu-sep" />
                 <button type="button" role="menuitem" className="danger" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}>

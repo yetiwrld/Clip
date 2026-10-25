@@ -5,6 +5,7 @@ import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { EmptyState, Modal, formatRelative } from '../../components/ui'
+import { plural, taskTypeLabel } from '../../copy/labels'
 import { formatClock } from '@shared/utils/time'
 import type { ProjectSummary } from '@shared/types'
 
@@ -149,7 +150,7 @@ export function DashboardPage() {
         </div>
         <div className="page-actions">
           <button className="btn" onClick={() => void handleImportFile()} disabled={importing !== null}>
-            <Film size={14} /> {importing === 'file' ? 'Importing…' : 'Import video'}
+            <Film size={14} /> {importing === 'file' ? 'Importing…' : 'Import video…'}
           </button>
         </div>
       </div>
@@ -174,20 +175,20 @@ export function DashboardPage() {
         <input
           id="import-url"
           className="input"
-          placeholder="Paste a media page or direct video URL you are authorized to use"
+          placeholder="Paste a video page or direct link you have the right to use"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void handleImportUrl()}
         />
         <button className="btn" onClick={() => void handleImportUrl()} disabled={importing !== null || !url.trim()}>
-          {importing === 'url' ? 'Starting…' : 'Import from URL'}
+          {importing === 'url' ? 'Starting download…' : 'Import from URL'}
         </button>
 
         <div className="create-note" aria-live="polite">
           {currentUrlCheck == null
-            ? 'Direct media links work automatically; supported video sites use yt-dlp.'
+            ? 'Direct video links download immediately. Supported sites need yt-dlp installed.'
             : currentUrlCheck.ok
-              ? <span className="status success"><span className="dot" /> Importable via {currentUrlCheck.label}</span>
+              ? <span className="status success"><span className="dot" /> Can import via {currentUrlCheck.label}</span>
               : <span className="status danger"><span className="dot" /> {currentUrlCheck.reason} {currentUrlCheck.hint}</span>}
         </div>
       </div>
@@ -197,7 +198,7 @@ export function DashboardPage() {
           {activeTasks.slice(0, 4).map((t) => (
             <div key={t.id} className="task-row">
               <span className="status working">
-                <span className="dot" /> {t.message ?? `${t.type}…`}
+                <span className="dot" /> {t.message ?? `${taskTypeLabel(t.type)}…`}
               </span>
               <span className="tiny">{t.stage ?? ''}</span>
             </div>
@@ -210,8 +211,8 @@ export function DashboardPage() {
           <Clapperboard size={28} className="empty-icon" />
           <div className="empty-title">No projects yet</div>
           <div className="empty-copy">
-            Create a project and import a long-form video — a podcast, interview, lecture or stream. Clipwright transcribes it,
-            finds the strong moments, and helps you turn them into vertical clips.
+            Create a project, then import a podcast, interview, lecture or stream. Clipwright transcribes it, finds the strong
+            moments, and helps you turn them into vertical clips.
           </div>
           <button className="btn primary" onClick={() => document.getElementById('new-project-name')?.focus()}>
             <Plus size={14} /> New project
@@ -259,7 +260,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
     try {
       await api['projects.delete']({ id: summary.id, confirm: true })
       await data.refreshProjects()
-      app.toast({ level: 'info', message: `Project “${summary.name}” deleted.` })
+      app.toast({ level: 'success', message: `Deleted project “${summary.name}”.`, hint: 'Exported files were kept.' })
       if (app.projectId === summary.id) app.navigate('dashboard')
     } catch (err) {
       app.toast({ level: 'error', ...errMessage(err) })
@@ -311,15 +312,15 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
               <span className="sep">·</span>
             </>
           )}
-          <span>{summary.clipCount} clips</span>
+          <span>{plural(summary.clipCount, 'clip')}</span>
           <span className="sep">·</span>
-          <span>{summary.candidateCount} moments</span>
+          <span>{plural(summary.candidateCount, 'moment')}</span>
           <span className="sep">·</span>
           <span>edited {formatRelative(summary.updatedAt)}</span>
           {!summary.hasAudio && (
             <>
               <span className="sep">·</span>
-              <span className="chip warn">no audio</span>
+              <span className="chip warn">No audio track</span>
             </>
           )}
         </div>
@@ -350,7 +351,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
                 </button>
                 <div className="menu-sep" />
                 <button className="danger" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}>
-                  <Trash2 size={14} /> Delete…
+                  <Trash2 size={14} /> Delete project…
                 </button>
               </div>
             </>
@@ -366,7 +367,7 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
             <>
               <button className="btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
               <button className="btn danger" onClick={() => void doDelete()}>
-                <Trash2 size={14} /> Delete permanently
+                <Trash2 size={14} /> Delete project
               </button>
             </>
           }

@@ -41,7 +41,7 @@ export function SettingsPage() {
       <div className="page-header">
         <div className="page-heading">
           <div className="page-title">Settings</div>
-          <div className="page-subtitle">Application preferences — stored locally in the workspace database.</div>
+          <div className="page-subtitle">App preferences. Everything here is stored on this computer.</div>
         </div>
       </div>
 
@@ -103,7 +103,7 @@ function AiSection() {
       const h = await api['settings.secretHints']()
       setHints(h)
       await app.bootstrap()
-      app.toast({ level: 'success', message: value.trim() ? 'API key stored locally.' : 'API key removed.' })
+      app.toast({ level: 'success', message: value.trim() ? 'API key saved on this computer.' : 'API key removed.' })
     } catch (err) {
       setError(err)
     }
@@ -137,7 +137,7 @@ function AiSection() {
             value={settings.ai.activeProvider}
             onChange={(e) => void app.saveSettings({ ai: { activeProvider: e.target.value } })}
           >
-            <option value="none">None — use the local heuristic when analyzing</option>
+            <option value="none">None — analyze with the offline heuristic</option>
             <option value="heuristic-local">Local heuristic (offline)</option>
             <option value="openai-compatible">OpenAI-compatible endpoint</option>
             <option value="anthropic">Anthropic (Claude)</option>
@@ -228,8 +228,8 @@ function ProviderForm(props: {
 
       <div className="grid two">
         <Field
-          label={props.providerId === 'anthropic' ? 'Base URL (blank = official API)' : 'Base URL (e.g. https://api.gonkarouter.io/v1)'}
-          hint={props.providerId === 'anthropic' ? undefined : 'OpenAI-compatible chat endpoint. Usually ends with /v1 — /chat/completions is appended automatically.'}
+          label="Base URL"
+          hint={props.providerId === 'anthropic' ? 'Leave blank to use the official Anthropic API.' : 'The chat endpoint of an OpenAI-compatible service. It usually ends with /v1; /chat/completions is added for you.'}
         >
           <input
             className="input"
@@ -238,7 +238,7 @@ function ProviderForm(props: {
             onBlur={(e) => {
               const v = e.target.value.trim()
               if (v && !/^https?:\/\//i.test(v)) {
-                app.toast({ level: 'error', message: 'Base URL must start with http:// or https://', hint: `You entered “${v}” — include the full address, e.g. https://api.gonkarouter.io/v1` })
+                app.toast({ level: 'error', message: 'That base URL is not valid.', hint: `It must start with http:// or https://. You entered “${v}”.` })
                 return
               }
               setLocal({ ...local, baseUrl: v })
@@ -246,12 +246,12 @@ function ProviderForm(props: {
             }}
           />
         </Field>
-        <Field label="Model" hint="Exactly as your provider lists it — e.g. gpt-4o-mini or zai-org/GLM-5.3-Flash. Never altered by the app.">
+        <Field label="Model" hint="Use the exact name your provider lists, such as gpt-4o-mini. The app never changes it.">
           <input className="input" defaultValue={local.model} onBlur={(e) => { setLocal({ ...local, model: e.target.value.trim() }); props.onSave({ model: e.target.value.trim() }) }} placeholder={props.providerId === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4o-mini'} />
         </Field>
       </div>
 
-      <Field label={`API key ${props.hint ? '(stored — enter a new one to replace)' : ''}`}>
+      <Field label={`API key${props.hint ? ' (one is stored — enter a new key to replace it)' : ''}`}>
         <div className="row">
           <input
             className="input"
@@ -261,15 +261,15 @@ function ProviderForm(props: {
             onChange={(e) => props.onKeyDraft(e.target.value)}
           />
           <button className="btn" onClick={() => props.onSaveKey(props.keyDraft)} disabled={!props.keyDraft.trim() && !props.hint}>
-            <Save size={14} /> Save
+            <Save size={14} /> Save key
           </button>
           {props.hint && (
-            <button className="btn ghost" title="Remove stored key" onClick={() => props.onSaveKey('')}>
+            <button className="btn ghost" title="Remove stored key" aria-label="Remove stored key" onClick={() => props.onSaveKey('')}>
               <Trash2 size={14} />
             </button>
           )}
         </div>
-        <div className="field-hint">Keys are stored in a protected local file inside the workspace — never in the database, logs, or diagnostics.</div>
+        <div className="field-hint">The key is kept in a protected file inside the workspace. It is never written to the database, the logs or a diagnostics report.</div>
       </Field>
 
       <div className="grid two">
@@ -278,14 +278,14 @@ function ProviderForm(props: {
             onChange={(e) => setLocal({ ...local, temperature: parseFloat(e.target.value) })}
             onMouseUp={() => props.onSave({ temperature: local.temperature })} />
         </Field>
-        <Field label="Max output tokens" hint="64 – 128,000. Raise it if replies are cut off mid-JSON.">
+        <Field label="Max output tokens" hint="Between 64 and 128,000. Raise it if replies stop halfway through.">
           <input className="input" type="number" min={64} max={128000} defaultValue={local.maxTokens}
             onBlur={(e) => { const raw = parseInt(e.target.value, 10); const v = Math.min(128000, Math.max(64, Number.isFinite(raw) ? raw : 4096)); setLocal({ ...local, maxTokens: v }); props.onSave({ maxTokens: v }) }} />
         </Field>
       </div>
 
       {props.providerId === 'openai-compatible' && (
-        <Field label="API key header" hint="Bearer is the OpenAI-compatible standard (OpenAI, OpenRouter, Groq, Together, GonkaRouter). Switch to x-api-key only if your gateway requires it.">
+        <Field label="API key header" hint="Bearer is the standard for OpenAI-compatible services such as OpenAI, OpenRouter, Groq and Together. Choose x-api-key only if your service requires it.">
           <select
             className="select"
             value={local.authStyle ?? 'bearer'}
@@ -298,11 +298,11 @@ function ProviderForm(props: {
         </Field>
       )}
 
-      <Switch label="Request JSON response format" hint="Some gateways reject response_format — the app automatically retries without it once; disable if errors persist." checked={local.jsonMode} onChange={(v) => { setLocal({ ...local, jsonMode: v }); props.onSave({ jsonMode: v }) }} />
+      <Switch label="Ask for JSON responses" hint="Some services reject the response_format field. The app retries once without it. Turn this off if errors continue." checked={local.jsonMode} onChange={(v) => { setLocal({ ...local, jsonMode: v }); props.onSave({ jsonMode: v }) }} />
       {props.audioOption && (
         <Switch
           label="This endpoint accepts audio transcription uploads"
-          hint="Enables the “Transcribe via cloud” option. OpenAI and Groq do; many chat-only proxies do not."
+          hint="Shows “Transcribe in cloud” in the Transcript tab. OpenAI and Groq accept uploads; many chat-only proxies do not."
           checked={local.supportsAudio}
           onChange={(v) => { setLocal({ ...local, supportsAudio: v }); props.onSave({ supportsAudio: v }) }}
         />
@@ -351,7 +351,7 @@ function TranscriptionSection() {
     app.toast(
       fresh?.available
         ? { level: 'success', message: 'Local Whisper is now available.' }
-        : { level: 'warn', message: 'Still not detected.', hint: fresh?.message }
+        : { level: 'warn', message: 'Local Whisper is still not detected.', hint: fresh?.message }
     )
   }
 
@@ -361,26 +361,26 @@ function TranscriptionSection() {
       {local && !local.available && (
         <div className="error-box">
           <div className="error-title">{local.message}</div>
-          <div className="field-hint">After installing, press Re-check — no app restart needed.</div>
+          <div className="field-hint">After installing, choose Check again. No restart is needed.</div>
           <div style={{ marginTop: 'var(--space-3)' }}>
             <button className="btn sm" onClick={() => void recheck()} disabled={rechecking}>
-              {rechecking ? <Spinner size={12} /> : <RefreshCw size={12} />} {rechecking ? 'Checking…' : 'Re-check'}
+              {rechecking ? <Spinner size={12} /> : <RefreshCw size={12} />} {rechecking ? 'Checking…' : 'Check again'}
             </button>
           </div>
         </div>
       )}
       <Field label="Default provider">
         <select className="select" value={t.providerId} onChange={(e) => void app.saveSettings({ transcription: { providerId: e.target.value } })}>
-          <option value="import-file">Import transcript file (offline)</option>
+          <option value="import-file">Import a transcript file (offline)</option>
           <option value="faster-whisper-local">Local Whisper — faster-whisper (offline)</option>
           <option value="openai-compatible">OpenAI-compatible cloud endpoint</option>
         </select>
       </Field>
-      <Field label="Language" hint="“auto” detects per video.">
+      <Field label="Language" hint="Auto detects the language of each video.">
         <input className="input" defaultValue={t.language} onBlur={(e) => void app.saveSettings({ transcription: { language: e.target.value } })} placeholder="auto" />
       </Field>
       <div className="grid two">
-        <Field label="Local Whisper model" hint="tiny/fast → medium/accurate. Downloads once, then cached offline.">
+        <Field label="Local Whisper model" hint="Tiny is fastest; medium is most accurate. The model downloads once, then works offline.">
           <select className="select" value={t.whisperModel} onChange={(e) => void app.saveSettings({ transcription: { whisperModel: e.target.value } })}>
             <option value="tiny">tiny — fastest</option>
             <option value="base">base — balanced</option>
@@ -390,17 +390,17 @@ function TranscriptionSection() {
         </Field>
         <Field label="Compute type">
           <select className="select" value={t.whisperCompute} onChange={(e) => void app.saveSettings({ transcription: { whisperCompute: e.target.value } })}>
-            <option value="int8">int8 — CPU friendly</option>
-            <option value="float16">float16 — needs GPU</option>
-            <option value="auto">auto</option>
+            <option value="int8">int8 — best for CPU</option>
+            <option value="float16">float16 — needs a GPU</option>
+            <option value="auto">Auto — pick for this machine</option>
           </select>
         </Field>
       </div>
-      <Field label="Decode speed" hint="Fast uses greedy decoding; larger values can improve difficult speech but take longer.">
+      <Field label="Decode speed" hint="Fast reads each word once. Higher settings can catch difficult speech but take longer.">
         <select className="select" value={t.whisperBeamSize} onChange={(e) => void app.saveSettings({ transcription: { whisperBeamSize: Number(e.target.value) as 1 | 3 | 5 } })}>
-          <option value={1}>Fast · recommended for CPU</option>
+          <option value={1}>Fast — recommended for CPU</option>
           <option value={3}>Balanced</option>
-          <option value={5}>Higher accuracy · slower</option>
+          <option value={5}>Higher accuracy — slower</option>
         </select>
       </Field>
       <div className="dep-row">
@@ -420,12 +420,12 @@ function VideoSection() {
   return (
     <div className="settings-section stack">
       <div className="section-title">Video & rendering</div>
-      <Field label="Default discovery duration preset">
+      <Field label="Default clip length">
         <select className="select" value={v.targetDurationPreset} onChange={(e) => void app.saveSettings({ video: { targetDurationPreset: e.target.value } })}>
-          <option value="short">Short · 15–30s</option>
-          <option value="medium">Medium · 30–60s</option>
-          <option value="long">Long · 60–90s</option>
-          <option value="mixed">Mixed · 15–90s</option>
+          <option value="short">Short — 15–30s</option>
+          <option value="medium">Medium — 30–60s</option>
+          <option value="long">Long — 60–90s</option>
+          <option value="mixed">Mixed — 15–90s</option>
         </select>
       </Field>
       <div className="grid two">
@@ -451,12 +451,12 @@ function VideoSection() {
           <option value="hardware">Hardware only — fail with a clear error if unavailable</option>
         </select>
         <div className="field-hint">
-          Hardware encoders: NVENC / QSV / AMF / VideoToolbox. In Auto mode a failed hardware render is retried on CPU automatically.
+          Hardware encoders: NVENC, QSV, AMF or VideoToolbox. In Auto mode, a failed hardware render is retried on the CPU.
         </div>
       </Field>
       <Switch
         label="Normalize loudness (EBU R128)"
-        hint="Consistent -16 LUFS across clips — recommended for social platforms."
+        hint="Keeps every clip near -16 LUFS, which social platforms expect."
         checked={v.audioNormalize}
         onChange={(val) => void app.saveSettings({ video: { audioNormalize: val } })}
       />
@@ -485,7 +485,7 @@ function VideoSection() {
           </Field>
         </div>
       )}
-      <Field label={`Render concurrency — ${settings.advanced.renderConcurrency}`} hint="More than 1 renders multiple clips at once but multiplies CPU load.">
+      <Field label={`Render at the same time — ${settings.advanced.renderConcurrency}`} hint="Above 1, several clips render at once. This uses more CPU.">
         <input type="range" min={1} max={4} step={1} defaultValue={settings.advanced.renderConcurrency}
           onMouseUp={(e) => void app.saveSettings({ advanced: { renderConcurrency: parseInt((e.target as HTMLInputElement).value, 10) } })} />
       </Field>
@@ -509,8 +509,8 @@ function CaptionsSection() {
         </select>
       </Field>
       <div className="field-hint">
-        Per-clip overrides (size, position, emphasis, uppercase, words per cue) are adjustable in the clip editor. Captions are
-        burned in at render time with the bundled Inter font, so output looks identical on every machine.
+        Size, position, emphasis, capitals and words per cue can be changed for each clip in the editor. Captions are burned in
+        at render time with the bundled Inter font, so the output looks the same on every computer.
       </div>
     </div>
   )
@@ -532,7 +532,7 @@ function ExportSection() {
           <option value="shorts">YouTube Shorts</option>
         </select>
       </Field>
-      <Field label="Filename template" hint="Placeholders: {index} {slug} {title} {date}. Windows-illegal characters are always sanitized.">
+      <Field label="Filename template" hint="Placeholders: {index} {slug} {title} {date}. Characters Windows does not allow are replaced automatically.">
         <input className="input" defaultValue={settings.export.filenameTemplate} onBlur={(e) => void app.saveSettings({ export: { filenameTemplate: e.target.value } })} />
       </Field>
       <Switch label="Write metadata files (.txt + .json) next to exported clips" checked={settings.export.includeMetadataFiles} onChange={(v) => void app.saveSettings({ export: { includeMetadataFiles: v } })} />
@@ -593,9 +593,9 @@ function StorageSection() {
       setSelectedCategories(new Set())
       setConfirmCleanup(false)
       if (result.removedFiles > 0) {
-        app.toast({ level: 'success', message: `Removed ${formatBytes(result.removedBytes)} of regenerable data.` })
+        app.toast({ level: 'success', message: `Removed ${formatBytes(result.removedBytes)} of cached files.`, hint: 'They are rebuilt when the app needs them again.' })
       } else {
-        app.toast({ level: 'info', message: 'No files were removed. The files may have changed or belong to an active project.' })
+        app.toast({ level: 'info', message: 'Nothing was removed.', hint: 'The files may have changed, or they belong to a project with active jobs.' })
       }
     } catch (error) {
       setCleanupError(error)
@@ -618,15 +618,15 @@ function StorageSection() {
           </table>
         )}
         <div className="field-hint">
-          Project folders contain imported media, transcripts, edits, renders, thumbnails and caches. Project deletion requires
-          separate confirmation; exports are kept.
+          Each project folder holds its imported media, transcripts, edits, renders, thumbnails and caches. Deleting a project has
+          its own confirmation. Exported files are kept.
         </div>
         {isElectron ? (
           <button className="btn" onClick={() => void api['system.openLogsFolder']().catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}>
             <FolderOpen size={14} /> Open workspace logs
           </button>
         ) : (
-          <div className="tiny">Open the workspace folder from the desktop app.</div>
+          <div className="tiny">Folders can only be opened from the desktop app.</div>
         )}
       </div>
 
@@ -639,8 +639,8 @@ function StorageSection() {
           </button>
         </div>
         <div className="field-hint">
-          Review reclaimable generated files before removal. Original videos and imported assets, project edits, transcripts,
-          completed renders, and exported files are <strong>never included</strong>. Preview caches are rebuilt when needed.
+          Only files the app can rebuild are listed. Your videos, imported assets, edits, transcripts, finished renders and exports
+          are <strong>never included</strong>.
         </div>
         {cleanupReport && (
           <>
@@ -677,7 +677,7 @@ function StorageSection() {
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span className="row" style={{ justifyContent: 'space-between', gap: 'var(--space-4)' }}>
                         <strong style={{ fontSize: 'var(--fs-sm)' }}>{category.label}</strong>
-                        <span className="chip">{category.fileCount} files · {formatBytes(category.bytes)}</span>
+                        <span className="chip">{category.fileCount === 1 ? '1 file' : `${category.fileCount} files`} · {formatBytes(category.bytes)}</span>
                       </span>
                       <span className="tiny" style={{ display: 'block', marginTop: 'var(--space-2)' }}>{category.description}</span>
                     </span>
@@ -686,20 +686,20 @@ function StorageSection() {
               })}
             </div>
             {cleanupReport.skippedActiveProjects > 0 && (
-              <div className="tiny">Caches in {cleanupReport.skippedActiveProjects} project(s) with active jobs are temporarily held back.</div>
+              <div className="tiny">Caches in {cleanupReport.skippedActiveProjects === 1 ? '1 project' : `${cleanupReport.skippedActiveProjects} projects`} with active jobs are kept for now.</div>
             )}
             {cleanupReport.reclaimableBytes === 0 && !scanning && (
-              <div className="tiny">No eligible old caches or logs were found.</div>
+              <div className="tiny">No old caches or logs were found.</div>
             )}
           </>
         )}
-        {!cleanupReport && scanning && <div className="row"><Spinner size={14} /><span className="tiny">Scanning generated storage…</span></div>}
-        {Boolean(cleanupError) && <ErrorBox error={cleanupError} onRetry={() => void refreshCleanupScan()} retryLabel="Try scan again" />}
+        {!cleanupReport && scanning && <div className="row"><Spinner size={14} /><span className="tiny">Scanning for files that can be removed…</span></div>}
+        {Boolean(cleanupError) && <ErrorBox error={cleanupError} onRetry={() => void refreshCleanupScan()} retryLabel="Scan again" />}
         {cleanupResult && (
           <div className="field-hint">
-            Last cleanup: {cleanupResult.removedFiles} file(s), {formatBytes(cleanupResult.removedBytes)} removed.
-            {cleanupResult.skippedFiles > 0 && ` ${cleanupResult.skippedFiles} file(s) changed, were in use, or could not be removed.`}
-            {cleanupResult.skippedActiveProjects > 0 && ` ${cleanupResult.skippedActiveProjects} active project(s) were left untouched.`}
+            Last cleanup: {cleanupResult.removedFiles === 1 ? '1 file' : `${cleanupResult.removedFiles} files`}, {formatBytes(cleanupResult.removedBytes)} removed.
+            {cleanupResult.skippedFiles > 0 && ` ${cleanupResult.skippedFiles === 1 ? '1 file had' : `${cleanupResult.skippedFiles} files had`} changed, were in use, or could not be removed.`}
+            {cleanupResult.skippedActiveProjects > 0 && ` ${cleanupResult.skippedActiveProjects === 1 ? '1 active project was' : `${cleanupResult.skippedActiveProjects} active projects were`} left untouched.`}
           </div>
         )}
         <div className="row end">
@@ -715,28 +715,28 @@ function StorageSection() {
 
       {confirmCleanup && (
         <Modal
-          title="Remove selected storage?"
+          title="Remove these files?"
           onClose={cleaning ? undefined : () => setConfirmCleanup(false)}
           footer={(
             <>
               <button className="btn" onClick={() => setConfirmCleanup(false)} disabled={cleaning}>Keep files</button>
               <button className="btn danger" onClick={() => void removeSelectedCaches()} disabled={cleaning || selectedCategories.size === 0}>
-                {cleaning ? <Spinner size={14} /> : <Trash2 size={14} />} Remove {selectedFiles} file(s)
+                {cleaning ? <Spinner size={14} /> : <Trash2 size={14} />} Remove {selectedFiles === 1 ? '1 file' : `${selectedFiles} files`}
               </button>
             </>
           )}
         >
-          <p>This will remove up to <strong>{formatBytes(selectedBytes)}</strong> across {selectedFiles} generated file(s).</p>
+          <p>This removes up to <strong>{formatBytes(selectedBytes)}</strong> across {selectedFiles === 1 ? '1 file' : `${selectedFiles} files`}.</p>
           <ul className="doc-list">
             {selectedSummary.map((category) => (
               <li key={category.id} style={{ marginBottom: 'var(--space-3)' }}>
-                {category.label}: {category.fileCount} file(s), {formatBytes(category.bytes)}
+                {category.label}: {category.fileCount === 1 ? '1 file' : `${category.fileCount} files`}, {formatBytes(category.bytes)}
                 {category.examples.length > 0 && (
                   <details style={{ marginTop: 'var(--space-2)' }}>
-                    <summary className="tiny" style={{ cursor: 'pointer' }}>Review workspace-relative file locations</summary>
+                    <summary className="tiny" style={{ cursor: 'pointer' }}>Show file locations</summary>
                     <ul className="mono tiny doc-sublist">
                       {category.examples.map((example) => <li key={example}>{example}</li>)}
-                      {category.additionalFileCount > 0 && <li>and {category.additionalFileCount} more file(s)</li>}
+                      {category.additionalFileCount > 0 && <li>and {category.additionalFileCount === 1 ? '1 more file' : `${category.additionalFileCount} more files`}</li>}
                     </ul>
                   </details>
                 )}
@@ -744,8 +744,8 @@ function StorageSection() {
             ))}
           </ul>
           <div className="field-hint" style={{ marginTop: 'var(--space-4)' }}>
-            The app will rescan immediately before deleting and abort if the reviewed file set changed. Active project jobs,
-            original media, final renders and exports are protected by the cleanup allowlist.
+            The app checks the files again before deleting and stops if they changed. Files used by active jobs, original media,
+            finished renders and exports are never removed.
           </div>
         </Modal>
       )}
@@ -753,8 +753,8 @@ function StorageSection() {
       <div className="settings-section stack">
         <div className="section-title">Diagnostics export</div>
         <div className="field-hint">
-          A JSON report with app version, OS, enabled providers, FFmpeg version, schema version, recent error codes and
-          non-sensitive configuration. <strong>Never includes API keys.</strong>
+          A JSON report with the app version, OS, enabled providers, FFmpeg version, database version, recent error codes and
+          settings that hold no secrets. <strong>It never includes API keys.</strong>
         </div>
         <div className="row">
           <button
@@ -763,7 +763,7 @@ function StorageSection() {
               try {
                 const result = await api['system.exportDiagnostics']()
                 setExported(result.path)
-                app.toast({ level: 'success', message: 'Diagnostics exported.', actionLabel: isElectron ? 'Reveal file' : undefined, action: isElectron ? () => void api['system.revealPath']({ path: result.path }) : undefined })
+                app.toast({ level: 'success', message: 'Diagnostics report saved.', actionLabel: isElectron ? 'Show in folder' : undefined, action: isElectron ? () => void api['system.revealPath']({ path: result.path }) : undefined })
               } catch (err) {
                 app.toast({ level: 'error', ...errMessage(err) })
               }
@@ -790,7 +790,7 @@ function AdvancedSection() {
   return (
     <div className="settings-section stack">
       <div className="section-title">Advanced</div>
-      <Field label="FFmpeg path override" hint="Blank = auto-detect (system PATH, then the bundled binary).">
+      <Field label="FFmpeg path override" hint="Leave blank to detect it: system PATH first, then the bundled copy.">
         <input className="input mono" defaultValue={settings.advanced.ffmpegPath} placeholder={ffmpeg?.available ? `auto: ${ffmpeg.message}` : 'not detected'} onBlur={(e) => void app.saveSettings({ advanced: { ffmpegPath: e.target.value } })} />
       </Field>
       <Field label="FFprobe path override">
@@ -798,10 +798,10 @@ function AdvancedSection() {
       </Field>
       <Field label="Log level">
         <select className="select" value={settings.advanced.logLevel} onChange={(e) => void app.saveSettings({ advanced: { logLevel: e.target.value } })}>
-          <option value="debug">debug — verbose, for support</option>
-          <option value="info">info</option>
-          <option value="warn">warn</option>
-          <option value="error">error</option>
+          <option value="debug">debug — everything, for support</option>
+          <option value="info">info — normal messages</option>
+          <option value="warn">warn — warnings and errors</option>
+          <option value="error">error — errors only</option>
         </select>
       </Field>
       <div className="divider" />

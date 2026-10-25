@@ -12,6 +12,7 @@ import { registerCommands, shortcutLabelFor } from '../../commands/registry'
 import { editorCommands, type EditorHandlers } from '../../commands/screenCommands'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, Field, Spinner, Switch } from '../../components/ui'
+import { plural, providerLabel } from '../../copy/labels'
 import { buildCues, cueAt } from '@shared/captions/segmentation'
 import { AUDIO_RESTORATION_PRESETS } from '@shared/audio/restoration'
 import { applyTrackingToCrop, cameraStateAt, computeCameraCrop, computeCrop } from '@shared/video/crop'
@@ -322,12 +323,12 @@ export function EditorPage() {
     try {
       const { taskId } = await api['media.assets.import']({ projectId, filePaths: selectedPaths })
       if (placement) pendingAssetDrop.current = { taskId, existing: new Set(data.assets.map((asset) => asset.id)), ...placement }
-      app.toast({ level: 'info', message: `Importing ${selectedPaths.length} media file${selectedPaths.length === 1 ? '' : 's'} into the project.` })
+      app.toast({ level: 'info', message: `Importing ${plural(selectedPaths.length, 'media file')} into the project.` })
     } catch (err) { setAssetImporting(false); app.toast({ level: 'error', ...errMessage(err) }) }
   }
   async function renameAsset(asset: ProjectAsset) {
     if (!projectId) return
-    const name = window.prompt('Asset name', asset.name)
+    const name = window.prompt('Rename asset', asset.name)
     if (!name?.trim()) return
     try { await api['media.assets.rename']({ assetId: asset.id, name: name.trim() }); await data.loadAssets(projectId) }
     catch (err) { app.toast({ level: 'error', ...errMessage(err) }) }
@@ -1268,8 +1269,11 @@ export function EditorPage() {
       app.toast({
         level: 'success',
         message: preview
-          ? 'Quick preview render queued (720p draft).'
-          : 'Render queued. Progress appears in the Render queue.',
+          ? 'Preview render queued at 720p.'
+          : 'Render queued.',
+        hint: preview
+          ? 'A fast draft to check the cut, captions and framing.'
+          : 'Progress appears in the Render queue. Export the finished file from the Clips tab.',
         actionLabel: 'Open queue',
         action: () => app.navigate('queue')
       })
@@ -1407,6 +1411,7 @@ export function EditorPage() {
               className="clip-title-input"
               value={clip.title}
               placeholder="Clip title"
+              aria-label="Clip title"
               title="Clip title"
               onChange={(e) => updateClip({ title: e.target.value })}
             />
@@ -1429,10 +1434,15 @@ export function EditorPage() {
             <Redo2 size={14} />
           </button>
           <span className="topbar-divider" aria-hidden="true" />
-          <button className="btn primary topbar-export" onClick={() => void queueRender(false)} disabled={renderQueued}>
-            {renderQueued ? <Spinner size={14} /> : <Package size={14} />} Export
+          <button
+            className="btn primary topbar-export"
+            onClick={() => void queueRender(false)}
+            disabled={renderQueued}
+            title="Render this clip. Export the finished file from the Clips tab."
+          >
+            {renderQueued ? <Spinner size={14} /> : <Package size={14} />} Render
           </button>
-          <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open inspector" title="Open inspector" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
+          <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open properties" title="Open properties" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
             <SlidersHorizontal size={14} />
           </button>
         </div>
@@ -1459,17 +1469,17 @@ export function EditorPage() {
             onRelink={(asset) => void relinkAsset(asset)} onDropFiles={(paths) => void importAssets(paths)} />}
           {activeTool === 'moments' && <div className="editor-moments-panel">
             {data.candidates.filter((candidate) => candidate.status !== 'rejected').length === 0
-              ? <div className="editor-panel-empty"><Sparkles size={20} /><strong>No moments yet</strong><span>Analyze the project to find strong clip moments.</span><button className="btn sm" onClick={async () => { try { await api['analysis.start']({ projectId: project.id, providerId: 'heuristic-local' }); app.toast({ level: 'info', message: 'Moment analysis started.' }) } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) } }}>Analyze video</button></div>
+              ? <div className="editor-panel-empty"><Sparkles size={20} /><strong>No moments yet</strong><span>Run the analysis to find strong moments in this project.</span><button className="btn sm" onClick={async () => { try { await api['analysis.start']({ projectId: project.id, providerId: 'heuristic-local' }); app.toast({ level: 'info', message: 'Moment analysis started.', hint: 'Results appear here when it finishes.' }) } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) } }}>Analyze now</button></div>
               : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); setSourceClipSelected(false); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setSourceClipSelected(false); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
                 {filmstrip?.length ? <img className="editor-moment-thumb" src={mediaUrl(filmstrip.reduce((best, frame) => Math.abs(frame.t - candidate.startTime) < Math.abs(best.t - candidate.startTime) ? frame : best).path)} alt="" /> : null}
-                <span className="editor-moment-time">{formatClock(candidate.startTime, true)} – {formatClock(candidate.endTime, true)}</span><strong>{candidate.title}</strong><span>{candidate.reason}</span><small>{Math.round(candidate.overallScore ?? 0)} score · {Math.round(candidate.endTime - candidate.startTime)} sec</small>
+                <span className="editor-moment-time">{formatClock(candidate.startTime, true)} – {formatClock(candidate.endTime, true)}</span><strong>{candidate.title}</strong><span>{candidate.reason}</span><small>{Math.round(candidate.overallScore ?? 0)}/100 · {Math.round(candidate.endTime - candidate.startTime)}s</small>
                 <span className="editor-moment-actions" onClick={(event) => event.stopPropagation()}><button className="btn sm" onClick={() => void openMoment(candidate)}>{data.clips.some((item) => item.candidateId === candidate.id) ? 'Edit clip' : 'Create clip'}</button></span>
               </div>)}
           </div>}
           {activeTool === 'camera' && <div className="editor-camera-panel">
-            <p className="muted">Select a keyframe to navigate. Add and edit framing in Properties → Camera keyframes; subject tracking is in Crop &amp; framing.</p>
+            <p className="muted">Select a keyframe to jump to it. Add and edit framing in Properties → Camera keyframes. Subject tracking lives in Crop &amp; framing.</p>
             <div className="editor-keyframe-list">{[...clip.cameraKeyframes].sort((a, b) => a.time - b.time).map((keyframe, index) => <button key={`${keyframe.time}-${index}`} onClick={() => { selectCameraKeyframe(keyframe); seekTo(keyframe.time) }}><span>◆</span>{formatClock(keyframe.time, true)}<small>{keyframe.easing}</small></button>)}</div>
-            {clip.cameraKeyframes.length === 0 && <div className="field-hint">No camera keyframes yet. Open Properties → Camera keyframes to add one at the current playhead.</div>}
+            {clip.cameraKeyframes.length === 0 && <div className="field-hint">No camera keyframes yet. Open Properties → Camera keyframes to add one where the playhead is.</div>}
           </div>}
           {activeTool === 'clip' && <div className="editor-source-panel"><p>Selected source range</p><strong className="mono">{formatClock(clip.startTime, true)} – {formatClock(clip.endTime, true)}</strong>
             <div className="field-hint">Drag the source strip below the playhead to trim. Use Properties → Trim and Silence removal for precise range and pause edits.</div>
@@ -1480,7 +1490,7 @@ export function EditorPage() {
             <div className="stage-head-title">
               <strong>Player</strong>
               <span>{target.w}×{target.h} · {clip.aspectRatio}</span>
-              {useProxySrc && <span className="stage-chip">Proxy preview</span>}
+              {useProxySrc && <span className="stage-chip">Preview copy</span>}
             </div>
             <div className="stage-head-actions editor-preview-tools" role="toolbar" aria-label="Preview tools">
             <button className={`btn sm icon${previewTool === 'select' ? ' primary' : ''}`} onClick={() => setPreviewTool('select')} title="Select tool" aria-label="Select tool" aria-pressed={previewTool === 'select'}><MousePointer2 size={14} /></button>
@@ -1654,26 +1664,26 @@ export function EditorPage() {
               <div className="playback-error">
                 <div>
                   <AlertTriangle size={28} className="icon-big" />
-                  <h4>Playback problem</h4>
+                  <h4>This video cannot be played here</h4>
                   <p>{videoError}</p>
                   {playback?.verdict === 'proxy' && !playback.proxyExists && (
                     <button className="btn primary sm" onClick={() => void createProxy()} disabled={proxyRunning}>
                       {proxyRunning ? <Spinner size={12} /> : <Zap size={12} />}
-                      {proxyRunning ? 'Building proxy…' : 'Create preview proxy'}
+                      {proxyRunning ? 'Building preview copy…' : 'Build preview copy'}
                     </button>
                   )}
                   {playback?.verdict === 'proxy' && playback.proxyExists && (
                     <p style={{ marginTop: 'var(--space-3)' }}>
-                      A proxy exists — reloading the preview.
+                      A preview copy is ready. Reloading the player.
                       <br />
                       <button className="btn sm" style={{ marginTop: 'var(--space-3)' }} onClick={() => setVideoError(null)}>
-                        Retry playback
+                        Try playing again
                       </button>
                     </p>
                   )}
                   {playback?.verdict === 'native' && (
                     <p style={{ marginTop: 'var(--space-3)', color: 'var(--text-3)' }}>
-                      Rendering and silence detection still work — only in-app preview playback is affected.
+                      Rendering and silence detection still work. Only the in-app preview is affected.
                     </p>
                   )}
                 </div>
@@ -1726,12 +1736,12 @@ export function EditorPage() {
               <Maximize2 size={14} />
             </button>
             <span className="tiny transport-meta">
-              {cues.length} captions{activeCue ? ` · “${activeCue.text.slice(0, 34)}${activeCue.text.length > 34 ? '…' : ''}”` : ''}
+              {plural(cues.length, 'caption')}{activeCue ? ` · “${activeCue.text.slice(0, 34)}${activeCue.text.length > 34 ? '…' : ''}”` : ''}
             </span>
           </div>
         </div>
 
-        {inspectorOpen && <button className="editor-inspector-backdrop" aria-label="Close inspector" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} />}
+        {inspectorOpen && <button className="editor-inspector-backdrop" aria-label="Close properties" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} />}
         <aside id="editor-inspector" className={`editor-inspector${inspectorOpen ? ' mobile-open' : ''}`} aria-label="Edit properties">
           <div className="inspector-mobile-heading"><strong>Properties</strong><button ref={inspectorCloseRef} className="btn ghost sm icon" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} aria-label="Close properties" title="Close properties"><CloseIcon size={16} /></button></div>
           {selectedTimelineItem ? <>
@@ -1753,7 +1763,7 @@ export function EditorPage() {
             </div>
           </> : selectedMoment ? <div className="inspector-moment-details"><div className="inspector-context-heading"><span>AI moment</span><strong>{selectedMoment.title}</strong></div>
             <p>{selectedMoment.reason}</p><p>{selectedMoment.transcriptExcerpt}</p><div className="inspector-moment-meta">{formatClock(selectedMoment.startTime, true)} – {formatClock(selectedMoment.endTime, true)} · Score {Math.round(selectedMoment.overallScore ?? 0)}</div>
-          </div> : <div className="inspector-empty"><Film size={28} /><strong>Select a clip to edit</strong><span>Choose a media item, text, caption, or moment to see its controls here.</span></div>}
+          </div> : <div className="inspector-empty"><Film size={28} /><strong>Nothing selected</strong><span>Select a clip, media item, text layer, caption or moment to see its controls.</span></div>}
           <details className="inspector-section" open>
             <summary>
               <Scissors size={12} /> Trim <ChevronRight size={14} className="chev" />
@@ -2048,8 +2058,8 @@ function TextLayerInspector(props: {
     {!layer ? <div className="field-hint">Add a text layer, then drag it in the preview. Double-click its preview text to edit it.</div> : <>
       <Field label="Text"><textarea className="textarea" rows={3} maxLength={2000} value={layer.text} onChange={(e) => props.onChange(layer.id, { text: e.target.value })} /></Field>
       <div className="row" style={{ gap: 'var(--space-3)' }}>
-        <Field label="Start (sec)"><input className="input" type="number" step="0.1" value={layer.startTime} onChange={(e) => props.onChange(layer.id, { startTime: Math.min(Number(e.target.value), layer.endTime - 0.1) })} /></Field>
-        <Field label="End (sec)"><input className="input" type="number" step="0.1" value={layer.endTime} onChange={(e) => props.onChange(layer.id, { endTime: Math.max(Number(e.target.value), layer.startTime + 0.1) })} /></Field>
+        <Field label="Start (seconds)"><input className="input" type="number" step="0.1" value={layer.startTime} onChange={(e) => props.onChange(layer.id, { startTime: Math.min(Number(e.target.value), layer.endTime - 0.1) })} /></Field>
+        <Field label="End (seconds)"><input className="input" type="number" step="0.1" value={layer.endTime} onChange={(e) => props.onChange(layer.id, { endTime: Math.max(Number(e.target.value), layer.startTime + 0.1) })} /></Field>
       </div>
       <div className="row" style={{ gap: 'var(--space-3)' }}>
         <Field label={`X · ${Math.round(layer.x * 100)}%`}><input type="range" min="0" max="1" step="0.01" value={layer.x} onChange={(e) => props.onChange(layer.id, { x: Number(e.target.value) })} /></Field>
@@ -2111,7 +2121,7 @@ function CameraPanel(props: {
           <Crop size={12} /> {props.editing ? 'Done framing' : 'Edit camera frame'}
         </button>
         <button className="btn sm primary" onClick={props.onAdd}>
-          <Target size={12} /> Add Keyframe
+          <Target size={12} /> Add keyframe
         </button>
       </div>
       {props.editing && <div className="field-hint">Drag the outlined frame to position it. Drag its lower-right handle to change scale. These edits create or update a keyframe here.</div>}
@@ -2156,7 +2166,7 @@ function CameraPanel(props: {
         <button className="btn ghost sm" onClick={props.onDelete} disabled={!props.selectedKeyframe}><X size={12} /> Delete</button>
         <button className="btn ghost sm" onClick={props.onReset}><RotateCcw size={12} /> Reset camera</button>
       </div>
-      <div className="field-hint">Camera keyframes use source time, so silence cuts remap them with the retained video segments. Tracking creates editable camera control points.</div>
+      <div className="field-hint">Camera keyframes use source time, so removing silence shifts them with the video that remains. Tracking adds control points you can edit.</div>
     </div>
   )
 }
@@ -2207,10 +2217,10 @@ function AudioRestorationPanel(props: {
           {AUDIO_RESTORATION_PRESETS.map((option) => <option key={option.id} value={option.id}>{option.label} — {option.description}</option>)}
         </select>
       </Field>
-      <div className="field-hint">Uses FFmpeg voice-band high-pass and adaptive noise reduction. Imported timeline music/effects are left untouched. Strong cleanup can soften quiet speech.</div>
+      <div className="field-hint">Uses a voice-band filter and adaptive noise reduction. Music and effects on the timeline are left alone. Strong cleanup can soften quiet speech.</div>
       <button className="btn sm" onClick={() => void makePreview()} disabled={!props.hasAudio || preset === 'off' || previewing}>
         {previewing ? <Spinner size={12} /> : <Headphones size={12} />}
-        {previewing ? 'Preparing A/B sample…' : `Compare before / after (${preset})`}
+        {previewing ? 'Preparing the comparison…' : 'Compare before and after'}
       </button>
       {previewError ? <ErrorBox error={previewError} onRetry={() => setPreviewError(null)} retryLabel="Dismiss" /> : null}
       {preview && (
@@ -2220,10 +2230,10 @@ function AudioRestorationPanel(props: {
             <audio ref={beforeRef} controls preload="metadata" src={mediaUrl(preview.beforePath)} onPlay={() => afterRef.current?.pause()} />
           </div>
           <div>
-            <label>After · {preset}</label>
+            <label>After · {AUDIO_RESTORATION_PRESETS.find((option) => option.id === preset)?.label ?? preset}</label>
             <audio ref={afterRef} controls preload="metadata" src={mediaUrl(preview.afterPath)} onPlay={() => beforeRef.current?.pause()} />
           </div>
-          <span className="tiny">Both are {preview.duration.toFixed(1)} seconds from this clip’s start. Play one at a time to compare.</span>
+          <span className="tiny">Both clips start at the same point of this clip and last {preview.duration.toFixed(1)} seconds. Play one at a time to compare.</span>
         </div>
       )}
     </div>
@@ -2265,14 +2275,14 @@ function TrimPanel(props: {
               setOptimizing(false)
             }
           }}
-          title="Snap the clip edges to sentence boundaries and add lead-in context where the opener needs setup"
+          title="Move the clip edges to sentence boundaries and add context where the opening needs setup"
         >
           {optimizing ? <Spinner size={12} /> : <Wand2 size={12} />} Optimize boundaries
         </button>
       </div>
       <div className="row">
         <div className="field" style={{ flex: 1 }}>
-          <label className="field-label">Start (set with <span className="kbd">I</span>)</label>
+          <label className="field-label">Start — seconds (<span className="kbd">I</span> sets it)</label>
           <div className="row" style={{ gap: 'var(--space-2)' }}>
             <button className="btn sm" onClick={() => nudge('startTime', -0.5)} aria-label="Nudge start earlier">−0.5s</button>
             <input
@@ -2292,7 +2302,7 @@ function TrimPanel(props: {
 
       <div className="row">
         <div className="field" style={{ flex: 1 }}>
-          <label className="field-label">End (set with <span className="kbd">O</span>)</label>
+          <label className="field-label">End — seconds (<span className="kbd">O</span> sets it)</label>
           <div className="row" style={{ gap: 'var(--space-2)' }}>
             <button className="btn sm" onClick={() => nudge('endTime', -0.5)} aria-label="Nudge end earlier">−0.5s</button>
             <input
@@ -2380,20 +2390,24 @@ function SilencePanel(props: {
   return (
     <>
       <div className="field-hint" style={{ marginBottom: 'var(--space-3)' }}>
-        Detected pauses stay editable. Drag a red timeline edge to adjust the cut; preview and render use the current boundaries.
+        Detected pauses stay editable. Drag a red edge on the timeline to adjust a cut. Previews and renders use the current boundaries.
       </div>
       <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('auto')}>
-          {detecting === 'auto' ? <Spinner size={12} /> : <AudioLines size={12} />} Detect (standard)
+          {detecting === 'auto' ? <Spinner size={12} /> : <AudioLines size={12} />} Detect pauses
         </button>
-        <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('aggressive')} title="Lower thresholds - removes shorter pauses too">
+        <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('aggressive')} title="Uses a lower threshold, so shorter pauses are removed too">
           {detecting === 'aggressive' ? <Spinner size={12} /> : <AudioLines size={12} />} Aggressive
         </button>
       </div>
       {cuts.length > 0 ? (
         <>
           <div className="row tiny" style={{ justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-            <span><strong style={{ color: 'var(--text-2)' }}>{cuts.length}</strong> detected pauses ? <strong style={{ color: 'var(--danger)' }}>-{cuts.filter((c) => c.status !== 'kept').reduce((sum, c) => sum + (c.end - c.start), 0).toFixed(1)}s</strong> removed</span>
+            <span>
+              <strong style={{ color: 'var(--text-2)' }}>{cuts.length === 1 ? '1 pause' : `${cuts.length} pauses`}</strong>
+              {' · '}
+              <strong style={{ color: 'var(--danger)' }}>{cuts.filter((c) => c.status !== 'kept').reduce((sum, c) => sum + (c.end - c.start), 0).toFixed(1)}s</strong> removed
+            </span>
             <button className="btn ghost sm" onClick={() => props.onCutsChanged(cuts.map((c) => ({ ...c, status: 'kept' })))}><RotateCcw size={12} /> Restore all</button>
           </div>
           <div className="stack sm" style={{ maxHeight: 260, overflowY: 'auto' }}>
@@ -2405,11 +2419,11 @@ function SilencePanel(props: {
               return (
                 <div key={`${detectedStart}-${i}`} className="panel" style={{ padding: 'var(--space-3)', borderColor: selected ? 'var(--accent)' : undefined }}>
                   <button className="btn ghost sm" style={{ width: '100%', justifyContent: 'space-between' }} onClick={() => props.onSelect(i)}>
-                    <span className="mono">Pause {formatClock(detectedStart, true)} - {formatClock(detectedEnd, true)}</span>
+                    <span className="mono">Pause {formatClock(detectedStart, true)} – {formatClock(detectedEnd, true)}</span>
                     <span className="tiny" style={{ color: isRemoved ? 'var(--danger)' : 'var(--text-3)' }}>{isRemoved ? 'Removed' : 'Kept'}</span>
                   </button>
                   <div className="tiny muted" style={{ padding: 'var(--space-1) var(--space-2) var(--space-3)' }}>
-                    Detected {(detectedEnd - detectedStart).toFixed(2)}s; removing {isRemoved ? (c.end - c.start).toFixed(2) : '0.00'}s; keeping {(detectedEnd - detectedStart - (isRemoved ? c.end - c.start : 0)).toFixed(2)}s
+                    Pause length {(detectedEnd - detectedStart).toFixed(2)}s · removing {isRemoved ? (c.end - c.start).toFixed(2) : '0.00'}s · keeping {(detectedEnd - detectedStart - (isRemoved ? c.end - c.start : 0)).toFixed(2)}s
                   </div>
                   {selected && <>
                     <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
@@ -2418,13 +2432,13 @@ function SilencePanel(props: {
                       <button className="btn ghost sm" onClick={() => props.onPreviewRange(detectedEnd, Math.min(clip.endTime, detectedEnd + 0.7))}>Play after</button>
                     </div>
                     {isRemoved && <div className="row">
-                      <label className="field tiny" style={{ flex: 1 }}>Cut start
+                      <label className="field tiny" style={{ flex: 1 }}>Cut start (seconds)
                         <input className="input" type="number" step="0.05" min={detectedStart} max={c.end - 0.08} value={c.start.toFixed(2)} onChange={(e) => {
                           const start = Math.max(detectedStart, Math.min(Number(e.target.value) || detectedStart, c.end - 0.08))
                           props.onCutsChanged(cuts.map((x, j) => j === i ? { ...x, start } : x))
                         }} />
                       </label>
-                      <label className="field tiny" style={{ flex: 1 }}>Cut end
+                      <label className="field tiny" style={{ flex: 1 }}>Cut end (seconds)
                         <input className="input" type="number" step="0.05" min={c.start + 0.08} max={detectedEnd} value={c.end.toFixed(2)} onChange={(e) => {
                           const end = Math.min(detectedEnd, Math.max(Number(e.target.value) || detectedEnd, c.start + 0.08))
                           props.onCutsChanged(cuts.map((x, j) => j === i ? { ...x, end } : x))
@@ -2440,7 +2454,7 @@ function SilencePanel(props: {
             })}
           </div>
         </>
-      ) : <div className="tiny" style={{ color: 'var(--text-3)' }}>No silence detections on this clip.</div>}
+      ) : <div className="tiny" style={{ color: 'var(--text-3)' }}>No pauses were detected in this clip.</div>}
     </>
   )
 }
@@ -2568,7 +2582,7 @@ function CaptionsPanel(props: {
       </div>
 
       <div className="row cap-search-row">
-        <input className="input" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} placeholder="Search styles" aria-label="Search caption styles" />
+        <input className="input" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} placeholder="Search styles" aria-label="Search styles" />
         <select className="select" value={presetFilter} onChange={(e) => setPresetFilter(e.target.value)} aria-label="Filter caption presets">
                   <option value="all">All types</option><option value="animated">Animated</option><option value="static">Static</option>
                   <option value="podcast">Podcast</option><option value="meme">Meme</option><option value="professional">Professional</option>
@@ -2618,7 +2632,7 @@ function CaptionsPanel(props: {
           <Type size={12} /> Typeface <ChevronRight size={14} className="chev" />
         </summary>
         <div className="inspector-body">
-        <input className="input" value={fontSearch} onChange={(e) => setFontSearch(e.target.value)} placeholder="Search fonts" aria-label="Search caption fonts" />
+        <input className="input" value={fontSearch} onChange={(e) => setFontSearch(e.target.value)} placeholder="Search fonts" aria-label="Search fonts" />
         <div className="row" style={{ gap: 'var(--space-3)' }}>
           <label className="tiny">Font
             <select className="input" value={overrides.fontFamily ?? style.fontFamily ?? 'Inter'} onChange={(e) => {
@@ -2639,9 +2653,9 @@ function CaptionsPanel(props: {
               {CAPTION_FONTS.filter((f) => f.family === (overrides.fontFamily ?? style.fontFamily ?? 'Inter')).map((f) => <option key={`${f.weight}-${f.file}`} value={f.weight}>{f.style} ({f.weight})</option>)}
             </select>
           </label>
-          <button className="btn sm" onClick={savePreset}>Save as preset</button>
+          <button className="btn sm" onClick={savePreset}>Save as preset…</button>
         </div>
-<div className="field-hint">Fonts are bundled under the SIL Open Font License. The weight list only shows available font files.</div>
+<div className="field-hint">Fonts are bundled under the SIL Open Font License. Only installed weights are listed.</div>
         <div className="row" style={{ gap: 'var(--space-3)' }}>
           <button className="btn sm" onClick={() => { localStorage.setItem('clipwright.captionStyleClipboard', JSON.stringify({ id: clip.captionStyleId, overrides })); setCanPasteStyle(true) }}>Copy style</button>
           <button className="btn sm" disabled={!canPasteStyle} title={canPasteStyle ? 'Paste the copied caption style' : 'Copy a caption style first'} onClick={() => {
@@ -2723,7 +2737,7 @@ function CaptionsPanel(props: {
 
           <details className="inspector-section">
             <summary>
-              <Tags size={12} /> Colours, outline &amp; alignment <ChevronRight size={14} className="chev" />
+              <Tags size={12} /> Colors, outline &amp; alignment <ChevronRight size={14} className="chev" />
             </summary>
             <div className="inspector-body cap-group">
           <div className="row" style={{ gap: 'var(--space-4)' }}>
@@ -2758,7 +2772,7 @@ function CaptionsPanel(props: {
                   props.updateClip({ captionOverrides: next })
                 }}
               >
-                Reset
+                Reset colors
               </button>
             )}
           </div>
@@ -2897,7 +2911,7 @@ function OutputPanel(props: {
         {upscaling && (
           <div className="field-hint" style={{ color: 'var(--warn)', display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
             <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: '1px' }} />
-            The selected source crop is {sourceCrop?.w}×{sourceCrop?.h}px; this output will be upscaled and cannot add real detail.
+            The source crop is {sourceCrop?.w}×{sourceCrop?.h}px. Rendering at this size upscales it and cannot add detail.
           </div>
         )}
       </Field>
@@ -2939,7 +2953,7 @@ function OutputPanel(props: {
           <option value="60">60 fps — smooth</option>
         </select>
         <div className="field-hint">
-          Output is always constant frame rate — variable-frame-rate sources are normalized automatically.
+          Output always uses a constant frame rate. Variable-frame-rate sources are converted automatically.
         </div>
       </Field>
 
@@ -2956,7 +2970,7 @@ function OutputPanel(props: {
       </div>
       <div className="row" style={{ marginTop: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} onClick={() => props.updateClip({ outputResolution: '1080p', outputQuality: 'standard', outputFps: 'source' })}>
-          <RotateCcw size={12} /> Reset
+          <RotateCcw size={12} /> Reset output
         </button>
         <button
           className="btn sm"
@@ -3027,7 +3041,7 @@ function CropPanel(props: {
           <button className={`btn sm${clip.aspectRatio === 'custom' ? ' primary' : ''}`} onClick={() => setAspect('custom')} aria-pressed={clip.aspectRatio === 'custom'}>Custom</button>
           <button className="btn sm" onClick={setOriginalAspect}>Original</button>
         </div>
-        <div className="field-hint">The canvas changes shape; the source is scaled proportionally and cropped without distortion.</div>
+        <div className="field-hint">The canvas changes shape. The source is scaled proportionally and cropped without distortion.</div>
         {clip.aspectRatio === 'custom' && <div className="row" style={{ gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
           <input className="input mono" aria-label="Custom aspect ratio" placeholder="e.g. 2.39:1 or 1080:1920" value={customText} onChange={(event) => setCustomText(event.target.value)} onBlur={applyCustomAspect} onKeyDown={(event) => { if (event.key === 'Enter') { applyCustomAspect(); event.currentTarget.blur() } }} />
           <button className="btn sm" onClick={applyCustomAspect}>Apply</button>
@@ -3040,13 +3054,13 @@ function CropPanel(props: {
           <button className={`btn sm${clip.fitMode !== 'fit' ? ' primary' : ''}`} onClick={() => props.updateClip({ fitMode: 'fill' })}>Fill canvas</button>
           <button className={`btn sm${clip.fitMode === 'fit' ? ' primary' : ''}`} onClick={() => props.updateClip({ fitMode: 'fit', zoom: 1, cropX: 0.5, cropY: 0.5 })}>Fit entire source</button>
         </div>
-        <div className="field-hint">Fill crops excess edges. Fit shows the whole source at 1×, even if camera keyframes or tracking are saved. Choose Crop to position a window manually.</div>
+        <div className="field-hint">Fill crops the excess edges. Fit shows the whole source at 1×, even if camera keyframes or tracking are saved. Choose Manual to position the window yourself.</div>
       </Field>
 
       {clip.fitMode === 'fit' && (
         <Field label={`Fit zoom - ${clip.zoom.toFixed(2)}x`}>
           <input type="range" min={1} max={3} step={0.05} value={clip.zoom} onChange={(event) => props.updateClip({ zoom: parseFloat(event.target.value) })} />
-          <div className="field-hint">Zoom enlarges the fitted image inside the output frame. At 1× the entire source is visible.</div>
+          <div className="field-hint">Zoom enlarges the fitted image inside the output frame. At 1× the whole source is visible.</div>
         </Field>
       )}
 
@@ -3056,12 +3070,12 @@ function CropPanel(props: {
 
       <Field label="Crop mode">
         <select className="select" value={clip.cropMode} onChange={(e) => props.updateClip({ cropMode: e.target.value as Clip['cropMode'], fitMode: 'fill' })}>
-          <option value="center">Center crop - safe default</option>
-          <option value="top">Top-biased crop (taller sources)</option>
-          <option value="bottom">Bottom-biased crop (taller sources)</option>
-          <option value="manual">Manual - drag the focus point</option>
+          <option value="center">Center crop — safe default</option>
+          <option value="top">Top-biased crop (for taller sources)</option>
+          <option value="bottom">Bottom-biased crop (for taller sources)</option>
+          <option value="manual">Manual — drag the focus point</option>
         </select>
-        <div className="field-hint">Manual crop is non-destructive. Drag the preview to move the crop window; framing and tracking remain separate from overlays and captions.</div>
+        <div className="field-hint">Manual crop changes nothing in the source file. Drag the preview to move the crop window. Framing and tracking stay separate from overlays and captions.</div>
       </Field>
 
       {clip.fitMode !== 'fit' && <div className="row" style={{ gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
@@ -3081,13 +3095,13 @@ function CropPanel(props: {
           {props.selectingSubject ? <X size={12} /> : <Target size={12} />}
           {props.selectingSubject ? 'Cancel selection' : 'Select person or object'}
         </button>
-        {props.selectingSubject && <div className="field-hint">The preview shows the full source. Drag a box around the target, or click it to make a face-sized selection.</div>}
+        {props.selectingSubject && <div className="field-hint">The preview shows the whole source. Drag a box around the target, or click it to select a face-sized area.</div>}
         {props.hasSubjectSelection && <button className="btn primary sm" onClick={props.onTrackSubject} disabled={props.trackingBusy}>
           {props.trackingBusy ? <Spinner size={12} /> : <Target size={12} />}
-          {props.trackingBusy ? 'Tracking subject...' : 'Track selected subject'}
+          {props.trackingBusy ? 'Tracking subject…' : 'Track selected subject'}
         </button>}
         {clip.trackingKeyframes.length > 0 && <>
-          <div className="tiny" style={{ color: 'var(--success)' }}>Subject path saved - {clip.trackingKeyframes.length} keyframes</div>
+          <div className="tiny" style={{ color: 'var(--success)' }}>Subject path saved — {clip.trackingKeyframes.length === 1 ? '1 keyframe' : `${clip.trackingKeyframes.length} keyframes`}</div>
           <button className="btn ghost sm" onClick={props.onClearTracking}>Stop tracking and clear path</button>
         </>}
       </div>
@@ -3108,7 +3122,7 @@ function CropPanel(props: {
             <button className="btn sm" onClick={() => props.updateClip({ cropMode: 'center', cropX: 0.5, cropY: 0.5, zoom: 1, fitMode: 'fill' })}><RotateCcw size={12} /> Reset crop</button>
             <button className="btn sm" onClick={() => props.updateClip({ cropX: 0.5, cropY: 0.5, zoom: 1, cameraKeyframes: [], trackingKeyframes: [], fitMode: 'fill' })}>Reset all framing</button>
           </div>
-          <div className="field-hint">Tracking can guide the camera, and its generated path stays editable in Camera keyframes. Captions and timeline overlays remain in canvas space.</div>
+          <div className="field-hint">Tracking can guide the camera. Its path stays editable in Camera keyframes. Captions and timeline overlays stay in canvas space.</div>
         </>
       )}
     </>
@@ -3131,8 +3145,10 @@ function MetadataPanel(props: { clip: Clip; updateClip: (patch: Partial<Clip>, i
       props.updateClip({ ...updated }, true)
       app.toast({
         level: 'success',
-        message: `Metadata generated with ${updated.metadataProvider === 'heuristic-local' ? 'the local heuristic (configure an AI provider for better copy)' : updated.metadataProvider}.`,
-        hint: 'Everything is editable — nothing is forced.'
+        message: `Metadata generated with ${providerLabel(updated.metadataProvider)}.`,
+        hint: updated.metadataProvider === 'heuristic-local'
+          ? 'Every field stays editable. Set up an AI provider for stronger copy.'
+          : 'Every field stays editable.'
       })
     } catch (err) {
       app.toast({ level: 'error', ...errMessage(err) })
@@ -3144,22 +3160,25 @@ function MetadataPanel(props: { clip: Clip; updateClip: (patch: Partial<Clip>, i
   async function copyAll() {
     const text = [clip.title, '', clip.description, clip.cta ? `\n${clip.cta}` : '', '', clip.hashtags.join(' ')].join('\n').trim()
     const ok = await copyText(text)
-    app.toast(ok ? { level: 'success', message: 'Copied title, description and hashtags.' } : { level: 'warn', message: 'Copy failed.' })
+    app.toast(ok
+      ? { level: 'success', message: 'Copied the title, description and hashtags.' }
+      : { level: 'warn', message: 'Could not copy to the clipboard.', hint: 'Your browser may block clipboard access.' })
   }
 
   return (
     <>
       <div className="row">
         <span className="tiny">
-          Target: <strong style={{ color: 'var(--text-2)' }}>{preset.label}</strong> — title ≤ {preset.maxTitleLength} chars, {preset.hashtagCount} hashtags
-          {clip.metadataProvider && ` · last generated by ${clip.metadataProvider}`}
+          <strong style={{ color: 'var(--text-2)' }}>{preset.label}</strong> limits: title up to {preset.maxTitleLength} characters,{' '}
+          {preset.hashtagCount === 1 ? '1 hashtag' : `${preset.hashtagCount} hashtags`}
+          {clip.metadataProvider && ` · last generated by ${providerLabel(clip.metadataProvider)}`}
         </span>
         <span style={{ flex: 1 }} />
         <button className="btn sm" onClick={() => void copyAll()}>
-          <Copy size={12} /> Copy all
+          <Copy size={12} /> Copy metadata
         </button>
         <button className="btn primary sm" onClick={() => void generate()} disabled={generating}>
-          {generating ? <Spinner size={12} /> : <Wand2 size={12} />} Generate
+          {generating ? <Spinner size={12} /> : <Wand2 size={12} />} {generating ? 'Generating…' : 'Generate metadata'}
         </button>
       </div>
 
@@ -3169,7 +3188,7 @@ function MetadataPanel(props: { clip: Clip; updateClip: (patch: Partial<Clip>, i
       <Field label="Description">
         <textarea className="textarea" rows={4} value={clip.description} onChange={(e) => props.updateClip({ description: e.target.value })} maxLength={4000} />
       </Field>
-      <Field label="Hashtags (space separated)">
+      <Field label="Hashtags (separated by spaces)">
         <input
           className="input"
           value={clip.hashtags.join(' ')}
@@ -3179,7 +3198,7 @@ function MetadataPanel(props: { clip: Clip; updateClip: (patch: Partial<Clip>, i
       <Field label="Call to action">
         <input className="input" value={clip.cta} onChange={(e) => props.updateClip({ cta: e.target.value })} maxLength={200} placeholder="e.g. Follow for more breakdowns like this." />
       </Field>
-      <Field label="Platform preset (affects generation targets & exports)">
+      <Field label="Platform preset (changes metadata targets and export defaults)">
         <select
           className="select"
           value={settings?.export.preset ?? 'generic'}

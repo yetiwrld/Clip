@@ -66,7 +66,7 @@ export function ProjectPage() {
   if (error || !project || project.id !== projectId) {
     return (
       <div className="page">
-        <ErrorBox error={error ?? new Error('Project not found.')} onRetry={() => app.navigate('dashboard')} retryLabel="Back to projects" />
+        <ErrorBox error={error ?? new Error('This project could not be opened. It may have been deleted.')} onRetry={() => app.navigate('dashboard')} retryLabel="Back to projects" />
       </div>
     )
   }
@@ -74,7 +74,7 @@ export function ProjectPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <button className="btn ghost" onClick={() => app.navigate('dashboard')} aria-label="Back to projects">
+        <button className="btn ghost" onClick={() => app.navigate('dashboard')} aria-label="Back to projects" title="Back to projects">
           <ArrowLeft size={14} />
         </button>
         <div className="page-heading">
@@ -89,7 +89,7 @@ export function ProjectPage() {
         </div>
         <div className="page-actions pushed">
           <Pipeline status={status} />
-          <button className="btn ghost" onClick={() => void data.loadProject(project.id)} aria-label="Refresh project" title="Refresh">
+          <button className="btn ghost" onClick={() => void data.loadProject(project.id)} aria-label="Refresh project" title="Refresh project">
             <RefreshCw size={14} />
           </button>
         </div>

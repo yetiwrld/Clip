@@ -180,9 +180,9 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
     },
     {
       id: 'editor.exportClip',
-      title: 'Export clip',
+      title: 'Render clip',
       category: 'Editing',
-      keywords: ['render', 'queue', 'mp4'],
+      keywords: ['export', 'queue', 'mp4'],
       hint: 'Queue this clip for rendering',
       enabled: available,
       run: () => get().exportClip()
@@ -192,15 +192,15 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
       title: 'Optimize clip boundaries',
       category: 'Editing',
       keywords: ['snap', 'sentences', 'trim'],
-      hint: 'Snap edges to sentence boundaries',
+      hint: 'Move the clip edges to sentence boundaries',
       enabled: available,
       run: () => get().optimizeBoundaries()
     },
     {
       id: 'editor.closeInspector',
-      title: 'Close inspector',
+      title: 'Close properties',
       category: 'Editing',
-      keywords: ['escape', 'dismiss panel'],
+      keywords: ['escape', 'inspector', 'dismiss panel'],
       shortcut: { key: 'escape' },
       hidden: true,
       allowInInput: true,
@@ -209,9 +209,9 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
     },
     {
       id: 'editor.toggleInspector',
-      title: 'Toggle inspector',
+      title: 'Toggle properties',
       category: 'Editing',
-      keywords: ['properties', 'panel', 'sidebar'],
+      keywords: ['inspector', 'panel', 'sidebar'],
       enabled: () => Boolean(get()?.hasClip()) && Boolean(get().inspectorEnabled()),
       run: () => get().toggleInspector()
     }

@@ -52,8 +52,8 @@ async function invoke<T>(method: string, payload: unknown = {}): Promise<T> {
     if (!res.ok && res.status !== 400) {
       throw new ApiCallError({
         code: 'NETWORK',
-        message: `The backend preview server is unreachable (HTTP ${res.status}).`,
-        hint: 'Restart the preview server and reload.'
+        message: `Clipwright could not reach its background service (HTTP ${res.status}).`,
+        hint: 'Restart the preview server, then reload this page. Anything already saved is safe.'
       })
     }
     envelope = (await res.json()) as ApiEnvelope<T>

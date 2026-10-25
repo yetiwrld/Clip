@@ -450,3 +450,87 @@ discover any of them. Space played, but only a hard-coded tooltip said so.
 * Sidebar gained a Shortcuts row with its key hint, so the palette is
   discoverable without knowing Ctrl+K.
 * 18 new unit tests; 37 files / 339 tests pass.
+
+---
+
+## 2026-10-25 — Interface copy audit and microcopy pass
+
+Read every user-facing string in the renderer before changing any of them:
+816 strings across 19 components (JSX text plus `placeholder`, `title`,
+`aria-label` and `alt`), collected with the TypeScript parser so no label hid in
+a conditional. The rules and the terminology table now live in `COPY_GUIDE.md`.
+
+### What the audit found
+
+* **One concept, several names.** "Moment" / "candidate" / "highlight"; "render"
+  / "export" for the same button; "inspector" / "Properties" for one panel;
+  "proxy" / "preview copy"; "asset" / "media"; "speaker identification" for what
+  is really voice grouping.
+* **One button, two meanings.** The editor's main **Export** button queued a
+  render. Export in the Clips tab copies finished renders into
+  `<workspace>/exports` with metadata — a different step.
+* **Raw stored enums on screen.** `clip.status` printed `draft`/`rendered`; the
+  render queue printed `speaker-identification`, `download`, `preparing`,
+  `encoding` and lowercase task states.
+* **"1 clips" grammar.** Seven hand-rolled singular/plural ternaries, two of them
+  wrong for zero.
+* **Vague failures.** "Playback problem", "Unable to play this", "Copy failed",
+  "Still not detected", "A core media tool is unavailable", and an error written
+  as a question ("is the preview server still running?").
+* **Copy bugs.** `{cuts.length} detected pauses ? -Xs removed` shipped a literal
+  `?`; "Media Missing" and "Media missing" in two files; "Coloureds" vs "color"
+  (one British heading in an otherwise American interface); `...` instead of `…`
+  in one status label; hyphens used where dashes belonged in six option labels.
+* **Unlabelled icon buttons.** The remove-key control and the transcript copy
+  control relied on `title` alone, so screen readers announced nothing useful.
+* **Placeholder-only fields.** The Source tab's URL input had no visible label,
+  and the editor's clip title depended on its placeholder.
+
+### What changed
+
+* New `src/renderer/copy/labels.ts` — job types, render stages, render statuses,
+  task states, clip statuses, provider names and `plural()`. Every screen now
+  reads its state labels from one place.
+* `COPY_GUIDE.md` — voice, the terminology table, the verb table
+  (Save/Apply/Cancel/Close/Remove/Delete/Discard/Keep), the ellipsis rule, error
+  and toast structure, dialog structure, unit and punctuation rules.
+* 14 components edited for copy only. No behaviour, layout or state changed
+  except the two accessibility fixes below.
+* Editor button, palette command and tooltip renamed Export → **Render** so the
+  label matches the action; the Clips tab still owns **Export**.
+* Accessibility repairs that came out of the audit: `aria-label` on the
+  remove-key and transcript-copy icon buttons, a visible label for the Source URL
+  field, `aria-label` on the editor clip-title input, and placeholder search
+  fields whose `aria-label` matches the visible text.
+* New `tests/unit/copy-consistency.test.ts` (15 tests) reads the components with
+  the TypeScript parser and fails on: three-dot ellipses, vague system phrases,
+  bare OK/Submit/Yes/No/Done, Title Case button labels, labels ending in a full
+  stop, icon-only buttons without `aria-label`, tooltips over 90 characters,
+  placeholder-only fields, and double spaces. It also pins the label maps and
+  `plural()`.
+
+### Verification
+
+* `npx tsc --noEmit -p tsconfig.web.json` clean.
+* `npx electron-vite build` clean.
+* `npx vitest run` — 38 files / 356 tests pass, including the 15 new copy tests.
+  The integration project needs the gitignored media fixtures, so
+  `npx tsx scripts/make-fixtures.ts` (or `npm run fixtures`) has to run once
+  after a fresh checkout; it did here before the final run.
+* Preview rebuilt on `0.0.0.0:8787`; the served bundle hash changed from
+  `index-DKqx6dvl.js` to `index-D8G-yyJa.js` and the stylesheet hash did not
+  change, which is the expected signature of a copy-only pass.
+
+### Not done
+
+* Nothing was seen on screen. Every claim about clipping and wrapping is
+  reasoned from label lengths and the existing classes, not observed. The three
+  strings worth checking first are the editor's new "Render" tooltip, the
+  Settings cleanup dialog buttons ("Keep files" / "Remove 3 files") and the
+  transcript toolbar ("Transcribe locally" / "Transcribe in cloud" / "Group
+  voices" / "Import file…"), which is the tightest row in the app.
+* `Field` renders a visible label but does not associate it with its input
+  (`htmlFor` / `aria-labelledby`). Fixing that belongs with the shared form
+  components, not with copy.
+* Native `window.prompt` is still used for renaming an asset and naming a caption
+  preset. The wording is now clear, the dialog is not.

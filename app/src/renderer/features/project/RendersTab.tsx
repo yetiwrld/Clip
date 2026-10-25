@@ -4,6 +4,7 @@ import { api, errMessage, mediaUrl } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { EmptyState, ErrorBox, ProgressBar } from '../../components/ui'
+import { renderStageLabel, renderStatusLabel } from '../../copy/labels'
 import type { RenderJob } from '@shared/types'
 
 export function RendersTab() {
@@ -44,7 +45,7 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
         <ListVideo size={28} className="empty-icon" />
         <div className="empty-title">No renders yet</div>
         <div className="empty-copy">
-          Render a clip to produce a vertical MP4 with burned-in captions. Renders run locally with FFmpeg — you can queue
+          Render a clip to produce a vertical MP4 with burned-in captions. Renders run locally with FFmpeg, so you can queue
           several and keep working.
         </div>
       </div>
@@ -120,7 +121,7 @@ function RenderRow({
       <div className="q-main">
         <div className="q-title">
           {clipTitle || 'Clip'}
-          {render.preview && <span className="tl-badge preview" style={{ marginLeft: 'var(--space-3)' }}>preview</span>}
+          {render.preview && <span className="tl-badge preview" style={{ marginLeft: 'var(--space-3)' }}>Preview</span>}
         </div>
         {projectName && <div className="tiny" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{projectName}</div>}
       </div>
@@ -129,7 +130,7 @@ function RenderRow({
         {busy ? (
           <div className="q-progress">
             <ProgressBar value={render.progress} />
-            <span className="tiny">{Math.round(render.progress * 100)}% · {render.stage ?? 'working'}</span>
+            <span className="tiny">{Math.round(render.progress * 100)}% · {renderStageLabel(render.stage) || 'Working'}</span>
           </div>
         ) : render.status === 'failed' && render.error ? (
           <div className="tiny" style={{ color: 'var(--danger)' }}>
@@ -139,7 +140,7 @@ function RenderRow({
         ) : (
           <span>
             <span className={`status ${isCompleted ? 'success' : render.status === 'cancelled' ? 'warn' : 'danger'}`}>
-              <span className="dot" /> {render.status}
+              <span className="dot" /> {renderStatusLabel(render.status)}
             </span>
             <span className="tiny" style={{ marginLeft: 'var(--space-3)' }}>{new Date(render.createdAt).toLocaleString()}</span>
           </span>
@@ -166,8 +167,8 @@ function RenderRow({
         {isCompleted && render.outputPath && (
           <button
             className="btn ghost sm icon"
-            title="Open containing folder"
-            aria-label="Open containing folder"
+            title="Show in folder"
+            aria-label="Show in folder"
             onClick={() => void api['system.revealPath']({ path: render.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
           >
             <FolderOpen size={14} />

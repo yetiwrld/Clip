@@ -5,6 +5,7 @@ import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, ProgressBar, Spinner } from '../../components/ui'
+import { plural } from '../../copy/labels'
 import { formatClock } from '@shared/utils/time'
 
 /**
@@ -73,7 +74,11 @@ export function TranscriptTab() {
   useEffect(() => {
     if (!startedSpeakerTask) return
     if (startedSpeakerTask.state === 'completed') {
-      app.toast({ level: 'success', message: 'Speaker groups assigned. Review and correct any turns below; no real-world identities are inferred.' })
+      app.toast({
+        level: 'success',
+        message: 'Voice groups are ready.',
+        hint: 'Check the speaker on each line. Groups are based on voice similarity, not real people.'
+      })
       setStartedSpeakerTaskId(null)
     } else if (startedSpeakerTask.state === 'failed' || startedSpeakerTask.state === 'cancelled' || startedSpeakerTask.state === 'interrupted') {
       setStartedSpeakerTaskId(null)
@@ -196,7 +201,7 @@ export function TranscriptTab() {
     try {
       await api['transcript.renameSpeaker']({ projectId: project.id, speakerLabel, name })
       await data.loadSpeakers(project.id)
-      app.toast({ level: 'success', message: 'Speaker display name saved.' })
+      app.toast({ level: 'success', message: 'Speaker name saved.' })
     } catch (err) {
       setError(err)
     }
@@ -218,7 +223,7 @@ export function TranscriptTab() {
       const result = await api['transcript.import']({ projectId: project.id, filePath })
       await data.loadTranscript(project.id)
       await data.loadProject(project.id)
-      app.toast({ level: 'success', message: `Imported ${result.segments} transcript segments.` })
+      app.toast({ level: 'success', message: `Imported ${plural(result.segments, 'transcript segment')}.` })
     } catch (err) {
       setError(err)
     } finally {
@@ -243,7 +248,9 @@ export function TranscriptTab() {
     const names = new Map(speakerOptions.map((speaker) => [speaker.label, displaySpeakerName(speaker)]))
     const text = data.transcript.map((s) => `[${formatClock(s.startTime)}] ${s.speaker ? `[${names.get(s.speaker) ?? s.speaker}] ` : ''}${s.text}`).join('\n')
     const ok = await copyText(text)
-    app.toast(ok ? { level: 'success', message: 'Transcript copied to clipboard.' } : { level: 'warn', message: 'Copy failed.' })
+    app.toast(ok
+      ? { level: 'success', message: 'Copied the whole transcript.' }
+      : { level: 'warn', message: 'Could not copy to the clipboard.', hint: 'Your browser may block clipboard access.' })
   }
 
   return (
@@ -255,6 +262,7 @@ export function TranscriptTab() {
             <input
               className="input"
               placeholder="Search transcript…"
+              aria-label="Search transcript"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               disabled={data.transcript.length === 0}
@@ -266,16 +274,16 @@ export function TranscriptTab() {
           </button>
           <button className="btn" onClick={() => void transcribe('openai-compatible')} disabled={transcribing || speakerBusy || busy || !cloudAvailable}
             title={cloudAvailable ? 'Send the audio track to your configured endpoint' : 'Configure an audio-capable provider in Settings → AI'}>
-            <Cloud size={14} /> Via cloud
+            <Cloud size={14} /> Transcribe in cloud
           </button>
           <button className="btn" onClick={() => void identifySpeakers()} disabled={transcribing || speakerBusy || busy || data.transcript.length === 0 || !speakerAvailable}
             title={speakerAvailable ? 'Group transcript turns by local voice similarity; this does not identify real people' : (speakerDependency?.fixHint ?? speakerDependency?.message ?? 'Install the optional local speaker model')}>
-            {speakerBusy ? <Spinner size={14} /> : <Users size={14} />} {speakerBusy ? 'Identifying…' : 'Identify speakers'}
+            {speakerBusy ? <Spinner size={14} /> : <Users size={14} />} {speakerBusy ? 'Grouping voices…' : 'Group voices'}
           </button>
           <button className="btn" onClick={() => void importTranscript()} disabled={transcribing || speakerBusy || busy}>
             <Upload size={14} /> Import file…
           </button>
-          <button className="btn ghost" onClick={() => void copyAll()} disabled={data.transcript.length === 0} title="Copy full transcript">
+          <button className="btn ghost" onClick={() => void copyAll()} disabled={data.transcript.length === 0} title="Copy full transcript" aria-label="Copy full transcript">
             <Copy size={14} />
           </button>
         </div>
@@ -292,26 +300,26 @@ export function TranscriptTab() {
         )}
         {!localAvailable && !transcribing && (
           <div className="tiny" style={{ marginTop: 'var(--space-3)' }}>
-            Local Whisper unavailable here — {localDependency?.message ?? 'check Python and faster-whisper in Settings → Transcription'}, or import an
-            existing SRT/VTT/JSON transcript.
+            Local Whisper is not available on this computer. {localDependency?.message ?? 'Check Python and faster-whisper in Settings → Transcription'},
+            or import an existing SRT/VTT/JSON file.
           </div>
         )}
         {speakerBusy && (
           <div className="speaker-task-status" role="status" aria-live="polite">
             <div className="row" style={{ gap: 'var(--space-3)' }}>
               <Spinner size={14} />
-              <strong>{activeSpeakerTask?.message ?? 'Preparing local speaker analysis…'}</strong>
+              <strong>{activeSpeakerTask?.message ?? 'Preparing voice grouping…'}</strong>
               <span className="tiny" style={{ marginLeft: 'auto' }}>{Math.round((activeSpeakerTask?.progress ?? 0) * 100)}%</span>
               {activeSpeakerTask && <button className="btn danger sm" onClick={() => void cancelSpeakerIdentification()}><X size={12} /> Cancel</button>}
             </div>
             <ProgressBar value={activeSpeakerTask?.progress ?? 0} />
-            <div className="tiny">Audio stays on this device. Voice groups are suggestions, not real-world identity recognition.</div>
+            <div className="tiny">Audio stays on this computer. Voice groups are suggestions, not identity recognition.</div>
           </div>
         )}
         {data.transcript.length > 0 && !speakerAvailable && (
           <div className="tiny" style={{ marginTop: 'var(--space-3)' }}>
-            Local speaker grouping unavailable — {speakerDependency?.fixHint ?? speakerDependency?.message ?? 'install the optional resemblyzer package'}.
-            You can still assign and rename any existing transcript speaker labels.
+            Local voice grouping is not available. {speakerDependency?.fixHint ?? speakerDependency?.message ?? 'Install the optional resemblyzer package.'}
+            You can still rename groups and set the speaker on any line by hand.
           </div>
         )}
       </div>
@@ -336,8 +344,8 @@ export function TranscriptTab() {
           <div className="empty-title">{project.hasAudio ? 'No transcript yet' : 'This video has no audio track'}</div>
           <div className="empty-copy">
             {project.hasAudio
-              ? `Transcribe the ${project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} (locally with Whisper, or via your explicitly selected cloud provider), or import an existing SRT/VTT/JSON transcript. Moment discovery, captions and editing all work from this transcript.`
-              : 'Speech transcription needs audio. You can still import an existing transcript file to continue the workflow.'}
+              ? `Transcribe the ${project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} on this computer with Whisper, or with a cloud provider you choose. You can also import an existing SRT/VTT/JSON file. Moments, captions and editing all work from this transcript.`
+              : 'Transcription needs an audio track. You can still import an existing transcript file to keep working.'}
           </div>
         </div>
       ) : data.transcript.length === 0 && localTranscription ? null : (
@@ -389,14 +397,16 @@ export function TranscriptTab() {
                 />
               ))}
               {filtered.length === 0 && (
-                <div className="muted" style={{ padding: 'var(--space-6)', textAlign: 'center' }}>No matches for “{query}”.</div>
+                <div className="muted" style={{ padding: 'var(--space-6)', textAlign: 'center' }}>
+                  No lines match “{query}”. Clear the search box to see the whole transcript.
+                </div>
               )}
             </div>
             {filtered.length > 0 && (
               <div className="row" style={{ justifyContent: 'center', paddingTop: 'var(--space-3)' }}>
                 <span className="tiny">
-                  {filtered.length} segment{filtered.length === 1 ? '' : 's'}
-                  {query && ` of ${data.transcript.length}`} · click a line to play from there
+                  {plural(filtered.length, 'segment')}
+                  {query && ` of ${data.transcript.length}`} · click a line to play from it
                 </span>
               </div>
             )}
@@ -436,7 +446,7 @@ function TranscriptionProgress({
         <div className="transcription-progress-copy">
           <div className="transcription-progress-eyebrow"><Cpu size={12} /> Local Whisper</div>
           <h2>Transcribing locally</h2>
-          <p>Whisper is processing your audio on this device. Your media stays local.</p>
+          <p>Whisper is transcribing your audio on this computer. Your media stays local.</p>
         </div>
         <div className="transcription-progress-percent" aria-label={`${percent}% complete`}>
           <strong>{percent}<span>%</span></strong>
@@ -449,8 +459,8 @@ function TranscriptionProgress({
           <div className="transcription-progress-stage">{task?.message ?? 'Starting local transcription…'}</div>
           <div className="transcription-progress-note">
             {preparingModel
-              ? 'Model setup may take a little longer on first use. Progress advances as the audio is processed.'
-              : 'Progress is based on the audio duration processed so far.'}
+              ? 'The model takes longer to set up the first time. Progress moves as the audio is processed.'
+              : 'Progress follows how much of the audio has been processed.'}
           </div>
         </div>
         {task && <button className="btn danger" onClick={() => void onCancel()}>
@@ -477,15 +487,15 @@ function SpeakerRoster({
   return (
     <section className="panel speaker-roster" aria-label="Speaker groups">
       <div className="speaker-roster-heading">
-        <div className="row"><Users size={14} /><strong>Speaker groups</strong></div>
-        <span className="tiny">Rename groups, then use each transcript row’s menu to correct assignments.</span>
+        <div className="row"><Users size={14} /><strong>Voice groups</strong></div>
+        <span className="tiny">Rename a group here, then set the speaker on any line with its menu.</span>
       </div>
       <div className="speaker-roster-list">
         {speakers.map((speaker) => (
           <SpeakerNameField key={`${speaker.label}:${speaker.name ?? ''}`} speaker={speaker} onRename={onRename} />
         ))}
       </div>
-      <div className="tiny">Groups are based on local voice similarity. They do not identify real-world people.</div>
+      <div className="tiny">Groups come from voice similarity on this computer. They do not identify real people.</div>
     </section>
   )
 }
@@ -552,7 +562,7 @@ function TranscriptRow({
       className={`transcript-row ${active ? 'active' : ''}`}
       ref={rowRef}
       onClick={() => onSeek(segment.startTime)}
-      title="Play from this timestamp"
+      title="Play from here"
     >
       <span className="ts">
         <Play size={12} style={{ verticalAlign: 1, marginRight: 'var(--space-2)', opacity: active ? 1 : 0.35 }} />
@@ -567,9 +577,9 @@ function TranscriptRow({
           setCopied(ok)
           setTimeout(() => setCopied(false), 1200)
         }}
-        title="Click line: play · click text: copy"
+        title="Click the line to play · click the text to copy"
       >
-        {copied ? <span style={{ color: 'var(--success)' }}>copied · </span> : null}
+        {copied ? <span style={{ color: 'var(--success)' }}>Copied · </span> : null}
         {marked}
       </span>
       {speakers.length > 0 && (
@@ -577,12 +587,12 @@ function TranscriptRow({
           className="speaker-assignment-select"
           value={segment.speaker ?? ''}
           aria-label={`Speaker for transcript segment at ${formatClock(segment.startTime)}`}
-          title="Correct this segment’s speaker assignment"
+          title="Change the speaker on this line"
           style={{ borderColor: currentSpeaker?.color ?? undefined }}
           onClick={(event) => event.stopPropagation()}
           onChange={(event) => onSpeakerChange(event.currentTarget.value || null)}
         >
-          <option value="">Unassigned</option>
+          <option value="">No speaker</option>
           {speakers.map((speaker) => (
             <option key={speaker.label} value={speaker.label}>{displaySpeakerName(speaker)}</option>
           ))}

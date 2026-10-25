@@ -26,7 +26,7 @@ export function FirstRunModal() {
               <div>
                 <div className="welcome-eyebrow">WELCOME TO CLIPWRIGHT STUDIO</div>
                 <div className="welcome-title">Long video in. Shareable clips out.</div>
-                <div className="welcome-subtitle">Make polished short videos in three simple steps.</div>
+                <div className="welcome-subtitle">Make polished short videos in three steps.</div>
               </div>
             </div>
             <div className="modal-body welcome-body">
@@ -34,17 +34,17 @@ export function FirstRunModal() {
                 <section className="welcome-step">
                   <span className="welcome-step-number">01</span>
                   <strong>Import a video</strong>
-                  <p>Start with a podcast, interview, lecture, or other long recording.</p>
+                  <p>Start with a podcast, interview, lecture or other long recording.</p>
                 </section>
                 <section className="welcome-step">
                   <span className="welcome-step-number">02</span>
                   <strong>Find the moments</strong>
-                  <p>Review a transcript and suggested highlights. AI providers are optional.</p>
+                  <p>Review the transcript and the moments found for you. An AI provider is optional.</p>
                 </section>
                 <section className="welcome-step">
                   <span className="welcome-step-number">03</span>
-                  <strong>Edit and export</strong>
-                  <p>Trim, crop, style captions, and export clips ready to share.</p>
+                  <strong>Edit and render</strong>
+                  <p>Trim, crop, style captions, then render and export clips that are ready to share.</p>
                 </section>
               </div>
               <div className="welcome-privacy">
@@ -78,13 +78,13 @@ export function FirstRunModal() {
               )}
               {missing.length > 0 && (
                 <div className="error-box">
-                  <div className="error-title">A core media tool is unavailable</div>
-                  <div className="error-hint">Rendering and media analysis need FFmpeg. Check Settings → Advanced for a custom path.</div>
+                  <div className="error-title">FFmpeg is missing</div>
+                  <div className="error-hint">Rendering and media analysis need FFmpeg. Install it, or set a custom path in Settings → Advanced, then check the setup again.</div>
                 </div>
               )}
               <div className="welcome-privacy">
                 <Video size={14} />
-                <span>Import, editing, captions, and rendering run locally. AI analysis can work offline.</span>
+                <span>Importing, editing, captions and rendering all run on this computer. Analysis can run offline too.</span>
               </div>
               <div className="tiny">Workspace: <span className="mono">{app.appInfo?.workspaceRoot}</span></div>
             </div>

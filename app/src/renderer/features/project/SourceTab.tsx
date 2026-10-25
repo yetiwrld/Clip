@@ -140,7 +140,7 @@ export function SourceTab() {
       await api['projects.delete']({ id: project.id, confirm: true })
       await data.refreshProjects()
       app.navigate('dashboard')
-      app.toast({ level: 'info', message: `Project “${project.name}” deleted.` })
+      app.toast({ level: 'success', message: `Deleted project “${project.name}”.`, hint: 'Exported files were kept.' })
     } catch (err) {
       app.toast({ level: 'error', ...errMessage(err) })
     }
@@ -151,9 +151,11 @@ export function SourceTab() {
       <div className="stack">
         {project.sourceMode === 'audio-first' && (
           <div className="panel" style={{ borderColor: 'var(--accent)', lineHeight: 1.55 }}>
-            <strong>Audio-first URL project</strong>
+            <strong>Audio-only project</strong>
             <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>
-              Only an audio stream was downloaded. Transcription and local moment discovery can run on this audio; choosing a moment fetches only its video section. Audio still uses data, and some sources may require keyframe padding or refuse section downloads. No full-video fallback is used.
+              Only the audio was downloaded. You can transcribe it and find moments from the transcript. Choosing a moment
+              downloads just that part of the video. Audio still uses data, and some sites refuse section downloads. The app
+              never falls back to downloading the whole video.
             </div>
           </div>
         )}
@@ -175,7 +177,7 @@ export function SourceTab() {
                   onSeeking={() => setMediaState((s) => ({ ...s, seeking: true }))}
                   onSeeked={(event) => setMediaState((s) => ({ ...s, seeking: false, currentTime: event.currentTarget.currentTime }))}
                   onCanPlay={(event) => setMediaState((s) => ({ ...s, readyState: event.currentTarget.readyState }))}
-                  onError={() => setMediaError('The downloaded audio could not be played.')}
+                  onError={() => setMediaError('The downloaded audio file could not be played.')}
                 />
               </div>
             ) : (
@@ -198,7 +200,7 @@ export function SourceTab() {
                 onPlay={() => setMediaState((s) => ({ ...s, paused: false }))}
                 onPlaying={(event) => {
                   if (!useProxy && event.currentTarget.videoWidth === 0) {
-                    setMediaError('The video stream started without a decoded picture. Building a compatible preview copy…')
+                    setMediaError('The video started without a picture. Building a preview copy that plays here…')
                     void createPreviewCopy(true)
                   }
                 }}
@@ -214,7 +216,12 @@ export function SourceTab() {
                 }}
                 onError={(event) => {
                   const mediaError = event.currentTarget.error
-                  const causes: Record<number, string> = { 1: 'Playback was aborted.', 2: 'The media could not be read (file unavailable or interrupted).', 3: 'Chromium could not decode this media codec.', 4: 'This media format or source URL is unsupported.' }
+                  const causes: Record<number, string> = {
+                    1: 'Playback was stopped before it started.',
+                    2: 'The file could not be read. It may have moved, or the download was interrupted.',
+                    3: 'The built-in player cannot decode this video codec.',
+                    4: 'This file type or link is not supported.'
+                  }
                   setMediaError(causes[mediaError?.code ?? 0] ?? 'The source could not be played.')
                   if (!useProxy) void createPreviewCopy(true)
                 }}
@@ -237,7 +244,10 @@ export function SourceTab() {
               ) : (
                 <div className="empty" style={{ padding: 'var(--space-8)' }}>
                   <Film size={28} className="empty-icon" />
-                  <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>No media imported yet</div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>No source media yet</div>
+                  <div className="tiny" style={{ maxWidth: 320, textAlign: 'center' }}>
+                    Import a file or paste a link in the panel below.
+                  </div>
                 </div>
               )}
             </div>
@@ -245,22 +255,22 @@ export function SourceTab() {
           {project.sourcePath && mediaError && (
             <div className="playback-error" role="alert">
               <div>
-                <strong>Unable to play this {project.sourceMode === 'audio-first' ? 'audio' : 'video'}</strong>
+                <strong>This {project.sourceMode === 'audio-first' ? 'audio' : 'video'} could not be played here</strong>
                 <p>{mediaError}</p>
                 {playback?.verdict === 'proxy' && !playback.proxyExists && (
                   <button className="btn primary sm" onClick={() => void createPreviewCopy()} disabled={Boolean(proxyTaskId)}>
                     {proxyTaskId ? <Spinner size={12} /> : <Film size={12} />}
-                    {proxyTaskId ? 'Creating preview copy…' : 'Create preview copy'}
+                    {proxyTaskId ? 'Building preview copy…' : 'Build preview copy'}
                   </button>
                 )}
                 {playback?.verdict === 'proxy' && playback.proxyExists && !useProxy && (
                   <button className="btn primary sm" onClick={() => { setUseProxy(true); setMediaError(null) }}>Play preview copy</button>
                 )}
                 <details style={{ marginTop: 'var(--space-3)' }}>
-                  <summary className="tiny">View playback diagnostics</summary>
+                  <summary className="tiny">Playback details</summary>
                   <div className="tiny" style={{ marginTop: 'var(--space-2)' }}>
                     Codec: {project.videoCodec ?? 'unknown'} / {project.audioCodec ?? 'no audio'} · Duration: {Number.isFinite(mediaState.duration) ? `${mediaState.duration.toFixed(2)}s` : 'unknown'} · Ready state: {mediaState.readyState}
-                    <br />{playback?.reason ?? 'Compatibility check pending'}
+                    <br />{playback?.reason ?? 'Compatibility check has not run yet.'}
                   </div>
                 </details>
               </div>
@@ -277,17 +287,19 @@ export function SourceTab() {
           <div className="section-title">Import media</div>
           <div className="row wrap">
             <button className="btn" onClick={() => void importFile()} disabled={importing}>
-              <Film size={14} /> From file…
+              <Film size={14} /> Import file…
             </button>
-            <span className="tiny">MP4 · MOV · MKV · WebM · AVI · common audio</span>
+            <span className="tiny">MP4, MOV, MKV, WebM, AVI and common audio files</span>
           </div>
           <div className="divider" />
+          <label className="field-label" htmlFor="source-url">Video or page link</label>
           <div className="row wrap">
             <Link2 size={16} className="muted" />
             <input
+              id="source-url"
               className="input"
               style={{ flex: 1, minWidth: 200 }}
-              placeholder="Media page or direct URL you are authorized to use"
+              placeholder="Paste a link you have the right to use"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
@@ -296,34 +308,36 @@ export function SourceTab() {
             </button>
           </div>
           <div className="divider" />
-          <div className="section-title">Low-data: download a time range</div>
+          <div className="section-title">Download part of a video</div>
           <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 'var(--space-3)' }}>
-            Fetch only a chosen video interval from compatible URLs. Requires yt-dlp and FFmpeg; the source may include nearby keyframes. It will not fall back to a full download.
+            Saves only the time range you enter. Needs yt-dlp and FFmpeg. The download may start slightly before your start time,
+            and it never falls back to the whole video.
           </div>
           <div className="row wrap">
             <label className="tiny" style={{ display: 'grid', gap: 'var(--space-2)' }}>
-              Start
-              <input className="input" style={{ width: 118 }} value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="00:01:20" />
+              Start time
+              <input className="input" style={{ width: 118 }} value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} placeholder="00:01:20" aria-label="Start time" />
             </label>
             <label className="tiny" style={{ display: 'grid', gap: 'var(--space-2)' }}>
-              End
-              <input className="input" style={{ width: 118 }} value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} placeholder="00:01:50" />
+              End time
+              <input className="input" style={{ width: 118 }} value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} placeholder="00:01:50" aria-label="End time" />
             </label>
             <button className="btn" style={{ alignSelf: 'end' }} onClick={() => void importUrlSection()} disabled={importing || !url.trim() || Boolean(project.sourcePath)}>
-              Download selected section
+              Download section
             </button>
           </div>
           <div className="divider" />
-          <div className="section-title">Low-data: audio-first discovery</div>
+          <div className="section-title">Audio-only import</div>
           <div className="tiny" style={{ lineHeight: 1.55, marginBottom: 'var(--space-3)' }}>
-            Downloads an audio-only stream first. Transcription runs locally unless you explicitly choose a cloud provider; select a discovered moment to fetch only that video section. Audio still transfers, and URL support varies.
+            Saves the audio track without the video. Transcription runs on this computer unless you pick a cloud provider. When you
+            choose a moment, only that part of the video is downloaded. Audio still uses data, and not every site supports it.
           </div>
           <button className="btn primary" onClick={() => void importUrlAudio()} disabled={importing || !url.trim() || Boolean(project.sourcePath)}>
             <Link2 size={14} /> Download audio only
           </button>
           {project.sourcePath && (
             <div className="tiny" style={{ color: 'var(--text-3)', marginTop: 'var(--space-3)' }}>
-              This project already has source media. Create a new project to use another URL or time range without replacing it.
+              This project already has its source. Create a new project to bring in different media.
             </div>
           )}
           <div className="tiny" style={{ color: 'var(--text-3)', marginTop: 'var(--space-3)' }}>Only download content you have the right to use.</div>
@@ -353,7 +367,7 @@ export function SourceTab() {
 
         <div className="section">
           <div className="section-title">Discovery settings</div>
-          <Field label="Target clip duration" hint="Applied when analyzing. Candidates outside the window (±35%) are rejected.">
+          <Field label="Target clip duration" hint="Used when analyzing. Moments outside the range, give or take 35%, are rejected.">
             <select
               className="select"
               value={project.settings.durationPreset}
@@ -367,7 +381,7 @@ export function SourceTab() {
             </select>
           </Field>
           <div style={{ marginTop: 'var(--space-4)' }}>
-            <Field label="Max candidates" hint="How many moments the analyzer may propose.">
+            <Field label="Max moments" hint="How many moments one analysis may propose.">
               <input
                 className="input"
                 type="number"
@@ -402,7 +416,7 @@ export function SourceTab() {
                 style={{ marginTop: 'var(--space-4)' }}
                 onClick={() => void api['system.revealPath']({ path: data.activeProject!.sourcePath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
               >
-                <FolderOpen size={12} /> Reveal source file
+                <FolderOpen size={12} /> Show in folder
               </button>
             )}
           </div>
@@ -425,7 +439,7 @@ export function SourceTab() {
                 Cancel
               </button>
               <button className="btn danger" onClick={() => void deleteProject()}>
-                <Trash2 size={14} /> Delete permanently
+                <Trash2 size={14} /> Delete project
               </button>
             </>
           }

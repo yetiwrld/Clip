@@ -4,6 +4,7 @@ import { api, errMessage } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { EmptyState, ErrorBox, ScoreValue, Spinner, scoreColor } from '../../components/ui'
+import { plural, providerLabel } from '../../copy/labels'
 import type { ClipCandidate, ScoreBreakdown } from '@shared/types'
 import { formatClock } from '@shared/utils/time'
 
@@ -51,7 +52,7 @@ export function MomentsTab() {
   async function analyze(providerId: 'heuristic-local' | 'openai-compatible' | 'anthropic') {
     // Duplicate-submission guard: refuse while an analyze task is already in flight
     if (data.tasks.some((t) => t.type === 'analyze' && t.projectId === project.id && (t.state === 'running' || t.state === 'queued'))) {
-      app.toast({ level: 'warn', message: 'An analysis is already running for this project.' })
+      app.toast({ level: 'warn', message: 'An analysis is already running.', hint: 'Wait for it to finish, or cancel it in the render queue.' })
       return
     }
     setError(null)
@@ -59,9 +60,13 @@ export function MomentsTab() {
     setBusy(true)
     try {
       await api['analysis.start']({ projectId: project.id, providerId })
-      const providerLabel =
-        providerId === 'heuristic-local' ? 'local heuristic analyzer (offline)' : `${providerId} — transcript text will be sent to that endpoint`
-      app.toast({ level: 'info', message: `Analysis started with the ${providerLabel}.` })
+      app.toast({
+        level: 'info',
+        message: providerId === 'heuristic-local'
+          ? 'Analysis started. The offline analyzer runs on this computer.'
+          : `Analysis started with ${providerLabel(providerId)}.`,
+        hint: providerId === 'heuristic-local' ? undefined : 'Transcript text is sent to that endpoint. Audio and video are never sent.'
+      })
     } catch (err) {
       setError(err)
     } finally {
@@ -75,7 +80,11 @@ export function MomentsTab() {
         const { taskId } = await api['clips.fetchCandidateSection']({ candidateId: candidate.id })
         setSectionTaskId(taskId)
         await data.loadTasks(project.id)
-        app.toast({ level: 'info', message: 'Fetching only this moment’s video section. The full video will not be downloaded.' })
+        app.toast({
+          level: 'info',
+          message: 'Downloading only this moment’s video section.',
+          hint: 'The rest of the video is not downloaded.'
+        })
         return
       }
       const clip = await api['clips.createFromCandidate']({ candidateId: candidate.id })
@@ -110,9 +119,10 @@ export function MomentsTab() {
     return (
       <div className="empty">
         <BarChart3 size={28} className="empty-icon" />
-        <div className="empty-title">Analysis needs a transcript</div>
+        <div className="empty-title">A transcript is needed first</div>
         <div className="empty-copy">
-          Transcribe the {project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} or import a transcript first — the analyzer reads transcript text, never the raw video.
+          Transcribe the {project.sourceMode === 'audio-first' ? 'downloaded audio' : 'video'} or import a transcript. The analyzer
+          reads transcript text only, never the video.
         </div>
       </div>
     )
@@ -122,19 +132,23 @@ export function MomentsTab() {
     <div className="stack">
       <div className="toolbar plain">
         <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-2)' }}>
-          <strong style={{ color: 'var(--text-1)' }}>{moments.length}</strong> moment{moments.length === 1 ? '' : 's'}
-          <span style={{ color: 'var(--text-3)' }}> · {data.candidates.filter((c) => c.status !== 'rejected').length} candidates</span>
+          <strong style={{ color: 'var(--text-1)' }}>{plural(moments.length, 'moment')}</strong>
+          {data.candidates.filter((c) => c.status !== 'rejected').length > moments.length && (
+            <span style={{ color: 'var(--text-3)' }}>
+              {' '}· {plural(data.candidates.filter((c) => c.status !== 'rejected').length, 'variation')}
+            </span>
+          )}
         </span>
         {project.sourceMode === 'audio-first' && (
-          <span className="tiny" title="Audio has already been downloaded; video is fetched only after a moment is selected.">
-            Audio-only source · selected sections only
+          <span className="tiny" title="Only the audio was downloaded. Video is fetched after you choose a moment.">
+            Audio-only source · downloads selected sections
           </span>
         )}
         {activeSectionTask && (
           <span className="row" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-2)', gap: 'var(--space-3)' }}>
             <Spinner size={12} /> {activeSectionTask.message ?? 'Fetching selected video section'}
             {activeSectionTask.progress != null && ` · ${Math.round(activeSectionTask.progress * 100)}%`}
-            <button className="btn danger sm" onClick={() => void cancelSectionDownload()}>Cancel</button>
+            <button className="btn danger sm" onClick={() => void cancelSectionDownload()}>Cancel download</button>
           </span>
         )}
         {analyzeTask?.message && (
@@ -144,15 +158,15 @@ export function MomentsTab() {
         )}
         <span className="spacer" />
         <button className="btn" onClick={() => void analyze('heuristic-local')} disabled={analyzing || busy}>
-          <Cpu size={14} /> Analyze — local heuristic
+          <Cpu size={14} /> Analyze offline
         </button>
         {canUseAi && (
           <button className="btn primary" onClick={() => void analyze(aiProvider)} disabled={analyzing || busy}>
-            <ScanSearch size={14} /> Analyze — {aiProvider === 'anthropic' ? 'Anthropic' : 'AI endpoint'}
+            <ScanSearch size={14} /> Analyze with {aiProvider === 'anthropic' ? 'Anthropic' : 'your AI endpoint'}
           </button>
         )}
         {canUseAi && (
-          <span className="tiny">sends transcript text only — never the video</span>
+          <span className="tiny">Sends transcript text only, never the video.</span>
         )}
       </div>
 
@@ -161,10 +175,10 @@ export function MomentsTab() {
       {moments.length === 0 && !analyzing ? (
         <div className="empty">
           <BarChart3 size={28} className="empty-icon" />
-          <div className="empty-title">No moments discovered yet</div>
+          <div className="empty-title">No moments yet</div>
           <div className="empty-copy">
-            Run the analyzer to find candidate clips. The local heuristic works offline; a configured AI provider gives better
-            semantic quality.
+            Run the analysis to find clip moments. The offline analyzer needs no provider set up. A configured AI provider gives
+            stronger results.
           </div>
         </div>
       ) : (
@@ -175,7 +189,7 @@ export function MomentsTab() {
               index={i}
               candidates={list}
               onCreate={(c) => void createClip(c)}
-              createLabel={project.sourceMode === 'audio-first' ? 'Fetch section & create clip' : 'Create clip'}
+              createLabel={project.sourceMode === 'audio-first' ? 'Download section and create clip' : 'Create clip'}
               sectionBusy={Boolean(activeSectionTask)}
               onReject={(c) => void reject(c)}
             />
@@ -237,22 +251,22 @@ function MomentRow({
       {expanded && (
         <div className="moment-body">
           <div className="row wrap" style={{ gap: 'var(--space-3)' }}>
-            <span className="chip">{candidate.clipType.replace(/-/g, ' ')}</span>
-            <span className="tiny" title={isHeuristic ? 'Produced by the offline heuristic analyzer — not an AI model' : `Produced by ${candidate.provider}`}>
-              source: {isHeuristic ? 'local heuristic (not an AI model)' : candidate.provider}
+            <span className="chip">{candidate.clipType.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase())}</span>
+            <span className="tiny" title={isHeuristic ? 'Produced by the offline heuristic analyzer, not an AI model' : `Produced by ${candidate.provider}`}>
+              Source: {providerLabel(candidate.provider)}
             </span>
-            {candidate.status === 'converted' && <span className="chip success">clipped</span>}
+            {candidate.status === 'converted' && <span className="chip success">Clip created</span>}
             <span style={{ flex: 1 }} />
             {candidates.length > 1 && (
               <span className="row" style={{ gap: 'var(--space-3)' }}>
-                <span className="tiny">variations</span>
+                <span className="tiny">Versions</span>
                 <span className="segmented">
                   {candidates.map((c, i) => (
                     <button
                       key={c.id}
                       className={i === variationIdx ? 'active' : ''}
                       onClick={() => setVariationIdx(i)}
-                      title={`${Math.round(c.endTime - c.startTime)}s · score ${c.overallScore ?? '–'}`}
+                      title={`${Math.round(c.endTime - c.startTime)}s · score ${c.overallScore ?? '–'}/100`}
                     >
                       {i === 0 ? 'Best' : `Alt ${i}`}
                     </button>
@@ -288,10 +302,10 @@ function MomentRow({
             </button>
             {existingClip && (
               <button className="btn sm" onClick={() => useAppStore.getState().openEditor(existingClip.id, existingClip.projectId)}>
-                Open editor
+                Open in editor
               </button>
             )}
-            <button className="btn ghost sm" onClick={() => onReject(candidate)} title="Reject this moment">
+            <button className="btn ghost sm" onClick={() => onReject(candidate)} title="Reject this moment. It is hidden from the list but kept in the project.">
               <ThumbsDown size={12} /> Reject
             </button>
           </div>
@@ -319,8 +333,8 @@ export function ScoreBreakdownView({ scores, explanation, provider }: { scores: 
         </div>
       )}
       <div className="tiny" style={{ color: 'var(--text-3)' }}>
-        Performance Audit — an estimate by <strong>{provider === 'heuristic-local' ? 'the local heuristic analyzer (not an AI model)' : provider}</strong>.
-        It reflects defined content characteristics and is not a prediction of views.
+        Performance Audit — estimated by <strong>{providerLabel(provider)}</strong> from transcript content. It is not a
+        prediction of views.
       </div>
     </div>
   )

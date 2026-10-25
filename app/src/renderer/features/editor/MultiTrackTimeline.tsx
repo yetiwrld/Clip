@@ -615,7 +615,7 @@ export function MultiTrackTimeline(props: {
   useEffect(() => registerCommands(timelineCommands(() => commandHandlers.current as TimelineHandlers)), [])
 
   return <section className="multi-track-editor" aria-label="Multi-track timeline editor">
-    <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete remove">
+    <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+B split · Ctrl/⌘+D duplicate · Delete to remove">
       <div className="row timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
         <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title="Toggle magnetic snapping" aria-label={`Snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
           <Magnet size={12} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
@@ -631,7 +631,7 @@ export function MultiTrackTimeline(props: {
         <span className="timeline-toolbar-divider" aria-hidden="true" />
         <button type="button" className="btn ghost sm icon" onClick={splitSelected} disabled={!canSplit} title="Split selected clip at the playhead · Ctrl/⌘+B" aria-label="Split selected clip at playhead"><Scissors size={14} /></button>
         <button type="button" className="btn ghost sm icon" onClick={duplicateSelected} disabled={!selected || selectedLocked} title="Duplicate selected clip after itself · Ctrl/⌘+D" aria-label="Duplicate selected clip"><Copy size={14} /></button>
-        <button type="button" className="btn ghost sm icon danger" onClick={deleteSelected} disabled={!selected || selectedLocked} title="Remove selected timeline item · Delete" aria-label="Delete selected timeline item"><Trash2 size={14} /></button>
+        <button type="button" className="btn ghost sm icon danger" onClick={deleteSelected} disabled={!selected || selectedLocked} title="Delete selected timeline item · Delete" aria-label="Delete selected timeline item"><Trash2 size={14} /></button>
       </div>
       <div className="timeline-toolbar-right">
         <label className="timeline-zoom-control">
@@ -669,7 +669,7 @@ export function MultiTrackTimeline(props: {
         </div>}
         {props.captions && props.captions.length > 0 ? (
           <div className="multi-track-row caption-track-row">
-            <div className="multi-track-label"><span className="track-title"><Type size={14} /> Captions</span><small>{props.captions.length} blocks</small></div>
+            <div className="multi-track-label"><span className="track-title"><Type size={14} /> Captions</span><small>{props.captions.length === 1 ? '1 block' : `${props.captions.length} blocks`}</small></div>
             <div className="multi-track-lane">
               {props.captions.map((caption) => (
                 <div key={caption.key} role="group" className={`timeline-caption-block${props.selectedCaptionKey === caption.key ? ' selected' : ''}`}
@@ -696,9 +696,9 @@ export function MultiTrackTimeline(props: {
           </div>
         ) : null}
         {props.textLayers && <div className="multi-track-row text-track-row">
-          <div className="multi-track-label"><span className="track-title"><Type size={14} /> Text / graphics</span><small>{props.textLayers.length} layers</small></div>
+          <div className="multi-track-label"><span className="track-title"><Type size={14} /> Text / graphics</span><small>{props.textLayers.length === 1 ? '1 layer' : `${props.textLayers.length} layers`}</small></div>
           <div className="multi-track-lane">
-            {props.textLayers.length === 0 && <span className="timeline-empty-track">Add a layer from Text to place it here.</span>}
+            {props.textLayers.length === 0 && <span className="timeline-empty-track">Add a text layer in Text / graphics to place it here.</span>}
             {props.textLayers.map((layer) => <div key={layer.id} role="group" className={`timeline-text-block${props.selectedTextLayerId === layer.id ? ' selected' : ''}`} style={{ left: layer.startTime * pixelsPerSecond, width: Math.max(24, (layer.endTime - layer.startTime) * pixelsPerSecond) }}>
               <button type="button" className="timeline-text-content" aria-label={`Text layer ${layer.text || 'untitled'} at ${formatClock(layer.startTime, true)}`} title="Click to select · drag to move" onClick={(event) => { if (event.detail !== 0) return; props.onSelectTextLayer?.(layer); seekTo(layer.startTime) }} onPointerDown={(event) => { props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text', startX: event.clientX, layer }) }}>{layer.text || 'Text layer'}</button>
               <button type="button" role="slider" aria-orientation="horizontal" className="text-trim-handle left" aria-label={`Adjust start of text layer ${layer.text || 'untitled'}`} aria-valuemin={0} aria-valuemax={layer.endTime - 0.1} aria-valuenow={layer.startTime} title="Drag or use arrow keys to adjust text start" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => adjustTextLayerByKey(event, layer, 'left')} onPointerDown={(event) => { event.stopPropagation(); props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text-left', startX: event.clientX, layer }) }} />
@@ -731,7 +731,7 @@ export function MultiTrackTimeline(props: {
                   <button type="button" role="slider" aria-orientation="horizontal" aria-label={`Trim ${asset?.name ?? 'clip'} source end`} aria-valuemin={item.sourceIn + 0.05} aria-valuemax={asset?.duration ?? item.sourceOut + span * 4} aria-valuenow={item.sourceOut} title="Drag to trim · Arrow keys step one frame; Shift + arrow steps one second" className="timeline-trim right" disabled={track.locked} onKeyDown={(event) => adjustItemByKey(event, item, 'right')} onPointerDown={(event) => beginDrag(event, item, 'right')} />
                   {asset && asset.mediaType !== 'audio' && asset.thumbnailPath && <img className="timeline-item-thumbnail" src={mediaUrl(asset.thumbnailPath)} alt="" draggable={false} />}
                   {asset?.mediaType === 'audio' && props.waveforms[asset.id] && <AudioWaveform peaks={props.waveforms[asset.id].peaks} duration={props.waveforms[asset.id].duration} sourceIn={item.sourceIn} sourceOut={item.sourceOut} />}
-                  <button type="button" className="timeline-item-body" aria-label={`${asset?.name ?? 'Missing media'} clip · drag to move, double-click to seek`} onPointerDown={(event) => beginDrag(event, item, 'move')} onClick={(event) => { if (event.detail !== 0) return; setSelectedId(item.id); seekTo(item.startTime); props.onSelectItem?.(item) }} onDoubleClick={() => seekTo(item.startTime)}>{asset?.name ?? 'Media Missing'} <span>{formatClock(item.startTime, true)}</span></button>
+                  <button type="button" className="timeline-item-body" aria-label={`${asset?.name ?? 'Missing media'} clip · drag to move, double-click to seek`} onPointerDown={(event) => beginDrag(event, item, 'move')} onClick={(event) => { if (event.detail !== 0) return; setSelectedId(item.id); seekTo(item.startTime); props.onSelectItem?.(item) }} onDoubleClick={() => seekTo(item.startTime)}>{asset?.name ?? 'Missing media'} <span>{formatClock(item.startTime, true)}</span></button>
                 </div>
               })}
             </div>
@@ -784,13 +784,13 @@ export function TimelineInspector(props: { item: TimelineItem; asset?: ProjectAs
   const speedInput = (event: React.ChangeEvent<HTMLInputElement>) => props.onChange({ speed: Math.max(0.25, Math.min(4, finiteValue(event, props.item.speed))) })
   return <div className="timeline-inspector">
     <strong>{props.asset?.name ?? 'Missing media'}</strong>
-    <label>Start <input type="number" min="0" step="0.01" value={props.item.startTime.toFixed(2)} onChange={(event) => props.onChange({ startTime: Math.max(0, finiteValue(event, props.item.startTime)) })} /></label>
-    <label>Source in <input type="number" min="0" max={Math.max(0, props.item.sourceOut - 0.05)} step="0.01" value={props.item.sourceIn.toFixed(2)} onChange={(event) => props.onChange({ sourceIn: Math.max(0, Math.min(props.item.sourceOut - 0.05, finiteValue(event, props.item.sourceIn))) })} /></label>
-    <label>Source out <input type="number" min={props.item.sourceIn + 0.05} max={Number.isFinite(sourceOutMax) ? sourceOutMax : undefined} step="0.01" value={props.item.sourceOut.toFixed(2)} onChange={(event) => props.onChange({ sourceOut: Math.min(sourceOutMax, Math.max(props.item.sourceIn + 0.05, finiteValue(event, props.item.sourceOut))) })} /></label>
+    <label>Start (s) <input type="number" min="0" step="0.01" value={props.item.startTime.toFixed(2)} onChange={(event) => props.onChange({ startTime: Math.max(0, finiteValue(event, props.item.startTime)) })} /></label>
+    <label>Source in (s) <input type="number" min="0" max={Math.max(0, props.item.sourceOut - 0.05)} step="0.01" value={props.item.sourceIn.toFixed(2)} onChange={(event) => props.onChange({ sourceIn: Math.max(0, Math.min(props.item.sourceOut - 0.05, finiteValue(event, props.item.sourceIn))) })} /></label>
+    <label>Source out (s) <input type="number" min={props.item.sourceIn + 0.05} max={Number.isFinite(sourceOutMax) ? sourceOutMax : undefined} step="0.01" value={props.item.sourceOut.toFixed(2)} onChange={(event) => props.onChange({ sourceOut: Math.min(sourceOutMax, Math.max(props.item.sourceIn + 0.05, finiteValue(event, props.item.sourceOut))) })} /></label>
     {props.asset?.mediaType !== 'image' && <label>Volume <input type="range" min="0" max="1" step="0.01" value={Math.min(1, Math.max(0, props.item.volume))} onChange={(event) => props.onChange({ volume: Math.min(1, Math.max(0, Number(event.target.value))) })} /><span>{Math.round(Math.min(1, Math.max(0, props.item.volume)) * 100)}%</span></label>}
     {props.asset?.mediaType === 'audio' && <>
-      <label>Fade in <input type="number" min="0" max={duration} step="0.05" value={props.item.fadeIn} onChange={(event) => props.onChange({ fadeIn: Math.min(duration, Math.max(0, finiteValue(event, props.item.fadeIn))) })} /></label>
-      <label>Fade out <input type="number" min="0" max={duration} step="0.05" value={props.item.fadeOut} onChange={(event) => props.onChange({ fadeOut: Math.min(duration, Math.max(0, finiteValue(event, props.item.fadeOut))) })} /></label>
+      <label>Fade in (s) <input type="number" min="0" max={duration} step="0.05" value={props.item.fadeIn} onChange={(event) => props.onChange({ fadeIn: Math.min(duration, Math.max(0, finiteValue(event, props.item.fadeIn))) })} /></label>
+      <label>Fade out (s) <input type="number" min="0" max={duration} step="0.05" value={props.item.fadeOut} onChange={(event) => props.onChange({ fadeOut: Math.min(duration, Math.max(0, finiteValue(event, props.item.fadeOut))) })} /></label>
       <label>Speed <input type="number" min="0.25" max="4" step="0.05" value={props.item.speed} onChange={speedInput} /></label>
       <label><input type="checkbox" checked={props.item.muted} onChange={(event) => props.onChange({ muted: event.target.checked })} /> Mute this clip</label>
       <label><input type="checkbox" checked={props.item.loop} onChange={(event) => props.onChange({ loop: event.target.checked })} /> Loop audio</label>
@@ -800,7 +800,7 @@ export function TimelineInspector(props: { item: TimelineItem; asset?: ProjectAs
       <label><input type="checkbox" checked={props.item.muted} onChange={(event) => props.onChange({ muted: event.target.checked })} /> Mute clip audio</label>
     </>}
     {props.asset?.mediaType === 'image' && <>
-      <label>Duration <input type="number" min="0.1" step="0.1" value={duration.toFixed(1)} onChange={(event) => props.onChange({ sourceIn: 0, sourceOut: Math.max(0.1, finiteValue(event, duration)) })} /></label>
+      <label>Duration (s) <input type="number" min="0.1" step="0.1" value={duration.toFixed(1)} onChange={(event) => props.onChange({ sourceIn: 0, sourceOut: Math.max(0.1, finiteValue(event, duration)) })} /></label>
       <label>Opacity <input type="range" min="0" max="1" step="0.01" value={Math.min(1, Math.max(0, props.item.opacity))} onChange={(event) => props.onChange({ opacity: Math.min(1, Math.max(0, Number(event.target.value))) })} /></label>
       <label>Scale <input type="number" min="0.1" max="5" step="0.05" value={props.item.scale} onChange={(event) => props.onChange({ scale: Math.max(0.1, Math.min(5, finiteValue(event, props.item.scale))) })} /></label>
     </>}

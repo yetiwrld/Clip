@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react'
 import { AudioLines, FileVideo2, Image as ImageIcon, Pencil, Play, RefreshCw, Search, Trash2, Upload, Volume2 } from 'lucide-react'
 import type { ProjectAsset } from '@shared/types'
 import { droppedFilePath, mediaUrl } from '../../api/client'
+import { plural } from '../../copy/labels'
 
 export function MediaLibrary(props: {
   assets: ProjectAsset[]
@@ -41,7 +42,7 @@ export function MediaLibrary(props: {
       if (paths.length) props.onDropFiles(paths)
     }}>
     <div className="asset-library-head">
-      <div><strong>{props.sectionTitle ?? 'Media library'}</strong><span className="tiny muted">{props.assets.length} assets · reusable in this project</span></div>
+      <div><strong>{props.sectionTitle ?? 'Media library'}</strong><span className="tiny muted">{plural(props.assets.length, 'asset')} · reusable in this project</span></div>
       <button className="btn sm" onClick={props.onImport} disabled={props.importing}>
         <Upload size={12} /> {props.importing ? 'Importing…' : props.importLabel ?? 'Import media'}
       </button>
@@ -52,12 +53,12 @@ export function MediaLibrary(props: {
         <option value="all">All media</option><option value="video">Video</option><option value="audio">Audio</option><option value="image">Images</option>
       </select>}
     </div>
-    {assets.length === 0 ? <div className="asset-empty">{props.assets.length ? 'No assets match this search.' : 'Import additional video, audio, or image files. Drag assets onto a timeline track to place them.'}</div> :
+    {assets.length === 0 ? <div className="asset-empty">{props.assets.length ? 'No assets match this search.' : 'Import video, audio or image files. Drag an asset onto a timeline track to use it.'}</div> :
       <div className="asset-grid">{assets.map((asset) => {
         const Icon = asset.mediaType === 'audio' ? AudioLines : asset.mediaType === 'image' ? ImageIcon : FileVideo2
         return <article key={asset.id} className={`asset-card${asset.missing ? ' missing' : ''}`} draggable={!asset.missing} onDragStart={(event) => beginDrag(event, asset)} title="Drag onto a compatible timeline track">
           <div className="asset-thumb">{asset.mediaType !== 'audio' && !asset.missing && asset.thumbnailPath ? <img src={mediaUrl(asset.thumbnailPath)} alt="" draggable={false} /> : asset.mediaType === 'audio' && props.waveforms?.[asset.id] ? <MiniWaveform peaks={props.waveforms[asset.id].peaks} /> : <Icon size={20} />}</div>
-          <div className="asset-copy"><strong title={asset.name}>{asset.name}</strong><span className="tiny muted">{asset.mediaType.toUpperCase()} · {asset.duration ? `${asset.duration.toFixed(1)}s · ` : ''}{(asset.sizeBytes / 1048576).toFixed(1)} MB</span>{asset.missing && <span className="tiny danger">Media Missing</span>}</div>
+          <div className="asset-copy"><strong title={asset.name}>{asset.name}</strong><span className="tiny muted">{asset.mediaType.replace(/^./, (c) => c.toUpperCase())} · {asset.duration ? `${asset.duration.toFixed(1)}s · ` : ''}{(asset.sizeBytes / 1048576).toFixed(1)} MB</span>{asset.missing && <span className="tiny danger">File missing</span>}</div>
           <div className="asset-actions">
             {asset.mediaType === 'audio' && !asset.missing && <button className="btn ghost sm icon" title={previewId === asset.id ? 'Stop audio preview' : 'Preview audio'} aria-label={`${previewId === asset.id ? 'Stop' : 'Preview'} ${asset.name}`} onClick={(event) => {
               event.stopPropagation()
@@ -68,7 +69,7 @@ export function MediaLibrary(props: {
             }}>{previewId === asset.id ? <Volume2 size={14} /> : <Play size={14} />}</button>}
             {asset.missing && <button className="btn ghost sm icon" title="Relink missing media" aria-label={`Relink ${asset.name}`} onClick={() => props.onRelink(asset)}><RefreshCw size={14} /></button>}
             <button className="btn ghost sm icon" title="Rename asset" aria-label={`Rename ${asset.name}`} onClick={() => props.onRename(asset)}><Pencil size={14} /></button>
-            <button className="btn ghost sm icon danger" title="Remove asset from project" aria-label={`Remove ${asset.name}`} onClick={() => props.onRemove(asset)}><Trash2 size={14} /></button>
+            <button className="btn ghost sm icon danger" title="Remove from project. The original file is kept." aria-label={`Remove ${asset.name} from project`} onClick={() => props.onRemove(asset)}><Trash2 size={14} /></button>
           </div>
           {asset.mediaType === 'audio' && !asset.missing && <audio ref={(element) => { if (element) previewRefs.current.set(asset.id, element); else previewRefs.current.delete(asset.id) }} src={mediaUrl(asset.path)} preload="metadata" onEnded={() => setPreviewId(null)} />}
         </article>
