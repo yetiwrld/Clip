@@ -267,8 +267,16 @@ textarea {
   color: var(--accent-strong);
 }
 
-.sidebar-footer {
+.sidebar-bottom {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.sidebar-footer {
+  margin-top: 0;
   padding: 10px 10px 4px;
   font-size: 10.5px;
   color: var(--text-3);

@@ -98,17 +98,20 @@ export function App() {
           </button>
         )}
 
-        <div style={{ marginTop: 'auto' }}>
+        {/* Settings and the build footer are one bottom block: a single owner
+            of the free space, so Settings always sits directly above the
+            version/workspace/preview lines instead of floating mid-gap. */}
+        <div className="sidebar-bottom">
           <button className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')} style={{ width: '100%' }}>
             <SettingsIcon size={15} strokeWidth={1.75} /> Settings
           </button>
-        </div>
 
-        <div className="sidebar-footer">
-          {isPreview && <div style={{ color: 'var(--warn)', marginBottom: 3 }}>Browser preview · full app runs on the desktop</div>}
-          <div>v{useAppStore.getState().appInfo?.version ?? '…'}</div>
-          <div>{useAppStore.getState().appInfo?.workspaceRoot}</div>
-          <div className="developer-credit">Developed by yetiwrld</div>
+          <div className="sidebar-footer">
+            {isPreview && <div style={{ color: 'var(--warn)', marginBottom: 3 }}>Browser preview · full app runs on the desktop</div>}
+            <div>v{useAppStore.getState().appInfo?.version ?? '…'}</div>
+            <div>{useAppStore.getState().appInfo?.workspaceRoot}</div>
+            <div className="developer-credit">Developed by yetiwrld</div>
+          </div>
         </div>
       </aside>
 
