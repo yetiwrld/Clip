@@ -111,6 +111,7 @@ rea-lab/
 ├── CAPCUT_STYLE_ANALYSIS.md               what CapCut's style is vs what this app has
 ├── CAPCUT_REFERENCE_1022_1013.md          analysis of the two real CapCut projects  <-- start here
 ├── CAPCUT_EXPORT_1022.md                  measured breakdown of the finished 1022 video
+├── CAPCUT_RESEARCH_PACKAGE_REVIEW.md      review of the 'Video Editor/' research folder (on main)
 ├── CAPCUT_IMPLEMENTATION_PLAN.md          how to build it, workstreams and risks
 ├── reference/                             the two real drafts (JSON + covers), trimmed
 ├── tools/capcut-digest.py                 turn any CapCut draft into a style report

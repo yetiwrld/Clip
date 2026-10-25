@@ -318,6 +318,23 @@ missing is *wiring*: derive `cameraKeyframes` from tracking so 16:9 → 9:16 fol
 
 ---
 
+## 4.5 Three gaps found by the research package (`Video Editor/` on main)
+
+See [`CAPCUT_RESEARCH_PACKAGE_REVIEW.md`](CAPCUT_RESEARCH_PACKAGE_REVIEW.md). None of these change
+the Tier-1 order; the first two are cheap and worth folding into M1.
+
+- **Fractional frame rates missing.** `OutputFps = 'source' | 24 | 25 | 30 | 50 | 60` — CapCut's
+  observed list includes 29.97 and 59.94. Anyone picking a number forces 30fps.
+- **No keyboard shortcut system.** We handle four keys; CapCut is shortcut-driven
+  (`Ctrl+B`, `J/K/L`, `A`/`B`, `Alt+K` keyframe panel, ease-in/out commands).
+- **Keyframes vs split/trim.** Before WS1 adds *timeline-time* property keyframes, split and trim
+  must partition keyframes and insert boundary keys, or animation silently breaks. Source-time
+  keyframes (camera/text) are safe today only by accident.
+
+Also noted as **debt, not now**: our stored times are float seconds. The research package calls
+that unacceptable and recommends integer ticks. Rewriting the time model is not worth it yet, but
+exact conversion at the FFmpeg boundary is.
+
 ## 5. Document versioning & persistence
 
 - `ProjectDocumentV1` stays valid. New fields are optional → **readers accept old documents
