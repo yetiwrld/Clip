@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { Scissors, Pencil, Play, Package, Trash2, Copy, FolderOpen, Film } from 'lucide-react'
+import { Scissors, Pencil, Play, Package, Trash2, Copy, FolderOpen, Film, MoreHorizontal } from 'lucide-react'
 import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
-import { ErrorBox, ProgressBar, Spinner } from '../../components/ui'
+import { ErrorBox, Modal, ProgressBar, Spinner } from '../../components/ui'
 import { getCaptionStyle } from '@shared/constants'
 import { formatClock } from '@shared/utils/time'
 
@@ -125,6 +125,8 @@ function ClipRow({
   onExport: () => void
 }) {
   const app = useAppStore()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const activeRender = renders.find((r) => r.status === 'rendering' || r.status === 'preparing' || r.status === 'queued')
   const doneRender = renders.find((r) => r.isCurrent)
   const failedRender = renders.find((r) => r.status === 'failed')
@@ -179,33 +181,68 @@ function ClipRow({
       </div>
 
       <div className="clip-actions">
-        <button className="btn sm" onClick={onEdit}>
+        <button className="btn sm" onClick={onEdit} title="Open this clip in the editor">
           <Pencil size={12} /> Edit
         </button>
-        <button className="btn primary sm" onClick={onRender} disabled={busy || Boolean(activeRender)}>
+        <button className="btn primary sm" onClick={onRender} disabled={busy || Boolean(activeRender)} title="Queue a render for this clip">
           {busy || activeRender ? <Spinner size={12} /> : <Play size={12} />} Render
         </button>
         {doneRender && (
-          <>
-            <button className="btn sm" onClick={onExport} disabled={exporting}>
-              <Package size={12} /> Export
-            </button>
-            <button
-              className="btn ghost sm icon"
-              title="Open containing folder"
-              onClick={() => void api['system.revealPath']({ path: doneRender.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
-            >
-              <FolderOpen size={12} />
-            </button>
-          </>
+          <button className="btn sm" onClick={onExport} disabled={exporting} title="Export the finished file">
+            <Package size={12} /> Export
+          </button>
         )}
-        <button className="btn ghost sm icon" onClick={() => void copyDescription()} title="Copy title + description + hashtags">
-          <Copy size={12} />
-        </button>
-        <button className="btn ghost sm icon" onClick={onDelete} title="Delete clip" aria-label="Delete clip">
-          <Trash2 size={12} style={{ color: 'var(--danger)' }} />
-        </button>
+        <div className="menu-wrap">
+          <button
+            className="btn ghost sm icon"
+            aria-label="More clip actions"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title="More actions"
+            onClick={(event) => { event.stopPropagation(); setMenuOpen(!menuOpen) }}
+          >
+            <MoreHorizontal size={14} />
+          </button>
+          {menuOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={(event) => { event.stopPropagation(); setMenuOpen(false) }} />
+              <div className="menu" role="menu" onClick={(event) => event.stopPropagation()}>
+                {doneRender?.outputPath && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void api['system.revealPath']({ path: doneRender.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) })) }}>
+                    <FolderOpen size={14} /> Open folder
+                  </button>
+                )}
+                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void copyDescription() }}>
+                  <Copy size={14} /> Copy title, description
+                </button>
+                <div className="menu-sep" />
+                <button type="button" role="menuitem" className="danger" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}>
+                  <Trash2 size={14} /> Delete clip…
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {confirmDelete && (
+        <Modal
+          title="Delete clip?"
+          onClose={() => setConfirmDelete(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button className="btn danger" onClick={() => { setConfirmDelete(false); onDelete() }}>
+                <Trash2 size={14} /> Delete clip
+              </button>
+            </>
+          }
+        >
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
+            “{clip.title || 'Untitled clip'}” and its edits, captions and renders will be removed. This cannot be undone.
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

@@ -1696,7 +1696,7 @@ export function EditorPage() {
 
         {inspectorOpen && <button className="editor-inspector-backdrop" aria-label="Close inspector" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} />}
         <aside id="editor-inspector" className={`editor-inspector${inspectorOpen ? ' mobile-open' : ''}`} aria-label="Edit properties">
-          <div className="inspector-mobile-heading"><strong>Properties</strong><button ref={inspectorCloseRef} className="btn ghost sm icon" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} aria-label="Close properties"><CloseIcon size={16} /></button></div>
+          <div className="inspector-mobile-heading"><strong>Properties</strong><button ref={inspectorCloseRef} className="btn ghost sm icon" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} aria-label="Close properties" title="Close properties"><CloseIcon size={16} /></button></div>
           {selectedTimelineItem ? <>
             <div className="inspector-context-heading"><span>{selectedTimelineAsset?.mediaType ?? 'Media'} properties</span><strong>{selectedTimelineAsset?.name ?? 'Missing media'}</strong></div>
             <TimelineInspector item={selectedTimelineItem} asset={selectedTimelineAsset} onChange={(patch) => {
@@ -1717,9 +1717,6 @@ export function EditorPage() {
           </> : selectedMoment ? <div className="inspector-moment-details"><div className="inspector-context-heading"><span>AI moment</span><strong>{selectedMoment.title}</strong></div>
             <p>{selectedMoment.reason}</p><p>{selectedMoment.transcriptExcerpt}</p><div className="inspector-moment-meta">{formatClock(selectedMoment.startTime, true)} – {formatClock(selectedMoment.endTime, true)} · Score {Math.round(selectedMoment.overallScore ?? 0)}</div>
           </div> : <div className="inspector-empty"><Film size={28} /><strong>Select a clip to edit</strong><span>Choose a media item, text, caption, or moment to see its controls here.</span></div>}
-          <details className="inspector-advanced">
-            <summary>Clip, camera &amp; export settings</summary>
-            <div className="inspector-advanced-content">
           <details className="inspector-section" open>
             <summary>
               <Scissors size={12} /> Trim <ChevronRight size={14} className="chev" />
@@ -1756,7 +1753,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section" open>
+          <details className="inspector-section">
             <summary>
               <Eraser size={12} /> Silence removal <ChevronRight size={14} className="chev" />
             </summary>
@@ -1771,7 +1768,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section" open>
+          <details className="inspector-section">
             <summary>
               <Headphones size={12} /> Audio restoration <ChevronRight size={14} className="chev" />
             </summary>
@@ -1780,7 +1777,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          {!selectedCueKey && <details className="inspector-section" open>
+          {!selectedCueKey && <details className="inspector-section">
             <summary>
               <Type size={12} /> Captions <ChevronRight size={14} className="chev" />
             </summary>
@@ -1824,7 +1821,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section" open>
+          <details className="inspector-section">
             <summary>
               <Target size={12} /> Camera keyframes <ChevronRight size={14} className="chev" />
             </summary>
@@ -1887,7 +1884,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          {!selectedTextLayerId && <details className="inspector-section" open>
+          {!selectedTextLayerId && <details className="inspector-section">
             <summary><Type size={12} /> Text / graphics <ChevronRight size={14} className="chev" /></summary>
             <div className="inspector-body">
               <TextLayerInspector layers={clip.textLayers} selectedId={selectedTextLayerId} currentTime={currentTime}
@@ -1896,7 +1893,7 @@ export function EditorPage() {
             </div>
           </details>}
 
-          <details className="inspector-section" open>
+          <details className="inspector-section">
             <summary>
               <Gauge size={12} /> Output &amp; quality <ChevronRight size={14} className="chev" />
             </summary>
@@ -1918,8 +1915,6 @@ export function EditorPage() {
             </summary>
             <div className="inspector-body">
               <MetadataPanel clip={clip} updateClip={updateClip} />
-            </div>
-          </details>
             </div>
           </details>
         </aside>

@@ -2472,9 +2472,7 @@ details.error-details pre {
 
 .inspector-context-heading span { color:var(--accent); font-size: var(--fs-xs); text-transform:uppercase; letter-spacing:.5px; }
 .inspector-context-heading strong { color:var(--text-1); font-size: var(--fs-base); overflow-wrap:anywhere; }
-.inspector-advanced { border-top:1px solid var(--border); }
 
-.inspector-advanced-content { border-top:1px solid var(--border); }
 .inspector-moment-details { padding: var(--space-4); }
 .inspector-moment-details p { color:var(--text-2); font-size: var(--fs-xs); line-height: var(--lh-normal); }
 .inspector-moment-meta { margin: var(--space-3) 0; color:var(--text-3); font-size: var(--fs-xs); }
@@ -3197,8 +3195,6 @@ details.error-details pre {
 .inspector-section > summary .chev { margin-left: auto; color: var(--text-3); transition: transform var(--speed); }
 
 .inspector-section .inspector-body { padding: 0 var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
-
-.inspector-advanced > summary { padding: var(--space-4) var(--space-5); color: var(--text-3); font-size: var(--fs-xs); cursor: pointer; font-weight: var(--fw-medium); letter-spacing: 0.6px; text-transform: uppercase; }
 
 /* ------------------------------------------------------------ timeline -- */
 

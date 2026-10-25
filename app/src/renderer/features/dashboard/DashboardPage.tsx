@@ -317,6 +317,9 @@ function ProjectRow({ summary }: { summary: ProjectSummary }) {
           <button
             className="btn ghost sm icon"
             aria-label="Project actions"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title="Project actions"
             onClick={(e) => {
               e.stopPropagation()
               setMenuOpen(!menuOpen)

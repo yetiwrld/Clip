@@ -24,7 +24,7 @@ export function Modal(props: {
           <div className="modal-title">{props.title}</div>
           <div className="header-spacer" />
           {props.onClose && (
-            <button className="btn ghost sm icon" onClick={props.onClose} aria-label="Close dialog">
+            <button className="btn ghost sm icon" onClick={props.onClose} aria-label="Close dialog" title="Close">
               <X size={14} />
             </button>
           )}
