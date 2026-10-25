@@ -6,7 +6,7 @@ import {
   Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal,
   Package, Check, X as CloseIcon
 } from 'lucide-react'
-import { api, errMessage, mediaUrl, copyText } from '../../api/client'
+import { api, errMessage, mediaUrl, copyText, isPreview } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { registerCommands, shortcutLabelFor } from '../../commands/registry'
 import { editorCommands, type EditorHandlers } from '../../commands/screenCommands'
@@ -717,9 +717,11 @@ export function EditorPage() {
     if (project) app.openProject(project.id)
   }
 
-  // Closing the window while a write is outstanding should not be silent.
+  // A browser tab can be closed by accident, so ask first. The desktop window
+  // is left alone: Electron cancels the close silently, which would look like
+  // the app refusing to quit. There the journal keeps the edits instead.
   useEffect(() => {
-    if (saveState === 'saved') return
+    if (!isPreview || saveState === 'saved') return
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''

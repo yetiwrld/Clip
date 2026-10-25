@@ -94,6 +94,10 @@ inside the autosave window:
   text over newer data;
 * a restore goes through the normal edit path, so it is autosaved and undoable.
 
+The desktop window is deliberately *not* blocked on close: Electron cancels the
+close silently, which reads as the app refusing to quit. The journal exists so a
+close cannot lose the last edits, and the editor flushes on unmount either way.
+
 If the app closed while a write was still failing, the editor opens with that
 draft offered and the status shows what happened.
 
@@ -106,6 +110,7 @@ draft offered and the status shows what happened.
 | Remove an asset | No | Native confirmation saying the project copy is deleted, original untouched |
 | Cleanup caches | No, but only regenerable files | Scan first, explicit category selection |
 | Leave the editor with unwritten edits | — | "Leave without saving?" dialog; the draft is kept either way |
+| Close a browser-preview tab mid-write | — | The browser's own "leave site?" prompt |
 
 ## 8. Tests
 
