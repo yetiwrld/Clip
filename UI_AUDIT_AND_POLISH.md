@@ -534,3 +534,32 @@ a conditional. The rules and the terminology table now live in `COPY_GUIDE.md`.
   components, not with copy.
 * Native `window.prompt` is still used for renaming an asset and naming a caption
   preset. The wording is now clear, the dialog is not.
+
+---
+
+## 2026-10-25 — Dashboard create bar: two rows, three columns
+
+The create bar was one grid with four columns and the labels typed into it in
+DOM order, so the `From URL` label landed at the end of the first row. The URL
+field then wrapped into the 92px label column on the second row, which made the
+two rows read as unrelated fragments.
+
+* `.create-bar` is now three columns — label · field · action — with
+  `justify-content: start` so the auto column cannot absorb the free space.
+* Both rows share those columns: the project name and the URL field keep one
+  width (up to 420px), and the two buttons stretch to the same width because
+  they share the auto column.
+* Row gap opened from 8px to 12px, matching the column gap, so the two rows read
+  as one form instead of two lines of text.
+* Below 760px the bar collapses to field + action with the label above, as
+  before.
+* URL placeholder shortened to "Paste a media URL you have the right to use" so
+  it fits the 420px field instead of being cut off.
+* `design-tokens.test.ts` now pins the three-column template and the DOM order
+  inside the bar (label, field, action; twice; note last), so the row structure
+  cannot silently break again.
+
+Verified: `tsc` clean, build clean, unit project 30 files / 260 tests pass. The
+served stylesheet carries the new rule and the served bundle hash changed to
+`index-CWqnWCu8.js` / `index-Ckb1PPHc.css`. Still not seen on screen — the
+column widths are arithmetic, not observation.

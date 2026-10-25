@@ -2106,9 +2106,14 @@ details.error-details pre {
    padding, which put the inputs and the buttons on four different lines. */
 .create-bar {
   display: grid;
-  grid-template-columns: 92px minmax(160px, 420px) auto minmax(0, 1fr);
+  /* One column per part: label, field, action. Both rows share the columns,
+     so the two fields keep one width and the two buttons keep one width.
+     justify-content: start stops the auto column from eating the free space. */
+  grid-template-columns: 92px minmax(180px, 420px) auto;
+  justify-content: start;
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-4);
+  row-gap: var(--space-4);
   padding-block: var(--space-4);
   border-bottom: 1px solid var(--border-strong);
   margin-bottom: var(--space-2);
@@ -2130,6 +2135,7 @@ details.error-details pre {
 @media (max-width: 760px) {
   .create-bar {
     grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: stretch;
   }
   .create-bar > .field-label,
   .create-bar > .create-note {

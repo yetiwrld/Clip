@@ -175,7 +175,7 @@ export function DashboardPage() {
         <input
           id="import-url"
           className="input"
-          placeholder="Paste a video page or direct link you have the right to use"
+          placeholder="Paste a media URL you have the right to use"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void handleImportUrl()}

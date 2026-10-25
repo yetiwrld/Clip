@@ -256,7 +256,32 @@ describe('layout', () => {
   it('lays the project form out as one grid, not two hand-spaced rows', () => {
     const bar = rule('.create-bar')
     expect(bar).toContain('display: grid')
-    expect(bar).toContain('grid-template-columns')
+    // label · field · action. Both rows share the three columns, which is what
+    // gives the two fields one width and the two buttons one width.
+    expect(bar).toContain('grid-template-columns: 92px minmax(180px, 420px) auto;')
+    expect(bar).toContain('justify-content: start')
+  })
+
+  it('keeps the two import rows in label, field, action order', () => {
+    const dashboard = fs.readFileSync(path.join(rendererDir, 'features', 'dashboard', 'DashboardPage.tsx'), 'utf8')
+    const bar = dashboard.slice(dashboard.indexOf('className="create-bar"'))
+    const order = [
+      'htmlFor="new-project-name"',
+      'id="new-project-name"',
+      'void handleCreate()',
+      'htmlFor="import-url"',
+      'id="import-url"',
+      'void handleImportUrl()',
+      'className="create-note"'
+    ].map((needle) => {
+      const index = bar.indexOf(needle)
+      expect(index, `${needle} should sit inside the create bar`).toBeGreaterThan(-1)
+      return index
+    })
+
+    // Strictly increasing: row one is label, name, create; row two is label,
+    // URL, import; the availability note comes last and spans the fields.
+    expect(order).toEqual([...order].sort((a, b) => a - b))
   })
 
   it('keeps wide tables inside a scroll container', () => {
