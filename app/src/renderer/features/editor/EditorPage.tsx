@@ -24,7 +24,6 @@ import { effectiveItemSpeed, sourceTimeAtTimelineTime, timelineItemDuration, tim
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
 import { playFromTime } from '@shared/video/playback'
 import { addAssetToTimeline, clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
-import { addRemovedRange, liftItemsOffMainTrack, mainTrackPieces, type MainTrackPiece } from '@shared/video/main-track'
 import { discreteTimelineGroup, emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, pruneTimelineHistory, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
 import { textLayerAppearanceAt, textLayerStateAt } from '@shared/video/textLayers'
 import {
@@ -89,8 +88,6 @@ export function EditorPage() {
   const [activeTool, setActiveTool] = useState<'media' | 'audio' | 'moments' | 'camera' | 'clip'>('media')
   const [previewTool, setPreviewTool] = useState<'select' | 'hand'>('select')
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
-  /** Selected part of the main video on its track (not a timeline clip). */
-  const [selectedMainPieceId, setSelectedMainPieceId] = useState<string | null>(null)
   const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
   // A remembered timeline height is a preference like any other, so it lives in
   // settings instead of a separate localStorage key.
@@ -219,7 +216,6 @@ export function EditorPage() {
         setSelectedCameraKeyframeTime(null)
         setSelectedTextLayerId(null)
         setSelectedTimelineItem(null)
-        setSelectedMainPieceId(null)
         setSegments(document.transcript)
         const initialTracks: TimelineTrack[] = [
           { id: crypto.randomUUID(), name: 'Video 1', type: 'video', order: 0, muted: false, hidden: false, locked: false },
@@ -227,18 +223,14 @@ export function EditorPage() {
           { id: crypto.randomUUID(), name: 'Audio 1', type: 'audio', order: 2, muted: false, hidden: false, locked: false }
         ]
         const restoredTimeline = savedTimeline.tracks.length ? savedTimeline : { ...savedTimeline, tracks: initialTracks }
-        // The first video track shows the main video, so any overlay that was
-        // saved there before is lifted one row up rather than hidden behind it.
-        const lifted = liftItemsOffMainTrack(restoredTimeline, () => crypto.randomUUID())
-        clipTimelineRef.current = lifted.timeline
-        setClipTimeline(lifted.timeline)
-        if (lifted.moved > 0) scheduleTimelineSave(lifted.timeline, { discrete: true })
+        clipTimelineRef.current = restoredTimeline
+        setClipTimeline(restoredTimeline)
         timelineHistoryRef.current = emptyTimelineCommandHistory()
         // The clip clipboard survives a clip switch (copying a shot into the
         // next cut is the point), but the remembered paste position does not:
         // it belongs to the timeline it was used on.
         useTimelineClipboard.getState().forgetPaste()
-        if (!savedTimeline.tracks.length) void api['timeline.save']({ clipId, timeline: lifted.timeline })
+        if (!savedTimeline.tracks.length) void api['timeline.save']({ clipId, timeline: restoredTimeline })
         setCurrentTime(found.startTime)
         historyRef.current = { past: [], future: [], lastPush: 0 }
         // A draft that is newer than the saved clip means the app stopped
@@ -289,7 +281,7 @@ export function EditorPage() {
         // Prefer the track the files were dropped on, but never force a clip
         // onto a locked track or one that does not take its media type.
         const droppedOn = next.tracks.find((candidate) => candidate.id === pending.track.id && candidate.type === asset.mediaType && !candidate.locked)
-        const placed = addAssetToTimeline(next, asset, { at: pending.time, trackId: droppedOn?.id, reservedTrackId: mainTrackRow?.id ?? null, newId: () => crypto.randomUUID() })
+        const placed = addAssetToTimeline(next, asset, { at: pending.time, trackId: droppedOn?.id, newId: () => crypto.randomUUID() })
         if (placed) next = placed.timeline
       }
       if (newAssets.length) scheduleTimelineSave(next, { discrete: true })
@@ -327,6 +319,13 @@ export function EditorPage() {
     setClipTimeline(executed)
     markDirty()
     noteDraft({ timeline: executed })
+    // A drag reports continuously; a command (delete, split, paste, move end)
+    // is one finished edit, so it goes to disk at once. Waiting gave a reload
+    // inside half a second the chance to drop it.
+    if (options.discrete) {
+      saveTimelineImmediately(executed)
+      return
+    }
     if (timelineSaveTimer.current) clearTimeout(timelineSaveTimer.current)
     timelineSaveTimer.current = setTimeout(() => {
       timelineSaveTimer.current = null
@@ -410,7 +409,6 @@ export function EditorPage() {
   function addAssetAtPlayhead(asset: ProjectAsset) {
     const placed = addAssetToTimeline(clipTimelineRef.current, asset, {
       at: Math.max(0, currentTime),
-      reservedTrackId: mainTrackRow?.id ?? null,
       newId: () => crypto.randomUUID()
     })
     if (!placed) {
@@ -634,7 +632,27 @@ export function EditorPage() {
   // Leaving the editor (back to the project, another clip, closing the window)
   // must not drop edits that are still inside the debounce window.
   useEffect(() => {
+    /**
+     * A reload cancels a normal request, so the last edit could vanish even
+     * though the app asked to save it. A beacon is handed to the browser and
+     * survives the page going away, which is the only thing that still runs at
+     * that moment. It is the same endpoint and the same payload as the normal
+     * save, so there is no second write path in the backend.
+     */
+    const beaconPendingWrites = () => {
+      if (!isPreview || typeof navigator === 'undefined' || !navigator.sendBeacon) return
+      const send = (body: unknown) => {
+        navigator.sendBeacon('/api/invoke', new Blob([JSON.stringify(body)], { type: 'application/json' }))
+      }
+      for (const [targetClipId, patch] of pendingClipPatches.current) {
+        send({ method: 'clips.update', payload: { id: targetClipId, patch } })
+      }
+      if (pendingTimelineClipId.current) {
+        send({ method: 'timeline.save', payload: { clipId: pendingTimelineClipId.current, timeline: clipTimelineRef.current } })
+      }
+    }
     const flush = () => {
+      beaconPendingWrites()
       void flushSavesRef.current.clip()
       void flushSavesRef.current.timeline()
     }
@@ -682,7 +700,10 @@ export function EditorPage() {
   useEffect(() => {
     const audioIds = [...new Set(activeTool === 'audio'
       ? data.assets.filter((asset) => asset.mediaType === 'audio').map((asset) => asset.id)
-      : clipTimeline.items.filter((item) => data.assets.find((asset) => asset.id === item.assetId)?.mediaType === 'audio').map((item) => item.assetId))]
+      : clipTimeline.items.filter((item) => {
+          const asset = data.assets.find((candidate) => candidate.id === item.assetId)
+          return Boolean(asset && asset.mediaType !== 'image')
+        }).map((item) => item.assetId))]
     for (const assetId of audioIds) {
       if (assetWaveforms[assetId] || waveformLoading.current.has(assetId)) continue
       waveformLoading.current.add(assetId)
@@ -1303,38 +1324,6 @@ export function EditorPage() {
     [projectDuration, clipTimeline.items]
   )
 
-  /**
-   * The main video as pieces of the first video track. Derived from the clip's
-   * own source window and cuts, so the row is the same data the preview and the
-   * render read — not a copy of it.
-   */
-  const mainPieces = useMemo(
-    () => (clip ? mainTrackPieces(clip) : []),
-    [clip?.startTime, clip?.endTime, clip?.silenceCuts]
-  )
-  const mainTrackRow = useMemo(
-    () => [...clipTimeline.tracks].sort((a, b) => a.order - b.order).find((track) => track.type === 'video') ?? null,
-    [clipTimeline.tracks]
-  )
-  /** Video 1 belongs to the main video, so other media is placed beside it. */
-  const reservedTrackId = mainTrackRow?.id ?? null
-
-  /** Removing a piece hides that source range, exactly like a silence cut. */
-  function removeMainPiece(piece: MainTrackPiece) {
-    if (!clip) return
-    const next = addRemovedRange(clip.silenceCuts ?? [], piece.sourceStart, piece.sourceEnd)
-    updateClip({ silenceCuts: next })
-    setSelectedMainPieceId(null)
-    // The picture jumps over the removed part, so keep the playhead on
-    // something that still exists instead of inside the hole.
-    seekTo(Math.min(piece.startTime, Math.max(0, mainTrackDurationAfter(next) - 0.05)))
-  }
-
-  function mainTrackDurationAfter(cuts: Clip['silenceCuts']): number {
-    if (!clip) return 0
-    return mainTrackPieces({ ...clip, silenceCuts: cuts }).reduce((sum, next) => sum + next.duration, 0)
-  }
-
   // Mirror of the render plan: crop toward the selected output target so the
   // preview shows exactly what FFmpeg produces (plan.ts buildRenderPlan).
   // Memoised on primitives: a fresh {w,h} object here invalidated the crop
@@ -1921,7 +1910,7 @@ export function EditorPage() {
           {activeTool === 'moments' && <div className="editor-moments-panel">
             {data.candidates.filter((candidate) => candidate.status !== 'rejected').length === 0
               ? <div className="editor-panel-empty"><Sparkles size={20} /><strong>No moments yet</strong><span>Run the analysis to find strong moments in this project.</span><button className="btn sm" onClick={async () => { try { await api['analysis.start']({ projectId: project.id, providerId: 'heuristic-local' }); app.toast({ level: 'info', message: 'Moment analysis started.', hint: 'Results appear here when it finishes.' }) } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) } }}>Analyze now</button></div>
-              : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); setSelectedMainPieceId(null); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setSelectedMainPieceId(null); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
+              : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
                 {filmstrip?.length ? <img className="editor-moment-thumb" src={mediaUrl(filmstrip.reduce((best, frame) => Math.abs(frame.t - candidate.startTime) < Math.abs(best.t - candidate.startTime) ? frame : best).path)} alt="" /> : null}
                 <span className="editor-moment-time">{formatClock(candidate.startTime, true)} – {formatClock(candidate.endTime, true)}</span><strong>{candidate.title}</strong><span>{candidate.reason}</span><small>{Math.round(candidate.overallScore ?? 0)}/100 · {Math.round(candidate.endTime - candidate.startTime)}s</small>
                 <span className="editor-moment-actions" onClick={(event) => event.stopPropagation()}><button className="btn sm" onClick={() => void openMoment(candidate)}>{data.clips.some((item) => item.candidateId === candidate.id) ? 'Edit clip' : 'Create clip'}</button></span>
@@ -2467,16 +2456,6 @@ export function EditorPage() {
           trackingKeyframes={clip.trackingKeyframes}
           cameraKeyframes={clip.cameraKeyframes}
           fps={project.fps}
-          mainTrack={mainTrackRow && clip ? {
-            trackId: mainTrackRow.id,
-            pieces: mainPieces,
-            selectedId: selectedMainPieceId,
-            thumbnail: filmstrip?.[0] ? mediaUrl(filmstrip[0].path) : null,
-            locked: mainTrackRow.locked,
-            hidden: mainTrackRow.hidden,
-            onSelect: setSelectedMainPieceId,
-            onRemove: removeMainPiece
-          } : undefined}
           selectedItemId={selectedTimelineItem?.id ?? null}
           selectedCaptionKey={selectedCueKey}
           selectedTextLayerId={selectedTextLayerId}
@@ -2527,8 +2506,8 @@ export function EditorPage() {
           }}
           onSelectTextLayer={(layer) => { setSelectedTextLayerId(layer.id); setSelectedTimelineItem(null); setSelectedCueKey(null); setSelectedMomentId(null) }}
           onChangeTextLayer={updateTextLayer}
-          onSelectItem={(item) => { setSelectedTimelineItem(item); if (item) setSelectedMainPieceId(null); if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
-          onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setSelectedMainPieceId(null); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
+          onSelectItem={(item) => { setSelectedTimelineItem(item); if (item) if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
+          onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
           onSelectCameraKeyframe={(time) => { const keyframe = clip.cameraKeyframes.find((item) => Math.abs(item.time - time) < frameTimeTolerance(data.activeProject?.fps)); if (keyframe) selectCameraKeyframe(keyframe); setActiveTool('camera') }}
           onMoveCameraKeyframe={(oldTime, requestedTime) => {
             const moving = clip.cameraKeyframes.find((key) => Math.abs(key.time - oldTime) < frameTimeTolerance(data.activeProject?.fps))

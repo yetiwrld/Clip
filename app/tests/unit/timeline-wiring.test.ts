@@ -8,7 +8,6 @@ import { useTimelineClipboard } from '../../src/renderer/features/editor/timelin
 import { registerCommands, useCommandRegistry } from '../../src/renderer/commands/registry'
 import { timelineCommands } from '../../src/renderer/commands/screenCommands'
 import { copyTimelineItems } from '../../src/shared/editor/timeline-editing'
-import { mainTrackPieces } from '../../src/shared/video/main-track'
 import type { ClipTimeline, TimelineItem } from '../../src/shared/types'
 
 /**
@@ -182,77 +181,6 @@ describe('timeline edit toolbar', () => {
     expect(midClip.get('Split clips at playhead')).toBe(false)
   })
 
-  it('draws the main video as removable pieces on Video 1 and deletes the selected part', () => {
-    const pieces = mainTrackPieces({ startTime: 0, endTime: 10, silenceCuts: [{ start: 4, end: 6 }] })
-    const html = render({
-      timeline: { ...timeline, items: [] },
-      mainTrack: {
-        trackId: 'video-1',
-        pieces,
-        selectedId: pieces[1].id,
-        thumbnail: null,
-        onSelect: noop,
-        onRemove: noop
-      }
-    })
-    // Two parts, back to back: the 4-6 s hole has closed up, magnet style.
-    expect(html.match(/data-main-piece=/g)).toHaveLength(2)
-    expect(html).toContain('Main video · 0:00.0 to 0:04.0')
-    expect(html).toContain('Main video · 0:04.0 to 0:08.0')
-    // The selected part says what Delete does, and Delete is enabled even
-    // though no timeline clip is selected.
-    expect(html).toContain('Main video part 0:04.0 to 0:08.0 · Delete removes it')
-    const rows = new Map(toolbarRows(html).map((row) => [row.label, row.disabled]))
-    expect(rows.get('Remove this part of the main video')).toBe(false)
-    // A part of the main video is not a clipboard clip: the other commands stay
-    // unavailable rather than pretending they could copy the source.
-    expect(rows.get('Cut selected clips')).toBe(true)
-    expect(rows.get('Copy selected clips')).toBe(true)
-    expect(rows.get('Duplicate selected clips')).toBe(true)
-  })
-
-  it('offers Delete for a part of the main video through the same command', () => {
-    const deleted: string[] = []
-    const dispose = registerCommands(timelineCommands(() => ({
-      hasSelection: () => false,
-      hasMainSelection: () => true,
-      deleteSelected: () => deleted.push('main'),
-      duplicateSelected: noop,
-      cutSelected: noop,
-      copySelected: noop,
-      pasteSelected: noop,
-      hasClipboard: () => false,
-      splitSelected: noop,
-      canSplit: () => false,
-      selectAll: noop,
-      clearSelection: noop,
-      toggleSnap: noop
-    })))
-    const command = useCommandRegistry.getState().commands.find((entry) => entry.id === 'timeline.delete')
-    expect(command?.enabled?.()).toBe(true)
-    command?.run()
-    dispose()
-    // One command, one gate: Delete acts on whichever selection exists, and is
-    // unavailable when neither does.
-    expect(deleted).toEqual(['main'])
-    const again = registerCommands(timelineCommands(() => ({
-      hasSelection: () => false,
-      deleteSelected: noop,
-      duplicateSelected: noop,
-      cutSelected: noop,
-      copySelected: noop,
-      pasteSelected: noop,
-      hasClipboard: () => false,
-      splitSelected: noop,
-      canSplit: () => false,
-      selectAll: noop,
-      clearSelection: noop,
-      toggleSnap: noop
-    })))
-    expect(useCommandRegistry.getState().commands.find((entry) => entry.id === 'timeline.delete')?.enabled?.()).toBe(false)
-    again()
-  })
-
   it('keeps the right-click menu in step with the toolbar', () => {
     const summary = render({ currentTime: 2 })
     // The menu only mounts once opened; the rows read the same command
@@ -273,30 +201,38 @@ describe('timeline edit toolbar', () => {
 
   it('names the selection state instead of leaving the buttons unexplained', () => {
     expect(render()).toContain('Select a clip to edit')
-    const pieces = mainTrackPieces({ startTime: 0, endTime: 10, silenceCuts: [] })
-    const html = render({
-      timeline: { ...timeline, items: [] },
-      mainTrack: { trackId: 'video-1', pieces, selectedId: pieces[0].id, onSelect: noop, onRemove: noop }
-    })
-    expect(html).toContain('Main video part 0:00.0 to 0:10.0 · Delete removes it')
-    expect(html).not.toContain('Select a clip to edit')
+    expect(render({ currentTime: 2 })).toContain('Select a clip to edit')
   })
 
   it('has no main source row: the first row is the first video track', () => {
-    const pieces = mainTrackPieces({ startTime: 0, endTime: 10, silenceCuts: [] })
-    const html = render({
-      currentTime: 5,
-      timeline: { ...timeline, items: [] },
-      mainTrack: { trackId: 'video-1', pieces, selectedId: null, onSelect: noop, onRemove: noop }
-    })
-    expect(html).toContain('Main video · 0:00.0 to 0:10.0')
+    const html = render({ currentTime: 5 })
     expect(html).not.toContain('Trim in')
     expect(html).not.toContain('Trim out')
-    // The source strip is gone; the timeline starts with a real track.
+    // The source strip is gone and nothing derived from the clip is drawn: the
+    // timeline only shows the clips that are actually on it.
     expect(html).not.toContain('source-track-row')
-    expect(html).not.toContain('Main source</span>')
+    expect(html).not.toContain('main-piece')
+    expect(html).not.toContain('Main video')
     const firstRow = html.slice(html.indexOf('data-track-id='))
     expect(firstRow.slice(0, 40)).toContain('data-track-id="video-1"')
+  })
+
+  it('draws the sound of a clip: a full waveform for audio, a strip for video', () => {
+    const audioItem = item({ id: 'sound', assetId: 'audio-1' })
+    const html = render({
+      timeline: { ...timeline, items: [item({ id: 'clip' }), audioItem] },
+      assets: [
+        { id: 'asset-1', projectId: 'p', name: 'shot.mp4', originalName: 'shot.mp4', mediaType: 'video', path: '/a.mp4', thumbnailPath: null, duration: 8, width: 1920, height: 1080, audioChannels: 2, sizeBytes: 1, missing: false, createdAt: '2026-01-01T00:00:00.000Z' },
+        { id: 'audio-1', projectId: 'p', name: 'music.mp3', originalName: 'music.mp3', mediaType: 'audio', path: '/a.mp3', thumbnailPath: null, duration: 8, width: null, height: null, audioChannels: 2, sizeBytes: 1, missing: false, createdAt: '2026-01-01T00:00:00.000Z' }
+      ],
+      waveforms: {
+        'asset-1': { peaks: [0, 0.5, 1, 0.2], duration: 8 },
+        'audio-1': { peaks: [0, 0.4, 0.9, 0.1], duration: 8 }
+      }
+    })
+    expect(html.match(/timeline-wave-canvas/g)).toHaveLength(2)
+    expect(html).toContain('class="timeline-wave-canvas is-strip"')
+    expect(html).toContain('aria-label="Audio waveform"')
   })
 
   it('labels the ruler like an editor: 00:00, not 0:00.0', () => {

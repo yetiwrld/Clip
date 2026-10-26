@@ -8,6 +8,7 @@
 :root {
   /* ---- core palette (graphite neutrals) ---- */
   --bg: #101010; /* app background */
+  --surface-0: #0f0f0f; /* the track column: one step under the panel, so the names read as their own strip */
   --surface: #161616; /* panels, sidebar */
   --surface-2: #1c1c1c; /* inputs, raised rows */
   --surface-3: #232323; /* hover, active fills */
@@ -2921,7 +2922,7 @@ details.error-details pre {
 .track-title { color:var(--text-2); }
 
 .track-tools button:hover { color:var(--text-1); }
-.multi-track-lane { position:relative; flex:1; min-width:0; min-height:51px; background-image:linear-gradient(to right,transparent 39px,var(--border) 40px); background-size:40px 100%; }
+.multi-track-lane { position:relative; isolation: isolate; flex:1; min-width:0; min-height:51px; background-image:linear-gradient(to right,transparent 39px,var(--border) 40px); background-size:40px 100%; }
 
 .multi-track-item.audio { border-color:#638e70; background:#263f30; }
 .multi-track-item.image { border-color:#988052; background:#453a23; }
@@ -2929,6 +2930,9 @@ details.error-details pre {
 .multi-track-item.missing { border-color:var(--danger); background:var(--danger-soft); }
 
 .timeline-wave-canvas { position:absolute; inset:0; width:100%; height:100%; opacity:.56; pointer-events:none; }
+/* A video clip's own sound: a quiet strip at the bottom, so the footage stays
+   readable and the clip still shows it is not silent. */
+.timeline-wave-canvas.is-strip { top:auto; bottom:0; height:13px; opacity:.5; }
 
 /* One thumbnail repeated across the clip reads as a filmstrip, which is how a
    clip signals "footage" at a glance in the reference editor. It is the same
@@ -3942,29 +3946,11 @@ details.error-details pre {
   width: clamp(70px, 8vw, 110px);
 }
 
-.multi-track-label { position: sticky; left: 0; z-index: var(--z-active); width: var(--track-label-w, 132px); min-width: var(--track-label-w, 132px); background: var(--surface-1); border-right: 1px solid var(--border); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs); display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); }
+.multi-track-label { position: sticky; left: 0; z-index: var(--z-active); width: var(--track-label-w, 132px); min-width: var(--track-label-w, 132px); background: var(--surface-0); border-right: 1px solid var(--border-strong); box-shadow: 2px 0 0 color-mix(in srgb, var(--border-strong) 55%, transparent); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs); display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); }
 
 /* One clip colour family with a hint of track type, instead of four
    saturated hues competing for attention. Accent = selected, nothing else. */
 .multi-track-item { position: absolute; top: 5px; height: 45px; border: 1px solid #527fb2; border-radius: var(--radius-control); overflow: hidden; background: #2a3036; color: #eef2f5; border-color: #3a434b; }
-
-/* A part of the main video. Same clip shape as any other piece of footage, with
-   a solid accent edge so the row reads as the source the cut came from. */
-.main-piece {
-  position: absolute;
-  top: 5px;
-  height: 45px;
-  border: 1px solid #3a434b;
-  border-left: 2px solid color-mix(in srgb, var(--accent) 70%, #3a434b);
-  border-radius: var(--radius-control);
-  overflow: hidden;
-  background: #2a3036;
-  color: #eef2f5;
-  cursor: pointer;
-}
-.main-piece.selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: var(--z-selected); }
-.main-piece.hidden { opacity: .45; }
-.main-piece-body { position: absolute; inset: 0; z-index: var(--z-raised); display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); pointer-events: none; }
 
 .multi-track-item.audio {
   background: #29332e;
@@ -4372,7 +4358,7 @@ button:disabled {
    axes are scrolled. */
 .multi-track-ruler > .multi-track-label {
   z-index: var(--z-top);
-  box-shadow: 1px 0 0 var(--border-strong);
+  background: var(--surface-0);
 }
 
 /* A scrollbar that appears mid-scroll would shift the inspector sideways;

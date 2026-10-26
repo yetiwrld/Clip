@@ -198,17 +198,6 @@ describe('adding a library asset to the timeline', () => {
     expect(hasTimelineOverlap(placed.timeline, [placed.item.id])).toBe(false)
   })
 
-  it('never stacks other media on the track the main video owns', () => {
-    const placed = addAssetToTimeline(timeline([]), asset(), { at: 0, trackId: 'video-1', reservedTrackId: 'video-1', newId: ids() })!
-    // Dropping on Video 1 is a placement, not a refusal: it lands on the next
-    // video track instead of covering the source.
-    expect(placed.item.trackId).toBe('video-2')
-    expect(placed.createdTrack).toBe(false)
-    const alone = addAssetToTimeline({ tracks: [tracks[0]], items: [], snapEnabled: true }, asset(), { at: 0, reservedTrackId: 'video-1', newId: ids() })!
-    expect(alone.createdTrack).toBe(true)
-    expect(alone.track.id).not.toBe('video-1')
-  })
-
   it('never lands on a locked track and refuses missing media', () => {
     const locked = { tracks: tracks.map((track) => track.id === 'video-1' ? { ...track, locked: true } : track), items: [], snapEnabled: true }
     const placed = addAssetToTimeline(locked, asset(), { at: 0, newId: ids() })!

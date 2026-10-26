@@ -208,7 +208,9 @@ export async function buildWaveform(
 export async function buildAssetWaveform(ctx: AppContext, assetId: string, buckets = 1200): Promise<WaveformData> {
   const asset = assetsRepo.get(ctx.db, assetId)
   if (!asset) throw new AppError('ASSET_NOT_FOUND', 'That media asset no longer exists.')
-  if (asset.mediaType !== 'audio') return { duration: asset.duration ?? 0, peaks: [], silent: true }
+  // A video clip carries its own sound, so its waveform is drawn inside the
+  // clip the same way an audio clip's is. A still has no audio to draw.
+  if (asset.mediaType === 'image') return { duration: asset.duration ?? 0, peaks: [], silent: true }
   const source = {
     id: asset.projectId, sourcePath: asset.path, duration: asset.duration, hasAudio: true
   } as Project
