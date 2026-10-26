@@ -2928,6 +2928,9 @@ details.error-details pre {
    as any other row, with a solid accent edge so it reads as the source. */
 .main-clip {
   position: absolute;
+  /* Under the clips you placed: where a clip sits on top of the source, the
+     clip is what you see and click. */
+  z-index: var(--z-base);
   top: 5px;
   height: 45px;
   border: 1px solid #3a434b;
