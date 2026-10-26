@@ -576,6 +576,12 @@ export interface AdvancedSettings {
  */
 export interface AppearanceSettings {
   ambientEffects: boolean
+  /**
+   * Native Windows notifications for jobs that finish while the window is in
+   * the background. Off means the app stays silent and the queue is the only
+   * report, which is a legitimate choice on a shared machine.
+   */
+  desktopNotifications: boolean
 }
 
 /**

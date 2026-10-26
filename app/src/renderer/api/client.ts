@@ -73,6 +73,46 @@ export function mediaUrl(absolutePath: string | null | undefined, opts: { proxy?
 }
 
 /** Clipboard with graceful fallback (works in both transports). */
+/**
+ * Copy text, with optional markup for rich-text targets.
+ *
+ * A transcript pasted into Word should keep its timecodes and paragraphs, and
+ * the same copy pasted into a plain editor should stay plain. Only safe tags are
+ * produced by the callers (paragraphs, list items, bold), never user HTML.
+ */
+export async function copyRichText(text: string, html?: string): Promise<boolean> {
+  if (!html) return copyText(text)
+  if (isElectron) {
+    try {
+      await invoke('system.copyToClipboard', { text, html })
+      return true
+    } catch {
+      return copyText(text)
+    }
+  }
+  try {
+    // Preview: the async Clipboard API can carry both flavours at once.
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([text], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) })])
+      return true
+    }
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return copyText(text)
+  }
+}
+
+/** Escape the five characters that would otherwise break out of the markup. */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function copyText(text: string): Promise<boolean> {
   if (isElectron) {
     try {
@@ -124,6 +164,7 @@ function wire(): ClipwrightApi {
     'app.checkDependencies': f('app.checkDependencies'),
     'system.revealPath': f('system.revealPath'),
     'system.copyToClipboard': f('system.copyToClipboard'),
+    'system.saveFileAs': f('system.saveFileAs'),
     'system.openLogsFolder': f('system.openLogsFolder'),
     'system.exportDiagnostics': f('system.exportDiagnostics'),
     'system.fontUrl': f('system.fontUrl'),

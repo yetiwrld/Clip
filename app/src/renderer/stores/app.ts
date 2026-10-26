@@ -92,6 +92,13 @@ interface AppStore {
   settings: AppSettings | null
   /** Settings write through one switch, so the header can show the truth. */
   settingsSaveState: 'idle' | 'saving' | 'saved' | 'error'
+  /**
+   * True while a screen is holding edits it has not written yet. The desktop
+   * shell reads this to decide whether closing needs to ask first; nothing in
+   * the UI depends on it.
+   */
+  unsavedWork: boolean
+  setUnsavedWork(value: boolean): void
   dependencies: DependencyStatus[]
   refreshDependencies(): Promise<void>
   providers: ProviderAvailability[]
@@ -265,6 +272,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   appInfo: null,
   settings: null,
   settingsSaveState: 'idle',
+  unsavedWork: false,
+  setUnsavedWork(value) {
+    if (get().unsavedWork !== value) set({ unsavedWork: value })
+  },
   dependencies: [],
   providers: [],
   bootstrapped: false,

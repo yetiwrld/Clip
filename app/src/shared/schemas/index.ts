@@ -47,7 +47,8 @@ export const appSettingsSchema = z.object({
     dismissedTips: z.array(z.string().min(1).max(80)).max(100)
   }),
   appearance: z.object({
-    ambientEffects: z.boolean()
+    ambientEffects: z.boolean(),
+    desktopNotifications: z.boolean()
   }),
   // Ranges match the renderer's clamp limits. A value outside them fails this
   // section on load, and the repository falls back to the defaults above.
@@ -490,7 +491,15 @@ export const ipcPayloads = {
     .strict(),
 
   'system.revealPath': z.object({ path: z.string().min(1).max(1000) }).strict(),
-  'system.copyToClipboard': z.object({ text: z.string().max(50000) }).strict(),
+  // `html` is the same content marked up for rich-text targets. Both parts are
+  // bounded: a caption block is small, and a runaway paste is rejected before
+  // it reaches the OS clipboard.
+  'system.copyToClipboard': z.object({ text: z.string().max(1_000_000), html: z.string().max(4_000_000).optional() }).strict(),
+  /** Native Save-As for a workspace file, with the OS overwrite confirmation. */
+  'system.saveFileAs': z.object({
+    sourcePath: z.string().min(1).max(1000),
+    suggestedName: z.string().min(1).max(180)
+  }).strict(),
   'system.openLogsFolder': z.object({}).strict(),
   'system.exportDiagnostics': z.object({}).strict(),
   'system.fontUrl': z.object({ file: z.string().max(120) }).strict()

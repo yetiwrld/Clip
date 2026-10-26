@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Film, Link2, HardDrive, FolderOpen, Trash2, X } from 'lucide-react'
 import { api, errMessage, isElectron, mediaUrl } from '../../api/client'
+import { pastedUrl, PASTE_TRIMMED_NOTICE } from '../../lib/paste'
 import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
@@ -301,6 +302,13 @@ export function SourceTab() {
               style={{ flex: 1, minWidth: 200 }}
               placeholder="Paste a link you have the right to use"
               value={url}
+              onPaste={(e) => {
+                const pasted = pastedUrl(e)
+                if (!pasted) return
+                e.preventDefault()
+                setUrl(pasted.value)
+                if (pasted.trimmed) app.toast({ level: 'info', message: PASTE_TRIMMED_NOTICE, hint: 'Paste the full link only if it really is this long.' })
+              }}
               onChange={(e) => setUrl(e.target.value)}
             />
             <button className="btn" onClick={() => void importUrl()} disabled={importing || !url.trim() || Boolean(project.sourcePath)}>

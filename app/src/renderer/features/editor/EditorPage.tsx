@@ -15,6 +15,7 @@ import { ErrorBox, Field, Modal, Spinner, Switch } from '../../components/ui'
 import { plural, providerLabel } from '../../copy/labels'
 import { flushStorage, saveStateCopy, type SaveState } from '../../persistence/durability'
 import { browserDraftStorage, clearDraft, draftIsNewer, readDraft, writeDraft } from '../../persistence/draft-journal'
+import { registerFlushHandler } from '../../persistence/flush-bus'
 import { buildCues, cueAt } from '@shared/captions/segmentation'
 import { AUDIO_RESTORATION_PRESETS } from '@shared/audio/restoration'
 import { applyTrackingToCrop, cameraStateAt, computeCameraCrop, computeCrop } from '@shared/video/crop'
@@ -530,6 +531,28 @@ export function EditorPage() {
   }
   const flushSavesRef = useRef({ clip: flushClipPatch, timeline: flushTimelineSave })
   flushSavesRef.current = { clip: flushClipPatch, timeline: flushTimelineSave }
+
+  /**
+   * The desktop shell asks two questions and gets both answers from here:
+   * "is anything unsaved?" (so closing can prompt) and "write it now" (so
+   * "Save and quit" actually saves instead of just closing).
+   */
+  useEffect(() => {
+    useAppStore.getState().setUnsavedWork(hasPendingWrites() || saveState === 'error')
+  }, [saveState, clip, clipTimeline])
+  useEffect(() => {
+    const unregister = registerFlushHandler(async () => {
+      const [clipSaved, timelineSaved] = await Promise.all([
+        flushSavesRef.current.clip(),
+        flushSavesRef.current.timeline(true)
+      ])
+      return clipSaved && timelineSaved
+    })
+    return () => {
+      unregister()
+      useAppStore.getState().setUnsavedWork(false)
+    }
+  }, [])
 
   const updateClip = useCallback((patch: Partial<Clip>, immediate = false, history = true) => {
     if (history) pushHistory()

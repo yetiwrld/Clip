@@ -1,12 +1,18 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { Readable } from 'node:stream'
-import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, protocol, safeStorage, net } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, protocol, safeStorage, net, screen, Notification, ClipboardItem } from 'electron'
 import { autoUpdater } from 'electron-updater'
-import type { AppUpdateStatus } from '@shared/ipc'
+import type { AppEvent } from '@shared/types'
+import type { AppNavTarget, AppUpdateStatus } from '@shared/ipc'
 import { createAppContext } from './services/app-context'
 import { createBackend, type Backend } from './ipc/backend'
 import { toStructuredError } from '@shared/errors'
+import { DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE, normalizeWindowState, serializeWindowState, type StoredWindowState, type WorkArea } from './desktop/window-state'
+import { readWindowState, writeWindowState } from './desktop/window-state-file'
+import { DesktopNotifier, notificationForEvent } from './desktop/notifications'
+import { openablePaths } from './desktop/open-files'
+import { projectIdFromArgs, userTasksForProjects } from './desktop/jump-list'
 
 /**
  * Electron bootstrap. This is the ONLY file that imports Electron —
@@ -18,11 +24,35 @@ import { toStructuredError } from '@shared/errors'
 // identity (spec §8). Override with CLIPWRIGHT_WORKSPACE for dev/tests.
 const WORKSPACE_DIR_NAME = 'ClipwrightStudio'
 
+/**
+ * Windows shows notifications and taskbar features only for an app with an
+ * explicit identity. This must match `appId` in electron-builder.yml, or the
+ * toast appears with no name and the taskbar groups the window separately.
+ */
+if (process.platform === 'win32') app.setAppUserModelId('com.clipwright.studio')
+
 let mainWindow: BrowserWindow | null = null
 let backend: Backend | null = null
 let updateStatus: AppUpdateStatus = { state: 'idle' }
 let updateVersion = ''
 let updateCheckInFlight: Promise<AppUpdateStatus> | null = null
+
+// ---------------------------------------------------------------- desktop --
+/** Files Windows asked us to open before the renderer was listening. */
+let pendingOpenPaths: string[] = []
+let pendingProjectId: string | null = null
+/** A notification click or jump-list task that needs the window to exist first. */
+let pendingNavigation: AppNavTarget | null = null
+let rendererReady = false
+/** What the renderer last told us; main never guesses about unsaved work. */
+let rendererHasUnsavedWork = false
+let desktopNotificationsEnabled = true
+let notifier: DesktopNotifier | null = null
+let windowStateFile = ''
+let windowStateSaveTimer: NodeJS.Timeout | null = null
+let allowClose = false
+let closePromptOpen = false
+let flushResolver: ((saved: boolean) => void) | null = null
 
 // The media protocol must be registered as privileged before app ready.
 protocol.registerSchemesAsPrivileged([
@@ -32,18 +62,79 @@ protocol.registerSchemesAsPrivileged([
   }
 ])
 
+// Files passed on the command line: dropped on the executable, "Open with", or
+// a SendTo shortcut. Parsed before the lock so a second instance can hand them
+// to the running copy.
+pendingOpenPaths = openablePaths(process.argv, {
+  cwd: process.cwd(),
+  exists: (candidate) => {
+    try {
+      return fs.statSync(candidate).isFile()
+    } catch {
+      return false
+    }
+  }
+})
+pendingProjectId = projectIdFromArgs(process.argv)
+
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
+  // The running copy receives these through its own 'second-instance' listener.
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+  app.on('second-instance', (_event, argv, workingDirectory) => {
+    bringToFront()
+    const paths = openablePaths(argv, {
+      cwd: workingDirectory || process.cwd(),
+      exists: (candidate) => {
+        try {
+          return fs.statSync(candidate).isFile()
+        } catch {
+          return false
+        }
+      }
+    })
+    const projectId = projectIdFromArgs(argv)
+    if (paths.length > 0) deliverOpenPaths(paths)
+    if (projectId) activateNavigation({ view: 'project', projectId })
+  })
+
+  // macOS delivers files through an event instead of argv.
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault()
+    const paths = openablePaths(['electron', filePath], { exists: (candidate) => fs.existsSync(candidate) })
+    if (paths.length > 0) deliverOpenPaths(paths)
   })
 
   void app.whenReady().then(bootstrap)
+}
+
+/** Restore and focus the one window this app owns. */
+function bringToFront(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  if (!mainWindow.isVisible()) mainWindow.show()
+  mainWindow.focus()
+}
+
+/** Hand files to the renderer, or hold them until it is listening. */
+function deliverOpenPaths(paths: string[]): void {
+  if (!paths.length) return
+  if (rendererReady && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('app:open-files', paths)
+    return
+  }
+  pendingOpenPaths = [...new Set([...pendingOpenPaths, ...paths])].slice(0, 20)
+}
+
+/** A notification click or jump-list task: show the window, then navigate. */
+function activateNavigation(target: AppNavTarget): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    pendingNavigation = target
+    return
+  }
+  bringToFront()
+  mainWindow.webContents.send('app:navigate', target)
 }
 
 async function bootstrap(): Promise<void> {
@@ -99,8 +190,38 @@ async function bootstrap(): Promise<void> {
     revealPath: async (target) => {
       if (fs.existsSync(target)) shell.showItemInFolder(target)
     },
-    copyToClipboard: async (text) => {
-      clipboard.writeText(text)
+    copyToClipboard: async (text: string, html?: string) => {
+      // Both flavours at once, so Ctrl+V lands as plain text in an editor and as
+      // formatted text in Word. Electron 44's clipboard is the async W3C-shaped
+      // API: one atomic write of ClipboardItem entries.
+      if (html) await clipboard.write([new ClipboardItem({ 'text/plain': text, 'text/html': html })])
+      else await clipboard.writeText(text)
+    },
+    saveFileAs: async ({ sourcePath, suggestedName }) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return null
+      let startDir = app.getPath('documents')
+      try {
+        startDir = app.getPath('videos')
+      } catch {
+        /* some profiles have no Videos folder; Documents always exists */
+      }
+      const extension = path.extname(suggestedName).replace('.', '').toLowerCase() || 'mp4'
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save a copy',
+        defaultPath: path.join(startDir, suggestedName),
+        buttonLabel: 'Save copy',
+        // Windows asks before replacing an existing file. That prompt is the
+        // safeguard: the copy below is allowed to overwrite only because the
+        // user has just said yes to that specific path.
+        properties: ['showOverwriteConfirmation'],
+        filters: [{ name: extension.toUpperCase(), extensions: [extension] }]
+      })
+      if (result.canceled || !result.filePath) return null
+      if (path.resolve(result.filePath) === path.resolve(sourcePath)) {
+        throw new Error('That is the same file this render already uses.')
+      }
+      fs.copyFileSync(sourcePath, result.filePath)
+      return { path: result.filePath }
     },
     openLogsFolder: async () => {
       await shell.openPath(ctx.paths.logsDir)
@@ -110,9 +231,23 @@ async function bootstrap(): Promise<void> {
 
   registerMediaProtocol(ctx.workspaceRoot, ctx.paths.fontsDir)
   registerIpc()
+  registerDesktopIpc()
   setupAutoUpdater()
   registerUpdateIpc()
+  windowStateFile = path.join(app.getPath('userData'), 'window-state.json')
+  notifier = new DesktopNotifier({
+    isSupported: () => Notification.isSupported(),
+    show: ({ title, body, onClick }) => {
+      const notification = new Notification({ title, body })
+      notification.on('click', onClick)
+      notification.show()
+    }
+  })
+  screen.on('display-removed', keepWindowOnScreen)
+  screen.on('display-metrics-changed', keepWindowOnScreen)
+  screen.on('display-added', keepWindowOnScreen)
   createWindow()
+  refreshJumpList()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -356,7 +491,95 @@ function registerIpc(): void {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('app:event', event)
     }
+    handleDesktopEvent(event)
   })
+}
+
+/**
+ * The desktop side of a backend event: a notification for work that finished
+ * while the window was not in front, and a refreshed jump list when the project
+ * list changes.
+ */
+function handleDesktopEvent(event: AppEvent): void {
+  if (event.type === 'project:update') scheduleJumpListRefresh()
+  if (!notifier) return
+  const windowInBackground =
+    !mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized() || !mainWindow.isFocused()
+  const copy = notificationForEvent(event, {
+    windowInBackground,
+    enabled: desktopNotificationsEnabled,
+    supported: notifier.supported
+  })
+  notifier.notify(copy, activateNavigation)
+}
+
+let jumpListTimer: NodeJS.Timeout | null = null
+function scheduleJumpListRefresh(): void {
+  if (jumpListTimer) clearTimeout(jumpListTimer)
+  jumpListTimer = setTimeout(() => {
+    jumpListTimer = null
+    void refreshJumpList()
+  }, 1500)
+}
+
+/**
+ * The small one-way channel between the renderer and the window: what the
+ * renderer is holding unsaved, whether the user wants notifications, taskbar
+ * progress, and the answer to a "save before quitting" request.
+ */
+function registerDesktopIpc(): void {
+  /**
+   * One hand-off, one owner. The renderer announces itself and receives
+   * everything Windows passed before it existed — in the reply, not as an event
+   * — so a file can never be imported twice by a race between the two.
+   */
+  ipcMain.handle('app:renderer-ready', () => {
+    rendererReady = true
+    const pending = { paths: pendingOpenPaths, projectId: pendingProjectId }
+    pendingOpenPaths = []
+    pendingProjectId = null
+    if (pendingNavigation) {
+      const target = pendingNavigation
+      pendingNavigation = null
+      // Navigation is a separate concern and arrives as an event.
+      mainWindow?.webContents.send('app:navigate', target)
+    }
+    return pending
+  })
+
+  ipcMain.on('app:close-guard', (_event, value: unknown) => {
+    rendererHasUnsavedWork = value === true
+  })
+
+  ipcMain.on('app:desktop-preferences', (_event, value: unknown) => {
+    const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+    desktopNotificationsEnabled = record.notificationsEnabled !== false
+  })
+
+  ipcMain.on('app:taskbar-progress', (_event, value: unknown) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (value === null || typeof value !== 'number' || !Number.isFinite(value)) {
+      mainWindow.setProgressBar(-1)
+      return
+    }
+    if (value > 1) {
+      // A long job with no usable percentage: the taskbar shows a moving bar.
+      mainWindow.setProgressBar(2, { mode: 'indeterminate' })
+      return
+    }
+    mainWindow.setProgressBar(Math.min(1, Math.max(0, value)))
+  })
+
+  ipcMain.on('app:flush-result', (_event, saved: unknown) => {
+    flushResolver?.(saved === true)
+  })
+}
+
+/** The displays Windows reports, with the primary one first. */
+function displayWorkAreas(): WorkArea[] {
+  const primary = screen.getPrimaryDisplay()
+  const others = screen.getAllDisplays().filter((display) => display.id !== primary.id)
+  return [primary, ...others].map((display) => display.workArea)
 }
 
 function createWindow(): void {
@@ -364,15 +587,16 @@ function createWindow(): void {
     ? path.join('out', 'renderer', 'clipwright-studio-logo.png')
     : path.join('src', 'renderer', 'public', 'clipwright-studio-logo.png')
   const appIconPath = path.join(app.getAppPath(), iconRelativePath)
+  const restored = normalizeWindowState(readWindowState(windowStateFile), displayWorkAreas())
 
   mainWindow = new BrowserWindow({
     icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 680,
+    ...restored.bounds,
+    minWidth: MIN_WINDOW_SIZE.width,
+    minHeight: MIN_WINDOW_SIZE.height,
     backgroundColor: '#0a0c10',
     title: 'Clipwright Studio',
+    show: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -381,6 +605,26 @@ function createWindow(): void {
       sandbox: true,
       webSecurity: true
     }
+  })
+
+  // Paint before showing: no white flash, and no window jumping to its restored
+  // position after the first frame.
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow) return
+    if (restored.maximized) mainWindow.maximize()
+    mainWindow.show()
+  })
+
+  mainWindow.on('resize', scheduleWindowStateSave)
+  mainWindow.on('move', scheduleWindowStateSave)
+  mainWindow.on('maximize', scheduleWindowStateSave)
+  mainWindow.on('unmaximize', scheduleWindowStateSave)
+
+  mainWindow.on('close', (event) => {
+    scheduleWindowStateSave(true)
+    if (allowClose || !rendererHasUnsavedWork) return
+    event.preventDefault()
+    void promptBeforeClose()
   })
 
   // Block navigation away from the app origin; open external links in the
@@ -409,7 +653,136 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+    rendererReady = false
+    rendererHasUnsavedWork = false
+    allowClose = false
   })
+}
+
+/**
+ * A window saved on a monitor that has since been unplugged, or one the user
+ * dragged mostly off-screen, is pulled back into a usable area. Registered once
+ * for the whole session: display changes outlive any one window.
+ */
+function keepWindowOnScreen(): void {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMaximized() || mainWindow.isFullScreen()) return
+  const current = mainWindow.getBounds()
+  const safe = normalizeWindowState(current, displayWorkAreas())
+  if (safe.bounds.x !== current.x || safe.bounds.y !== current.y || safe.bounds.width !== current.width || safe.bounds.height !== current.height) {
+    mainWindow.setBounds(safe.bounds)
+  }
+}
+
+function scheduleWindowStateSave(immediate = false): void {
+  if (windowStateSaveTimer) {
+    clearTimeout(windowStateSaveTimer)
+    windowStateSaveTimer = null
+  }
+  if (immediate) {
+    saveWindowStateNow()
+    return
+  }
+  // Dragging a window fires hundreds of resize/move events; one write per
+  // settled position is enough to remember where it was.
+  windowStateSaveTimer = setTimeout(() => {
+    windowStateSaveTimer = null
+    saveWindowStateNow()
+  }, 400)
+}
+
+function saveWindowStateNow(): void {
+  if (!mainWindow || mainWindow.isDestroyed() || !windowStateFile) return
+  const maximized = mainWindow.isMaximized()
+  // While maximized the useful position is the one it will return to.
+  const bounds = maximized ? mainWindow.getNormalBounds() : mainWindow.getBounds()
+  writeWindowState(windowStateFile, serializeWindowState(bounds, maximized))
+}
+
+/**
+ * Closing with unsaved edits asks first, in a native dialog. "Save and quit"
+ * asks the renderer to write what it still holds; the draft journal keeps a
+ * copy either way, and a renderer that never answers cannot block the quit.
+ */
+async function promptBeforeClose(): Promise<void> {
+  if (!mainWindow || closePromptOpen) return
+  closePromptOpen = true
+  try {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      buttons: ['Save and quit', 'Quit without saving', 'Cancel'],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+      title: 'Unsaved changes',
+      message: 'Some changes have not been written to disk yet.',
+      detail: 'Save them before closing? A copy is also kept, and offered back the next time you open the app.'
+    })
+    if (response === 2) return
+    if (response === 1) {
+      closeWindowNow()
+      return
+    }
+    const saved = await requestRendererFlush()
+    if (saved) {
+      closeWindowNow()
+      return
+    }
+    const { response: fallback } = await dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      buttons: ['Quit without saving', 'Keep the app open'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+      title: 'Could not save',
+      message: 'The last changes could not be written to disk.',
+      detail: 'They are still on screen. Quitting now loses them. The crash journal may still be able to offer them back.'
+    })
+    if (fallback === 0) closeWindowNow()
+  } catch {
+    /* a dialog failure must not trap the user in the app */
+  } finally {
+    closePromptOpen = false
+  }
+}
+
+function closeWindowNow(): void {
+  allowClose = true
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close()
+}
+
+/** Ask the renderer to write its pending edits. Resolves false on failure or silence. */
+function requestRendererFlush(): Promise<boolean> {
+  if (!mainWindow || mainWindow.isDestroyed() || !rendererReady) return Promise.resolve(true)
+  return new Promise<boolean>((resolve) => {
+    let settled = false
+    const finish = (saved: boolean) => {
+      if (settled) return
+      settled = true
+      flushResolver = null
+      clearTimeout(timer)
+      resolve(saved)
+    }
+    const timer = setTimeout(() => finish(false), 6000)
+    flushResolver = finish
+    mainWindow?.webContents.send('app:flush-request')
+  })
+}
+
+/** Recent projects in the taskbar jump list (Windows, packaged builds only). */
+async function refreshJumpList(): Promise<void> {
+  if (!backend || process.platform !== 'win32' || !app.isPackaged) return
+  try {
+    const projects = await backend.invoke('projects.list', {})
+    const list = Array.isArray(projects) ? (projects as Array<{ id: string; name: string }>) : []
+    const tasks = userTasksForProjects(list, {
+      execPath: process.execPath,
+      packaged: app.isPackaged,
+      platform: process.platform
+    })
+    if (tasks) app.setUserTasks(tasks)
+  } catch {
+    /* a jump list is a convenience, never a startup dependency */
+  }
 }
 
 app.on('window-all-closed', () => {
@@ -417,6 +790,15 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', (event) => {
+  // Quitting from anywhere other than the window's X button (a menu, the
+  // updater, an OS session end) reaches this first. Ask the same question the
+  // close button asks, before the backend starts shutting down: a prompt after
+  // shutdown would leave a half-stopped app if the user chose Cancel.
+  if (!allowClose && rendererHasUnsavedWork && !closePromptOpen) {
+    event.preventDefault()
+    void promptBeforeClose()
+    return
+  }
   if (backend) {
     event.preventDefault()
     const b = backend

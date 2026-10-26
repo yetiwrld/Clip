@@ -6,6 +6,7 @@ import { useDataStore } from '../../stores/data'
 import { ConfirmDialog, EmptyState, Modal, formatRelative } from '../../components/ui'
 import { importVideoFile } from './importVideo'
 import { plural, taskTypeLabel } from '../../copy/labels'
+import { pastedUrl, PASTE_TRIMMED_NOTICE } from '../../lib/paste'
 import { formatClock } from '@shared/utils/time'
 import type { ProjectSummary } from '@shared/types'
 
@@ -158,6 +159,13 @@ export function DashboardPage() {
           className="input"
           placeholder="Paste a media URL you have the right to use"
           value={url}
+          onPaste={(e) => {
+            const pasted = pastedUrl(e)
+            if (!pasted) return
+            e.preventDefault()
+            setUrl(pasted.value)
+            if (pasted.trimmed) app.toast({ level: 'info', message: PASTE_TRIMMED_NOTICE, hint: 'Paste the full link only if it really is this long.' })
+          }}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void handleImportUrl()}
         />

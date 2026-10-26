@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { AppUpdateStatus } from '@shared/ipc'
+import type { AppNavTarget, AppUpdateStatus } from '@shared/ipc'
 
 /**
  * The preload bridge is the ONLY surface between the renderer and the
@@ -35,6 +35,39 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, status: AppUpdateStatus) => callback(status)
     ipcRenderer.on('app:update-status', listener)
     return () => ipcRenderer.removeListener('app:update-status', listener)
+  },
+
+  // ------------------------------------------------- desktop integration --
+  /** Tell main the renderer is listening; the reply carries early hand-offs. */
+  rendererReady(): Promise<{ paths: string[]; projectId: string | null }> {
+    return ipcRenderer.invoke('app:renderer-ready')
+  },
+  onOpenFiles(callback: (paths: string[]) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, paths: string[]) => callback(paths)
+    ipcRenderer.on('app:open-files', listener)
+    return () => ipcRenderer.removeListener('app:open-files', listener)
+  },
+  onNavigate(callback: (target: AppNavTarget) => void): () => void {
+    const listener = (_event: Electron.IpcRendererEvent, target: AppNavTarget) => callback(target)
+    ipcRenderer.on('app:navigate', listener)
+    return () => ipcRenderer.removeListener('app:navigate', listener)
+  },
+  setTaskbarProgress(progress: number | null): void {
+    ipcRenderer.send('app:taskbar-progress', progress)
+  },
+  setCloseGuard(hasUnsavedWork: boolean): void {
+    ipcRenderer.send('app:close-guard', hasUnsavedWork)
+  },
+  setDesktopPreferences(preferences: { notificationsEnabled: boolean }): void {
+    ipcRenderer.send('app:desktop-preferences', preferences)
+  },
+  onFlushRequest(callback: () => void): () => void {
+    const listener = () => callback()
+    ipcRenderer.on('app:flush-request', listener)
+    return () => ipcRenderer.removeListener('app:flush-request', listener)
+  },
+  flushDone(saved: boolean): void {
+    ipcRenderer.send('app:flush-result', saved)
   }
 }
 

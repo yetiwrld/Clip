@@ -40,7 +40,10 @@ export interface HostServices {
   pickFile(filters: Array<{ name: string; extensions: string[] }>): Promise<string | null>
   pickFiles?(filters: Array<{ name: string; extensions: string[] }>): Promise<string[]>
   revealPath(target: string): Promise<void>
-  copyToClipboard(text: string): Promise<void>
+  /** Text plus optional rich-text markup for the same content. */
+  copyToClipboard(text: string, html?: string): Promise<void>
+  /** Native Save-As with the OS overwrite confirmation. */
+  saveFileAs?(options: { sourcePath: string; suggestedName: string }): Promise<{ path: string } | null>
   openLogsFolder(): Promise<void>
   isPathInsideWorkspace(target: string): boolean
 }
@@ -424,9 +427,29 @@ function runTask(taskId: string, fn: (report: import('../services/tasks/index').
       }
       await host.revealPath(p.path)
     },
-    'system.copyToClipboard': async (p: { text: string }): Promise<void> => {
+    'system.copyToClipboard': async (p: { text: string; html?: string }): Promise<void> => {
       if (!host) throw new AppError('UNSUPPORTED_IN_PREVIEW', 'Clipboard is handled by the browser in preview mode.')
-      await host.copyToClipboard(p.text)
+      await host.copyToClipboard(p.text, p.html)
+    },
+    'system.saveFileAs': async (p: { sourcePath: string; suggestedName: string }): Promise<{ path: string } | null> => {
+      if (!host?.saveFileAs) {
+        throw new AppError('UNSUPPORTED_IN_PREVIEW', 'Saving a copy is only available in the desktop app.', 'Use the download button instead.')
+      }
+      if (!host.isPathInsideWorkspace(p.sourcePath)) {
+        throw new AppError('PATH_NOT_ALLOWED', 'Only files inside the Clipwright workspace can be saved out.')
+      }
+      if (!fs.existsSync(p.sourcePath) || !fs.statSync(p.sourcePath).isFile()) {
+        throw new AppError('FILE_NOT_FOUND', 'That render is no longer on disk.', 'Render the clip again to recreate it.')
+      }
+      // The suggested name is a name, not a path: separators, control characters
+      // and traversal are stripped before it reaches the save dialog.
+      const suggestedName =
+        p.suggestedName
+          .replace(/[\\/:*?"<>|\u0000-\u001F]/g, '-')
+          .replace(/\.+$/g, '')
+          .trim()
+          .slice(0, 120) || 'clip.mp4'
+      return host.saveFileAs({ sourcePath: p.sourcePath, suggestedName })
     },
     'system.openLogsFolder': async (): Promise<void> => {
       if (!host) throw new AppError('UNSUPPORTED_IN_PREVIEW', 'Opening folders is unavailable in the browser preview.')

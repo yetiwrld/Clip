@@ -1,6 +1,6 @@
 import React from 'react'
-import { RotateCcw, X, FolderOpen, ListVideo } from 'lucide-react'
-import { api, errMessage, mediaUrl } from '../../api/client'
+import { RotateCcw, X, FolderOpen, ListVideo, Download } from 'lucide-react'
+import { api, errMessage, isPreview, mediaUrl } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { EmptyState, ErrorBox } from '../../components/ui'
@@ -100,6 +100,30 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
   )
 }
 
+/**
+ * Save a copy wherever you like, through the OS save dialog: it starts in
+ * Videos, suggests the clip's own name and asks before replacing anything.
+ */
+async function saveCopy(render: RenderJob, clipTitle: string | undefined, toast: ReturnType<typeof useAppStore.getState>['toast']) {
+  if (!render.outputPath) return
+  const base = (clipTitle ?? 'clip').replace(/[^\w\- ]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 60) || 'clip'
+  const name = `${base}.mp4`
+  if (isPreview) {
+    // The browser has no save dialog here: a normal download is the fallback.
+    const link = document.createElement('a')
+    link.href = mediaUrl(render.outputPath)
+    link.download = name
+    link.click()
+    return
+  }
+  try {
+    const result = await api['system.saveFileAs']({ sourcePath: render.outputPath, suggestedName: name })
+    if (result) toast({ level: 'success', message: 'Saved a copy.', hint: result.path })
+  } catch (err) {
+    toast({ level: 'error', ...errMessage(err) })
+  }
+}
+
 function RenderRow({
   render,
   clipTitle,
@@ -173,14 +197,24 @@ function RenderRow({
           </button>
         )}
         {isCompleted && render.outputPath && (
-          <button
-            className="btn ghost sm icon"
-            title="Show in folder"
-            aria-label="Show in folder"
-            onClick={() => void api['system.revealPath']({ path: render.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
-          >
-            <FolderOpen size={14} />
-          </button>
+          <>
+            <button
+              className="btn ghost sm icon"
+              title="Save a copy…"
+              aria-label="Save a copy"
+              onClick={() => void saveCopy(render, clipTitle, app.toast)}
+            >
+              <Download size={14} />
+            </button>
+            <button
+              className="btn ghost sm icon"
+              title="Show in folder"
+              aria-label="Show in folder"
+              onClick={() => void api['system.revealPath']({ path: render.outputPath! }).catch((e) => app.toast({ level: 'warn', ...errMessage(e) }))}
+            >
+              <FolderOpen size={14} />
+            </button>
+          </>
         )}
       </div>
     </div>

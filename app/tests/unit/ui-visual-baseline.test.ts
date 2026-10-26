@@ -150,6 +150,10 @@ const BASELINED_SELECTORS = [
   '.text-body',
   '.section-hint',
   '.create-bar',
+  // Desktop integration: the window-wide drop hint.
+  '.drop-overlay',
+  '.drop-overlay-card',
+  '.drop-overlay-note',
   // Workspace layout: the remembered panel frame and its dividers.
   '.pane-resizer',
   '.sidebar-resizer',

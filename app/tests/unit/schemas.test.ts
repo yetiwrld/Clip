@@ -63,7 +63,8 @@ describe('IPC payload validation (the explicit bridge contract)', () => {
       'settings.secretHints', 'settings.testAiProvider',
       'exports.run',
       'storage.status', 'storage.flush', 'clips.restore',
-      'system.revealPath', 'system.copyToClipboard', 'system.openLogsFolder', 'system.exportDiagnostics', 'system.fontUrl'
+      'system.revealPath', 'system.copyToClipboard', 'system.saveFileAs', 'system.openLogsFolder',
+      'system.exportDiagnostics', 'system.fontUrl'
     ]
     expect(Object.keys(ipcPayloads).sort()).toEqual([...expected].sort())
   })
@@ -146,7 +147,7 @@ describe('app settings schema', () => {
     const parsed = appSettingsSchema.safeParse({
       general: { firstRunCompleted: true },
       help: { tourCompleted: false, dismissedTips: [] },
-      appearance: { ambientEffects: true },
+      appearance: { ambientEffects: true, desktopNotifications: true },
       workspace: {
         sidebarWidth: 198, sidebarCollapsed: false,
         editorToolPanelWidth: 268, editorToolPanelCollapsed: false,

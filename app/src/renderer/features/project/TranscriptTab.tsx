@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { FileText, Upload, Cpu, Cloud, Search, Copy, Play, X, Users } from 'lucide-react'
-import { api, errMessage, isElectron, copyText, mediaUrl } from '../../api/client'
+import { api, errMessage, isElectron, copyRichText, copyText, escapeHtml, mediaUrl } from '../../api/client'
 import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
@@ -287,8 +287,18 @@ export function TranscriptTab() {
 
   async function copyAll() {
     const names = new Map(speakerOptions.map((speaker) => [speaker.label, displaySpeakerName(speaker)]))
-    const text = data.transcript.map((s) => `[${formatClock(s.startTime)}] ${s.speaker ? `[${names.get(s.speaker) ?? s.speaker}] ` : ''}${s.text}`).join('\n')
-    const ok = await copyText(text)
+    const line = (segment: (typeof data.transcript)[number]) => {
+      const speaker = segment.speaker ? `[${names.get(segment.speaker) ?? segment.speaker}] ` : ''
+      return { time: `[${formatClock(segment.startTime)}]`, speaker, text: segment.text }
+    }
+    const rows = data.transcript.map(line)
+    const text = rows.map((row) => `${row.time} ${row.speaker}${row.text}`).join('\n')
+    // The same transcript as paragraphs with bold timecodes: pasting into a
+    // document keeps the structure instead of arriving as one wall of lines.
+    const html = `<p>${rows
+      .map((row) => `<strong>${escapeHtml(row.time)}</strong> ${row.speaker ? `<em>${escapeHtml(row.speaker.trim())}</em> ` : ''}${escapeHtml(row.text)}`)
+      .join('</p><p>')}</p>`
+    const ok = await copyRichText(text, html)
     app.toast(ok
       ? { level: 'success', message: 'Copied the whole transcript.' }
       : { level: 'warn', message: 'Could not copy to the clipboard.', hint: 'Your browser may block clipboard access.' })

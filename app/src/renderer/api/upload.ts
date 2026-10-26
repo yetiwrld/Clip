@@ -35,3 +35,21 @@ export async function pickUpload(accept?: string[]): Promise<string | null> {
     input.click()
   })
 }
+
+/**
+ * Upload one dropped browser file and return the path the backend stored it at.
+ * Used by the window drop target in the preview, where a File has no OS path.
+ */
+export async function uploadDroppedFile(file: File): Promise<string | null> {
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) },
+      body: file
+    })
+    const json = (await res.json()) as { ok: boolean; value?: { path: string } }
+    return json.ok && json.value ? json.value.path : null
+  } catch {
+    return null
+  }
+}

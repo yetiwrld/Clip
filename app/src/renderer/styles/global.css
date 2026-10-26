@@ -5414,3 +5414,56 @@ body[data-resizing="row"] {
     display: none;
   }
 }
+
+/* ==================================================== DESKTOP INTEGRATION
+   Things Windows adds that the app did not have before: a drop target over the
+   whole window, and nothing else that needs a new visual language. The overlay
+   is a hint, not a dialog — it never takes a click, and it disappears the
+   moment the files are released or the drag leaves the window.
+   ============================================================ */
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-palette);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  /* The drop must land on the panel under the cursor, so the overlay is
+     invisible to the pointer. */
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+
+.drop-overlay-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 420px;
+  padding: var(--space-8) var(--space-7);
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  color: var(--text-2);
+  text-align: center;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.drop-overlay-card svg {
+  color: var(--accent);
+}
+
+.drop-overlay-card strong {
+  color: var(--text-1);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+}
+
+.drop-overlay-note {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}

@@ -9,13 +9,19 @@ import type { AppSettings, AppInfo, AnalysisSummary, Clip, ClipCandidate, Depend
  *  - Browser preview: POST /api/invoke  (+ SSE /api/events)
  * The main process validates every payload with the zod schemas in ./schemas.
  */
+/** Where a notification or jump-list task should land. */
+export type AppNavTarget = { view: 'queue' } | { view: 'project'; projectId: string } | { view: 'dashboard' }
+
 export interface ClipwrightApi {
   // app / system
   'app.getInfo'(): Promise<AppInfo>
   'app.diagnostics'(): Promise<DiagnosticsReport>
   'app.checkDependencies'(): Promise<DependencyStatus[]>
   'system.revealPath'(p: { path: string }): Promise<void>
-  'system.copyToClipboard'(p: { text: string }): Promise<void>
+  /** Text plus optional rich-text markup for the same content. */
+  'system.copyToClipboard'(p: { text: string; html?: string }): Promise<void>
+  /** Native Save-As. Resolves with the chosen path, or null if cancelled. */
+  'system.saveFileAs'(p: { sourcePath: string; suggestedName: string }): Promise<{ path: string } | null>
   'system.openLogsFolder'(): Promise<void>
   'system.exportDiagnostics'(): { path: string }
   'system.fontUrl'(p: { file: string }): { path: string }
@@ -220,6 +226,25 @@ declare global {
       downloadUpdate(): Promise<void>
       installUpdate(): Promise<void>
       onUpdateStatus(cb: (status: AppUpdateStatus) => void): () => void
+
+      // ---- desktop integration ------------------------------------------
+      /**
+       * Tell main the renderer is listening. The reply carries anything Windows
+       * handed over before that moment (argv, Open with, SendTo).
+       */
+      rendererReady(): Promise<{ paths: string[]; projectId: string | null }>
+      onOpenFiles(cb: (paths: string[]) => void): () => void
+      /** A notification or jump-list task asked for a screen. */
+      onNavigate(cb: (target: AppNavTarget) => void): () => void
+      /** Taskbar progress for the render queue; null clears it. */
+      setTaskbarProgress(progress: number | null): void
+      /** Tell the window whether closing right now would lose work. */
+      setCloseGuard(hasUnsavedWork: boolean): void
+      /** Notifications follow the in-app preference. */
+      setDesktopPreferences(preferences: { notificationsEnabled: boolean }): void
+      /** The user answered "Save and quit" in the native prompt. */
+      onFlushRequest(cb: () => void): () => void
+      flushDone(saved: boolean): void
     }
   }
 }

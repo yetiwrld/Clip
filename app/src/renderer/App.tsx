@@ -20,6 +20,8 @@ import { navigationCommands, projectCommands } from './commands/appCommands'
 import { formatShortcut } from './commands/keys'
 import { useGlobalShortcuts } from './commands/useGlobalShortcuts'
 import { useDocumentHidden, useMotionMode } from './features/motion/useMotion'
+import { useDesktopIntegration } from './features/desktop/useDesktopIntegration'
+import { FileDropOverlay } from './components/FileDropOverlay'
 import { ResizeHandle } from './features/workspace/ResizeHandle'
 import { SIDEBAR_LIMIT } from './features/workspace/layout'
 import { useWorkspaceLayout } from './features/workspace/useWorkspaceLayout'
@@ -51,6 +53,10 @@ export function App() {
    * the width in local state (one render per pointer move, no writes) and only
    * saves when the pointer is released.
    */
+  // Files from Explorer, notification clicks, taskbar progress and the close
+  // handshake. A no-op in the browser preview.
+  useDesktopIntegration()
+
   const { layout, update: updateLayout } = useWorkspaceLayout()
   const [sidebarWidth, setSidebarWidth] = useState(layout.sidebarWidth)
   useEffect(() => setSidebarWidth(layout.sidebarWidth), [layout.sidebarWidth])
@@ -265,6 +271,7 @@ export function App() {
 
       <CommandPalette />
       <TourOverlay />
+      <FileDropOverlay />
 
       <div className="toasts">
         {toasts.map((t) => (

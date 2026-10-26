@@ -854,6 +854,12 @@ function AdvancedSection() {
         label="Ambient visual effects"
         hint="Background motion, the live status pulse and activity graphs. Progress bars, spinners and status text always keep working, and your system's reduce-motion setting always wins."
       />
+      <Switch
+        checked={settings.appearance.desktopNotifications}
+        onChange={(value) => void app.saveSettings({ appearance: { desktopNotifications: value } })}
+        label="Desktop notifications"
+        hint="A Windows notification when an import, transcript, analysis or render finishes while the app is in the background. Clicking it brings you to the job. Nothing is sent anywhere, and Windows notification settings always win."
+      />
       <div className="divider" />
       <div className="section-title">Workspace layout</div>
       <div className="field-hint">

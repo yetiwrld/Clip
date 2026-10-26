@@ -719,7 +719,7 @@ export const settingsRepo = {
     return {
       general: { firstRunCompleted: false },
       help: { tourCompleted: false, dismissedTips: [] },
-      appearance: { ambientEffects: true },
+      appearance: { ambientEffects: true, desktopNotifications: true },
       workspace: {
         sidebarWidth: 198,
         sidebarCollapsed: false,
