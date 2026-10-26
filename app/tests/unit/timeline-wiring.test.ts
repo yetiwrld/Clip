@@ -8,6 +8,7 @@ import { useTimelineClipboard } from '../../src/renderer/features/editor/timelin
 import { registerCommands, useCommandRegistry } from '../../src/renderer/commands/registry'
 import { timelineCommands } from '../../src/renderer/commands/screenCommands'
 import { copyTimelineItems } from '../../src/shared/editor/timeline-editing'
+import { mainTrackPieces } from '../../src/shared/video/main-track'
 import type { ClipTimeline, TimelineItem } from '../../src/shared/types'
 
 /**
@@ -117,6 +118,17 @@ describe('timeline edit toolbar', () => {
     expect(html).toContain('title="Fit full project in the timeline"')
   })
 
+  it('gives each track the same controls plus a menu for order and removal', () => {
+    const html = render()
+    expect(html).toContain('class="track-menu"')
+    expect(html).toContain('title="Track options"')
+    expect(html).toContain('Move up')
+    expect(html).toContain('Move down')
+    expect(html).toContain('Delete track')
+    // A track that holds a clip cannot be deleted out from under it.
+    expect(html).toMatch(/role="menuitem" disabled="" title="Remove or move its clips first">Delete track/)
+  })
+
   it('writes the real shortcut into each tooltip from the command registry', () => {
     const dispose = registerCommands(timelineCommands(() => ({
       hasSelection: () => false,
@@ -170,6 +182,77 @@ describe('timeline edit toolbar', () => {
     expect(midClip.get('Split clips at playhead')).toBe(false)
   })
 
+  it('draws the main video as removable pieces on Video 1 and deletes the selected part', () => {
+    const pieces = mainTrackPieces({ startTime: 0, endTime: 10, silenceCuts: [{ start: 4, end: 6 }] })
+    const html = render({
+      timeline: { ...timeline, items: [] },
+      mainTrack: {
+        trackId: 'video-1',
+        pieces,
+        selectedId: pieces[1].id,
+        thumbnail: null,
+        onSelect: noop,
+        onRemove: noop
+      }
+    })
+    // Two parts, back to back: the 4-6 s hole has closed up, magnet style.
+    expect(html.match(/data-main-piece=/g)).toHaveLength(2)
+    expect(html).toContain('Main video · 0:00.0 to 0:04.0')
+    expect(html).toContain('Main video · 0:04.0 to 0:08.0')
+    // The selected part says what Delete does, and Delete is enabled even
+    // though no timeline clip is selected.
+    expect(html).toContain('Main video part 0:04.0 to 0:08.0 · Delete removes it')
+    const rows = new Map(toolbarRows(html).map((row) => [row.label, row.disabled]))
+    expect(rows.get('Remove this part of the main video')).toBe(false)
+    // A part of the main video is not a clipboard clip: the other commands stay
+    // unavailable rather than pretending they could copy the source.
+    expect(rows.get('Cut selected clips')).toBe(true)
+    expect(rows.get('Copy selected clips')).toBe(true)
+    expect(rows.get('Duplicate selected clips')).toBe(true)
+  })
+
+  it('offers Delete for a part of the main video through the same command', () => {
+    const deleted: string[] = []
+    const dispose = registerCommands(timelineCommands(() => ({
+      hasSelection: () => false,
+      hasMainSelection: () => true,
+      deleteSelected: () => deleted.push('main'),
+      duplicateSelected: noop,
+      cutSelected: noop,
+      copySelected: noop,
+      pasteSelected: noop,
+      hasClipboard: () => false,
+      splitSelected: noop,
+      canSplit: () => false,
+      selectAll: noop,
+      clearSelection: noop,
+      toggleSnap: noop
+    })))
+    const command = useCommandRegistry.getState().commands.find((entry) => entry.id === 'timeline.delete')
+    expect(command?.enabled?.()).toBe(true)
+    command?.run()
+    dispose()
+    // One command, one gate: Delete acts on whichever selection exists, and is
+    // unavailable when neither does.
+    expect(deleted).toEqual(['main'])
+    const again = registerCommands(timelineCommands(() => ({
+      hasSelection: () => false,
+      deleteSelected: noop,
+      duplicateSelected: noop,
+      cutSelected: noop,
+      copySelected: noop,
+      pasteSelected: noop,
+      hasClipboard: () => false,
+      splitSelected: noop,
+      canSplit: () => false,
+      selectAll: noop,
+      clearSelection: noop,
+      toggleSnap: noop
+    })))
+    expect(useCommandRegistry.getState().commands.find((entry) => entry.id === 'timeline.delete')?.enabled?.()).toBe(false)
+    again()
+  })
+
   it('keeps the right-click menu in step with the toolbar', () => {
     const summary = render({ currentTime: 2 })
     // The menu only mounts once opened; the rows read the same command
@@ -190,14 +273,49 @@ describe('timeline edit toolbar', () => {
 
   it('names the selection state instead of leaving the buttons unexplained', () => {
     expect(render()).toContain('Select a clip to edit')
-    expect(render({ selectedSource: true })).toContain('Main source selected')
+    const pieces = mainTrackPieces({ startTime: 0, endTime: 10, silenceCuts: [] })
+    const html = render({
+      timeline: { ...timeline, items: [] },
+      mainTrack: { trackId: 'video-1', pieces, selectedId: pieces[0].id, onSelect: noop, onRemove: noop }
+    })
+    expect(html).toContain('Main video part 0:00.0 to 0:10.0 · Delete removes it')
+    expect(html).not.toContain('Select a clip to edit')
   })
 
-  it('names the main source without adding a second set of controls', () => {
-    const html = render({ selectedSource: true, sourceClip: { name: 'Source', startTime: 2, endTime: 8 }, currentTime: 5 })
-    expect(html).toContain('Main source selected')
+  it('has no main source row: the first row is the first video track', () => {
+    const pieces = mainTrackPieces({ startTime: 0, endTime: 10, silenceCuts: [] })
+    const html = render({
+      currentTime: 5,
+      timeline: { ...timeline, items: [] },
+      mainTrack: { trackId: 'video-1', pieces, selectedId: null, onSelect: noop, onRemove: noop }
+    })
+    expect(html).toContain('Main video · 0:00.0 to 0:10.0')
     expect(html).not.toContain('Trim in')
     expect(html).not.toContain('Trim out')
+    // The source strip is gone; the timeline starts with a real track.
+    expect(html).not.toContain('source-track-row')
+    expect(html).not.toContain('Main source</span>')
+    const firstRow = html.slice(html.indexOf('data-track-id='))
+    expect(firstRow.slice(0, 40)).toContain('data-track-id="video-1"')
+  })
+
+  it('labels the ruler like an editor: 00:00, not 0:00.0', () => {
+    const html = render({ duration: 30 })
+    const ruler = html.slice(html.indexOf('multi-track-ruler-body'), html.indexOf('data-track-id='))
+    expect(ruler).toContain('>00:00<')
+    expect(ruler).toContain('>00:10<')
+    expect(ruler).not.toContain('>0:00.0<')
+  })
+
+  it('draws one playhead line for the whole timeline, separate from the hover guide', () => {
+    const html = render({ currentTime: 4 })
+    expect(html).toContain('class="timeline-playhead"')
+    expect(html).toContain('class="multi-track-cursor"')
+    // Both are moved imperatively, so a React render cannot drag them back to a
+    // stale time while playback is running.
+    const source = fs.readFileSync(path.resolve(process.cwd(), 'src/renderer/features/editor/MultiTrackTimeline.tsx'), 'utf8')
+    expect(source).toContain('playheadLineRef.current?.style.setProperty')
+    expect(source).not.toContain("'--playhead-x':")
   })
 
   it('draws a draggable playhead handle and a real clip body', () => {
@@ -221,8 +339,12 @@ describe('tapping a clip selects it without moving the playhead', () => {
     expect(source).toContain('if (event.detail !== 0) return; selectOnly(item.id)')
   })
 
-  it('does not seek when the main source clip is clicked', () => {
-    expect(source).not.toContain('onClick={() => { seekTo(props.sourceClip!.startTime)')
+  it('keeps the playhead out of the pointer handlers', () => {
+    // Hovering previews a position on the dashed guide; only a click, a drag of
+    // the playhead handle or a keyboard command actually moves it.
+    expect(source).toContain('function positionPlayhead(')
+    expect(source).toContain('positionPlayhead(next)')
+    expect(source).not.toContain('props.sourceClip')
   })
 })
 

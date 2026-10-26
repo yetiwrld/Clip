@@ -4,12 +4,16 @@ import { effectiveItemSpeed, sourceDeltaForTimelineDelta, timelineItemDuration, 
 /** Least source amount a trimmed or split piece may keep; below it the piece goes. */
 const MIN_SOURCE = 0.02
 
-/** Default name for a new track of one type, matching the Add-track menu. */
+/**
+ * Default name for a new track of one type, matching the Add-track menu.
+ * Numbering starts at one in every family, so the first video track is
+ * "Video 1" — the main layer — and the clips above it are the overlays.
+ */
 export function timelineTrackName(tracks: TimelineTrack[], type: TimelineTrackType): string {
   const sameType = tracks.filter((track) => track.type === type).length
   if (type === 'audio') return `Audio ${sameType + 1}`
   if (type === 'image') return `Graphics ${sameType + 1}`
-  return `Video ${sameType + 2}`
+  return `Video ${sameType + 1}`
 }
 
 export interface TimelinePlacement {

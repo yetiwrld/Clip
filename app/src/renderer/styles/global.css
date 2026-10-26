@@ -2904,11 +2904,12 @@ details.error-details pre {
 
 .multi-track-toolbar .btn.active { color:var(--accent); border-color:var(--accent); }
 
-.multi-track-canvas { position:relative; min-height:70px; }
+.multi-track-canvas { position:relative; min-height:70px; --track-label-w: 132px; }
 .multi-track-ruler,.multi-track-row { display:flex; min-height:52px; }
 .multi-track-ruler { height:26px; position:sticky; top:0; z-index: var(--z-sticky); background:var(--surface-1); border-bottom:1px solid var(--border-strong); }
 
 .multi-track-ruler-body { position:relative; flex:1; }
+.ruler-heading { color: var(--text-3); font-size: var(--fs-micro); letter-spacing: .06em; }
 .multi-track-ruler-body button { position:absolute; top:0; height:100%; border:0; border-left:1px solid var(--border-strong); background:transparent; color:var(--text-3); padding: 1px var(--space-2); font-family: var(--mono); font-size: var(--fs-micro); cursor:pointer; }
 .multi-track-ruler-body button i { position:absolute; top:100%; left:-1px; height:500px; border-left:1px solid var(--border); opacity:.45; pointer-events:none; }
 
@@ -2916,6 +2917,7 @@ details.error-details pre {
 .multi-track-drop-line { position:absolute; z-index: var(--z-selected); top:0; bottom:0; width:2px; background:var(--accent); pointer-events:none; box-shadow:0 0 5px var(--accent); }
 
 .track-title,.track-tools { display:flex; align-items:center; gap: var(--space-2); }
+.track-tools { gap: var(--space-1); }
 .track-title { color:var(--text-2); }
 
 .track-tools button:hover { color:var(--text-1); }
@@ -2928,8 +2930,21 @@ details.error-details pre {
 
 .timeline-wave-canvas { position:absolute; inset:0; width:100%; height:100%; opacity:.56; pointer-events:none; }
 
-.timeline-item-thumbnail { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.48; pointer-events:none; }
-.timeline-item-body span { float:right; font-family: var(--mono); font-size: var(--fs-micro); opacity:.7; }
+/* One thumbnail repeated across the clip reads as a filmstrip, which is how a
+   clip signals "footage" at a glance in the reference editor. It is the same
+   frame every time, so it is a texture, not a preview: keep it quiet. */
+.timeline-item-filmstrip {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat-x;
+  background-position: left center;
+  background-size: auto 100%;
+  opacity: .45;
+  pointer-events: none;
+}
+.timeline-item-body { display: flex; align-items: flex-start; gap: var(--space-2); }
+.timeline-item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-medium); text-shadow: 0 1px 3px rgba(0, 0, 0, .75); }
+.timeline-item-duration { flex: none; margin-left: auto; padding: 0 var(--space-2); border-radius: var(--radius-xs); background: rgba(0, 0, 0, .45); color: #f2f5f8; font-family: var(--mono); font-size: var(--fs-micro); line-height: 16px; }
 .timeline-trim { position:absolute; top:0; bottom:0; width:var(--space-3); z-index: var(--z-marker); border:0; background:rgba(255,255,255,.14); cursor:ew-resize; }
 .timeline-trim.left { left:0; }.timeline-trim.right { right:0; }
 .timeline-trim:hover { background:rgba(255,255,255,.55); }
@@ -3022,27 +3037,10 @@ details.error-details pre {
 .editor-bottom .multi-track-scroll { flex:1; min-height:0; max-height:none; }
 .editor-bottom .source-timeline-details { flex:none; margin-bottom: var(--space-2); }
 .editor-bottom .source-timeline-details > summary { padding: var(--space-2) var(--space-3); font-size: var(--fs-micro); }
-.multi-track-row { border-bottom: 1px solid var(--border); min-height: 64px; }
-.multi-track-lane { min-height:63px; }
+.multi-track-row { border-bottom: 1px solid var(--border); min-height: 56px; }
+.multi-track-lane { min-height:55px; }
 
 .timeline-item-body { position: absolute; inset: 0; width: 100%; border: 0; padding: var(--space-3) var(--space-4); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; background: transparent; font-size: var(--fs-xs); cursor: grab; z-index: var(--z-raised); }
-.source-track-clip { position:absolute; top:6px; bottom:6px; min-width:18px; display:flex; flex-direction:column; justify-content:center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border:1px solid #647a98; border-radius: var(--radius-md); background:linear-gradient(90deg,rgba(77,111,153,.82),rgba(56,77,105,.88)); color:#f3f7fc; text-align:left; overflow:hidden; cursor:pointer; }
-.source-track-clip.selected { outline:2px solid var(--accent); outline-offset:1px; z-index: var(--z-selected); box-shadow:0 0 0 3px var(--accent-soft); }
-.source-filmstrip { position:absolute; inset:0; z-index: var(--z-base); display:block; opacity:.55; pointer-events:none; }
-.source-filmstrip img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-.source-track-clip .timeline-wave-canvas { z-index: var(--z-raised); opacity:.54; }
-.source-clip-title,.source-track-clip small { position:relative; z-index: var(--z-clip); text-shadow:0 1px 3px #111; }
-.source-trim-handle { position:absolute; z-index: var(--z-selected); top:0; bottom:0; width:7px; border:0; background:rgba(255,255,255,.2); cursor:ew-resize; }
-.source-trim-handle:hover,.source-trim-handle:focus-visible { background:rgba(255,255,255,.8); }
-.source-trim-handle.left { left:0; }.source-trim-handle.right { right:0; }
-.source-track-clip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size: var(--fs-xs); font-weight: var(--fw-medium); }
-.source-track-clip small { color:#c5d2e2; font-family:var(--mono); font-size:var(--fs-micro); white-space:nowrap; }
-.source-track-row .multi-track-label small { display:block; margin-top: var(--space-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-3); font-size: var(--fs-micro); }
-.source-cut-region { position:absolute; z-index: var(--z-marker); top:0; bottom:0; border:0; border-left:1px solid rgba(255,115,119,.8); border-right:1px solid rgba(255,115,119,.8); background:rgba(238,76,83,.22); cursor:pointer; }
-.source-cut-region.kept { border-color:rgba(131,190,153,.7); background:rgba(99,158,120,.18); }
-.source-cut-region.selected { background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
-.source-cut-handle { position:absolute; z-index: var(--z-handle); top:0; bottom:0; width:5px; border:0; padding: 0; background:rgba(255,110,110,.78); cursor:ew-resize; }
-.source-cut-handle.left { left:0; }.source-cut-handle.right { right:0; }
 .caption-track-row,.camera-track-row { min-height:48px; }
 .caption-track-row .multi-track-lane,.camera-track-row .multi-track-lane { min-height:47px; }
 
@@ -3062,7 +3060,8 @@ details.error-details pre {
 .timeline-keyframe-marker,.timeline-tracking-marker { width:30px; height:34px; display:grid; place-items:center; }
 
 .multi-track-cursor.hovering { z-index: var(--z-drag); background:#fff; box-shadow:0 0 3px var(--accent-soft); }
-.multi-track-cursor span { position:absolute; top:2px; left:4px; padding: var(--space-1) var(--space-2); border:1px solid rgba(255,255,255,.25); border-radius: var(--radius-xs); background:#171c26; color:#fff; font-family: var(--mono); font-size: var(--fs-micro); white-space:nowrap; }
+.multi-track-cursor span { display: none; position:absolute; top:2px; left:4px; padding: var(--space-1) var(--space-2); border:1px solid rgba(255,255,255,.25); border-radius: var(--radius-xs); background:#171c26; color:#fff; font-family: var(--mono); font-size: var(--fs-micro); white-space:nowrap; }
+.multi-track-cursor.hovering span { display: block; }
 
 /* CapCut-inspired editing controls: denser, clearer and still aligned with the existing theme. */
 
@@ -3101,12 +3100,24 @@ details.error-details pre {
 .track-title input { width: 100%; min-width: 0; border: 1px solid transparent; outline: 0; color: var(--text-1); background: transparent; font-size: var(--fs-xs); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); overflow: hidden; text-overflow: ellipsis; }
 .track-title input:focus-visible { border-color:var(--accent); outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent); }
 .track-tools button { display: grid; place-items: center; border: 0; background: transparent; color: var(--text-3); padding: 1px var(--space-2); cursor: pointer; min-width: 24px; min-height: 22px; border-radius: var(--radius-control); }
+
+/* Track options: order and removal live one click away, in the header. */
+.track-menu { position: relative; display: inline-flex; }
+.track-menu > summary { display: grid; place-items: center; min-width: 24px; min-height: 22px; color: var(--text-3); border-radius: var(--radius-control); cursor: pointer; list-style: none; }
+.track-menu > summary::-webkit-details-marker { display: none; }
+.track-menu > summary:hover { color: var(--text-1); background: var(--surface-3); }
+.track-menu[open] > summary { color: var(--accent); }
+.track-menu.opens-up .track-menu-options { top: auto; bottom: calc(100% + 4px); }
+.track-menu-options { position: absolute; top: calc(100% + 4px); left: 0; z-index: var(--z-popover); display: flex; min-width: 150px; flex-direction: column; gap: 1px; padding: var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-2); box-shadow: var(--shadow-2); }
+.track-menu-options button { width: 100%; padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-2); text-align: left; font-family: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.track-menu-options button:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
+.track-menu-options button:disabled { color: var(--text-3); cursor: not-allowed; opacity: .6; }
 .track-tools button[aria-pressed="true"] { color:var(--accent); }
 .track-tools button:focus-visible,.multi-track-ruler-body button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; z-index: var(--z-top); }
 .track-locked .multi-track-label { background:linear-gradient(105deg,var(--surface-1),color-mix(in srgb,var(--warn) 5%,var(--surface-1))); }
 .multi-track-item:focus-within { outline:2px solid var(--accent); outline-offset:1px; z-index: var(--z-handle); }
 .timeline-trim:disabled { cursor:not-allowed; opacity:.12; }
-.timeline-trim:focus-visible,.source-trim-handle:focus-visible,.source-cut-handle:focus-visible,.caption-trim-handle:focus-visible,.text-trim-handle:focus-visible { outline:2px solid #fff; outline-offset:1px; z-index: var(--z-sticky); }
+.timeline-trim:focus-visible,.caption-trim-handle:focus-visible,.text-trim-handle:focus-visible { outline:2px solid #fff; outline-offset:1px; z-index: var(--z-sticky); }
 
 .timeline-caption-content,.timeline-text-content { position:absolute; inset:0; z-index: var(--z-raised); display:block; box-sizing:border-box; width:100%; height:100%; overflow:hidden; padding: var(--space-2) var(--space-3); border:0; border-radius: inherit; background:transparent; color:inherit; text-align:left; text-overflow:ellipsis; white-space:nowrap; font-family: inherit; cursor:grab; }
 .timeline-caption-content { padding-left: var(--space-3); padding-right: var(--space-3); }
@@ -3136,13 +3147,13 @@ details.error-details pre {
 }
 @media (max-width:850px) {
   .multi-track-toolbar > div:first-child { align-items:flex-start; flex-direction:column; gap: var(--space-2); }
-  .multi-track-label { width:112px; min-width:112px; }
+  .multi-track-canvas { --track-label-w: 124px; }
 }
 
 @media (pointer:coarse) {
   .btn.sm.icon { width:40px; min-height:40px; }
   .editor-tool-button { min-height:56px; }
-  .timeline-trim,.source-trim-handle,.source-cut-handle,.caption-trim-handle,.text-trim-handle { width:14px; }
+  .timeline-trim,.caption-trim-handle,.text-trim-handle { width:14px; }
   .timeline-keyframe-marker,.timeline-tracking-marker { width:40px; height:40px; }
   .cap-template-favorite { width:36px; height:36px; }
   .cap-category-tab { min-height:36px; padding: var(--space-2) var(--space-4); }
@@ -3931,11 +3942,29 @@ details.error-details pre {
   width: clamp(70px, 8vw, 110px);
 }
 
-.multi-track-label { position: sticky; left: 0; z-index: var(--z-active); width: 132px; min-width: 132px; background: var(--surface-1); border-right: 1px solid var(--border); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs); display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); }
+.multi-track-label { position: sticky; left: 0; z-index: var(--z-active); width: var(--track-label-w, 132px); min-width: var(--track-label-w, 132px); background: var(--surface-1); border-right: 1px solid var(--border); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs); display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); }
 
 /* One clip colour family with a hint of track type, instead of four
    saturated hues competing for attention. Accent = selected, nothing else. */
-.multi-track-item { position: absolute; top: 6px; height: 51px; border: 1px solid #527fb2; border-radius: var(--radius-control); overflow: hidden; background: #2a3036; color: #eef2f5; border-color: #3a434b; }
+.multi-track-item { position: absolute; top: 5px; height: 45px; border: 1px solid #527fb2; border-radius: var(--radius-control); overflow: hidden; background: #2a3036; color: #eef2f5; border-color: #3a434b; }
+
+/* A part of the main video. Same clip shape as any other piece of footage, with
+   a solid accent edge so the row reads as the source the cut came from. */
+.main-piece {
+  position: absolute;
+  top: 5px;
+  height: 45px;
+  border: 1px solid #3a434b;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 70%, #3a434b);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: #2a3036;
+  color: #eef2f5;
+  cursor: pointer;
+}
+.main-piece.selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: var(--z-selected); }
+.main-piece.hidden { opacity: .45; }
+.main-piece-body { position: absolute; inset: 0; z-index: var(--z-raised); display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); pointer-events: none; }
 
 .multi-track-item.audio {
   background: #29332e;
@@ -3959,20 +3988,29 @@ details.error-details pre {
 
 .timeline-text-block { position: absolute; top: 9px; height: 29px; overflow: hidden; padding: 0; border: 1px solid rgba(125,184,235,.65); border-radius: var(--radius-control); background: #2b3136; color: #eef4f7; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-micro); cursor: grab; border-color: #3d464d; }
 
-.source-track-clip {
-  border-color: #3e4952;
-  background: #2c333a;
-  color: #eef3f7;
-}
-
-.source-track-clip.selected,
 .timeline-caption-block.selected,
 .timeline-text-block.selected {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-.multi-track-cursor { position: absolute; z-index: var(--z-handle); top: 0; bottom: 0; left: var(--cursor-x,145px); width: 1px; pointer-events: none; background: #f2f2f2; box-shadow: 0 0 3px rgba(0, 0, 0, 0.6); }
+/* Hover guide: where a click would put the playhead. It is deliberately
+   quieter than the playhead so the two are never confused. */
+.multi-track-cursor { position: absolute; z-index: var(--z-handle); top: 26px; bottom: 0; left: var(--cursor-x,145px); width: 1px; pointer-events: none; background: repeating-linear-gradient(to bottom, var(--text-3) 0 4px, transparent 4px 8px); opacity: .55; }
+
+/* The playhead itself. It spans every track, sits above the clips and starts
+   under the ruler, so the ruler cap and this line read as one object. */
+.timeline-playhead {
+  position: absolute;
+  z-index: var(--z-handle);
+  top: 26px;
+  bottom: 0;
+  left: calc(var(--track-label-w, 132px) + var(--playhead-x, 0px));
+  width: 1px;
+  pointer-events: none;
+  background: #f4f6f8;
+  box-shadow: 0 0 4px rgba(0, 0, 0, .75);
+}
 
 /* --------------------------------------------------------- responsive --- */
 
@@ -4474,7 +4512,6 @@ button:disabled {
 .timeline-caption-block,
 .timeline-text-block,
 .multi-track-item,
-.source-track-clip,
 .cap-template-card > button:first-child,
 .cap-template-favorite,
 .asset-card .asset-thumb {

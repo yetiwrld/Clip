@@ -224,6 +224,8 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
 
 export interface TimelineHandlers {
   hasSelection(): boolean
+  /** A part of the main video is selected (it deletes, but is not a clip). */
+  hasMainSelection?(): boolean
   deleteSelected(): void
   duplicateSelected(): void
   cutSelected(): void
@@ -303,7 +305,7 @@ export function timelineCommands(get: () => TimelineHandlers): Command[] {
       keywords: ['remove', 'clear', 'backspace'],
       hint: 'Leaves a gap',
       shortcut: [{ key: 'delete' }, { key: 'backspace' }],
-      enabled: () => Boolean(get()?.hasSelection()),
+      enabled: () => Boolean(get()?.hasSelection() || get()?.hasMainSelection?.()),
       run: () => get().deleteSelected()
     },
     {

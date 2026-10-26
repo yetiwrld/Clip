@@ -24,6 +24,7 @@ import { effectiveItemSpeed, sourceTimeAtTimelineTime, timelineItemDuration, tim
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
 import { playFromTime } from '@shared/video/playback'
 import { addAssetToTimeline, clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
+import { addRemovedRange, liftItemsOffMainTrack, mainTrackPieces, type MainTrackPiece } from '@shared/video/main-track'
 import { discreteTimelineGroup, emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, pruneTimelineHistory, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
 import { textLayerAppearanceAt, textLayerStateAt } from '@shared/video/textLayers'
 import {
@@ -88,7 +89,8 @@ export function EditorPage() {
   const [activeTool, setActiveTool] = useState<'media' | 'audio' | 'moments' | 'camera' | 'clip'>('media')
   const [previewTool, setPreviewTool] = useState<'select' | 'hand'>('select')
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
-  const [sourceClipSelected, setSourceClipSelected] = useState(false)
+  /** Selected part of the main video on its track (not a timeline clip). */
+  const [selectedMainPieceId, setSelectedMainPieceId] = useState<string | null>(null)
   const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
   // A remembered timeline height is a preference like any other, so it lives in
   // settings instead of a separate localStorage key.
@@ -134,7 +136,6 @@ export function EditorPage() {
 
   // timeline visuals (real, FFmpeg-generated)
   const [filmstrip, setFilmstrip] = useState<Array<{ t: number; path: string }> | null>(null)
-  const [waveform, setWaveform] = useState<{ peaks: number[]; duration: number } | null>(null)
   const [assetWaveforms, setAssetWaveforms] = useState<Record<string, { peaks: number[]; duration: number }>>({})
   const waveformLoading = useRef(new Set<string>())
   const [clipTimeline, setClipTimeline] = useState<ClipTimeline>({ tracks: [], items: [], snapEnabled: true })
@@ -218,22 +219,26 @@ export function EditorPage() {
         setSelectedCameraKeyframeTime(null)
         setSelectedTextLayerId(null)
         setSelectedTimelineItem(null)
-        setSourceClipSelected(false)
+        setSelectedMainPieceId(null)
         setSegments(document.transcript)
         const initialTracks: TimelineTrack[] = [
-          { id: crypto.randomUUID(), name: 'Video 2', type: 'video', order: 0, muted: false, hidden: false, locked: false },
+          { id: crypto.randomUUID(), name: 'Video 1', type: 'video', order: 0, muted: false, hidden: false, locked: false },
           { id: crypto.randomUUID(), name: 'Graphics', type: 'image', order: 1, muted: false, hidden: false, locked: false },
           { id: crypto.randomUUID(), name: 'Audio 1', type: 'audio', order: 2, muted: false, hidden: false, locked: false }
         ]
         const restoredTimeline = savedTimeline.tracks.length ? savedTimeline : { ...savedTimeline, tracks: initialTracks }
-        clipTimelineRef.current = restoredTimeline
-        setClipTimeline(restoredTimeline)
+        // The first video track shows the main video, so any overlay that was
+        // saved there before is lifted one row up rather than hidden behind it.
+        const lifted = liftItemsOffMainTrack(restoredTimeline, () => crypto.randomUUID())
+        clipTimelineRef.current = lifted.timeline
+        setClipTimeline(lifted.timeline)
+        if (lifted.moved > 0) scheduleTimelineSave(lifted.timeline, { discrete: true })
         timelineHistoryRef.current = emptyTimelineCommandHistory()
         // The clip clipboard survives a clip switch (copying a shot into the
         // next cut is the point), but the remembered paste position does not:
         // it belongs to the timeline it was used on.
         useTimelineClipboard.getState().forgetPaste()
-        if (!savedTimeline.tracks.length) void api['timeline.save']({ clipId, timeline: restoredTimeline })
+        if (!savedTimeline.tracks.length) void api['timeline.save']({ clipId, timeline: lifted.timeline })
         setCurrentTime(found.startTime)
         historyRef.current = { past: [], future: [], lastPush: 0 }
         // A draft that is newer than the saved clip means the app stopped
@@ -263,9 +268,6 @@ export function EditorPage() {
     void api['media.filmstrip']({ projectId, count: 24 })
       .then((r) => setFilmstrip(r.frames))
       .catch(() => setFilmstrip(null))
-    void api['media.waveform']({ projectId })
-      .then((r) => (r.silent || r.peaks.length === 0 ? setWaveform(null) : setWaveform({ peaks: r.peaks, duration: r.duration })))
-      .catch(() => setWaveform(null))
     void data.loadAssets(projectId)
     void data.loadCandidates(projectId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1300,6 +1302,36 @@ export function EditorPage() {
     [projectDuration, clipTimeline.items]
   )
 
+  /**
+   * The main video as pieces of the first video track. Derived from the clip's
+   * own source window and cuts, so the row is the same data the preview and the
+   * render read — not a copy of it.
+   */
+  const mainPieces = useMemo(
+    () => (clip ? mainTrackPieces(clip) : []),
+    [clip?.startTime, clip?.endTime, clip?.silenceCuts]
+  )
+  const mainTrackRow = useMemo(
+    () => [...clipTimeline.tracks].sort((a, b) => a.order - b.order).find((track) => track.type === 'video') ?? null,
+    [clipTimeline.tracks]
+  )
+
+  /** Removing a piece hides that source range, exactly like a silence cut. */
+  function removeMainPiece(piece: MainTrackPiece) {
+    if (!clip) return
+    const next = addRemovedRange(clip.silenceCuts ?? [], piece.sourceStart, piece.sourceEnd)
+    updateClip({ silenceCuts: next })
+    setSelectedMainPieceId(null)
+    // The picture jumps over the removed part, so keep the playhead on
+    // something that still exists instead of inside the hole.
+    seekTo(Math.min(piece.startTime, Math.max(0, mainTrackDurationAfter(next) - 0.05)))
+  }
+
+  function mainTrackDurationAfter(cuts: Clip['silenceCuts']): number {
+    if (!clip) return 0
+    return mainTrackPieces({ ...clip, silenceCuts: cuts }).reduce((sum, next) => sum + next.duration, 0)
+  }
+
   // Mirror of the render plan: crop toward the selected output target so the
   // preview shows exactly what FFmpeg produces (plan.ts buildRenderPlan).
   // Memoised on primitives: a fresh {w,h} object here invalidated the crop
@@ -1859,7 +1891,7 @@ export function EditorPage() {
             ['moments', 'Moments', <Sparkles size={16} />], ['camera', 'Camera', <Target size={16} />],
             ['clip', 'Clip', <Scissors size={16} />]
           ] as const).map(([tool, label, icon]) => <button key={tool} className={`editor-tool-button${activeTool === tool ? ' active' : ''}`}
-            onClick={() => { setActiveTool(tool); setSourceClipSelected(tool === 'clip'); setSelectedTimelineItem(null); if (tool === 'clip') { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }} title={label} aria-label={label} aria-pressed={activeTool === tool}>{icon}<span>{label}</span></button>)}
+            onClick={() => { setActiveTool(tool); setSelectedTimelineItem(null); if (tool === 'clip') { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }} title={label} aria-label={label} aria-pressed={activeTool === tool}>{icon}<span>{label}</span></button>)}
           {/* The rail is the one part of this column that is always visible, so
               the control that brings the panel back lives here too. */}
           <button
@@ -1886,7 +1918,7 @@ export function EditorPage() {
           {activeTool === 'moments' && <div className="editor-moments-panel">
             {data.candidates.filter((candidate) => candidate.status !== 'rejected').length === 0
               ? <div className="editor-panel-empty"><Sparkles size={20} /><strong>No moments yet</strong><span>Run the analysis to find strong moments in this project.</span><button className="btn sm" onClick={async () => { try { await api['analysis.start']({ projectId: project.id, providerId: 'heuristic-local' }); app.toast({ level: 'info', message: 'Moment analysis started.', hint: 'Results appear here when it finishes.' }) } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) } }}>Analyze now</button></div>
-              : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); setSourceClipSelected(false); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setSourceClipSelected(false); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
+              : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); setSelectedMainPieceId(null); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setSelectedMainPieceId(null); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
                 {filmstrip?.length ? <img className="editor-moment-thumb" src={mediaUrl(filmstrip.reduce((best, frame) => Math.abs(frame.t - candidate.startTime) < Math.abs(best.t - candidate.startTime) ? frame : best).path)} alt="" /> : null}
                 <span className="editor-moment-time">{formatClock(candidate.startTime, true)} – {formatClock(candidate.endTime, true)}</span><strong>{candidate.title}</strong><span>{candidate.reason}</span><small>{Math.round(candidate.overallScore ?? 0)}/100 · {Math.round(candidate.endTime - candidate.startTime)}s</small>
                 <span className="editor-moment-actions" onClick={(event) => event.stopPropagation()}><button className="btn sm" onClick={() => void openMoment(candidate)}>{data.clips.some((item) => item.candidateId === candidate.id) ? 'Edit clip' : 'Create clip'}</button></span>
@@ -1898,7 +1930,7 @@ export function EditorPage() {
             {clip.cameraKeyframes.length === 0 && <div className="field-hint">No camera keyframes yet. Open Properties → Camera keyframes to add one where the playhead is.</div>}
           </div>}
           {activeTool === 'clip' && <div className="editor-source-panel"><p>Selected source range</p><strong className="mono">{formatClock(clip.startTime, true)} – {formatClock(clip.endTime, true)}</strong>
-            <div className="field-hint">Drag the source strip below the playhead to trim. Use Properties → Trim and Silence removal for precise range and pause edits.</div>
+            <div className="field-hint">Trim the range in Properties → Trim. Silence removal and captions live there too.</div>
           </div>}
         </aside>
         <div className="editor-stage" ref={stageRef}>
@@ -2431,13 +2463,19 @@ export function EditorPage() {
           textLayers={clip.textLayers}
           trackingKeyframes={clip.trackingKeyframes}
           cameraKeyframes={clip.cameraKeyframes}
-          silenceCuts={clip.silenceCuts}
-          sourceWaveform={waveform}
           fps={project.fps}
-          selectedSource={sourceClipSelected}
+          mainTrack={mainTrackRow && clip ? {
+            trackId: mainTrackRow.id,
+            pieces: mainPieces,
+            selectedId: selectedMainPieceId,
+            thumbnail: filmstrip?.[0] ? mediaUrl(filmstrip[0].path) : null,
+            locked: mainTrackRow.locked,
+            hidden: mainTrackRow.hidden,
+            onSelect: setSelectedMainPieceId,
+            onRemove: removeMainPiece
+          } : undefined}
           selectedItemId={selectedTimelineItem?.id ?? null}
           selectedCaptionKey={selectedCueKey}
-          selectedSilenceIndex={selectedSilenceIndex}
           selectedTextLayerId={selectedTextLayerId}
           selectedCameraKeyframeTime={selectedCameraKeyframeTime}
           playing={playing}
@@ -2452,15 +2490,6 @@ export function EditorPage() {
           onNotice={(message) => app.toast({ level: 'info', message })}
           snapTargets={[...(clip.silenceCuts ?? []).flatMap((cut) => [cut.start, cut.end]), ...(clip.cameraKeyframes ?? []).map((keyframe) => keyframe.time)]}
           onDropFiles={(paths, time, track) => void importAssets(paths, { time, track })}
-          sourceClip={{ name: clip.title, startTime: clip.startTime, endTime: clip.endTime, filmstrip: filmstrip ?? [] }}
-          onChangeSourceRange={(startTime, endTime) => updateClip({ startTime, endTime })}
-          onChangeSilence={(index, start, end) => {
-            const next = [...clip.silenceCuts]
-            const region = next[index]
-            if (!region) return
-            next[index] = { ...region, start, end, status: 'removed' }
-            updateClip({ silenceCuts: next })
-          }}
           onSetCaptionOffset={(key, requestedOffset, edge) => {
             const cue = cues.find((item) => item.key === key)
             if (!cue) return
@@ -2495,10 +2524,8 @@ export function EditorPage() {
           }}
           onSelectTextLayer={(layer) => { setSelectedTextLayerId(layer.id); setSelectedTimelineItem(null); setSelectedCueKey(null); setSelectedMomentId(null) }}
           onChangeTextLayer={updateTextLayer}
-          onSelectItem={(item) => { setSelectedTimelineItem(item); setSourceClipSelected(false); if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
-          onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setSourceClipSelected(false); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
-          onSelectSource={() => { setActiveTool('clip'); setSelectedTimelineItem(null); setSourceClipSelected(true); setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
-          onSelectSilence={(index) => { setSelectedSilenceIndex(index); setActiveTool('clip') }}
+          onSelectItem={(item) => { setSelectedTimelineItem(item); if (item) setSelectedMainPieceId(null); if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
+          onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setSelectedMainPieceId(null); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
           onSelectCameraKeyframe={(time) => { const keyframe = clip.cameraKeyframes.find((item) => Math.abs(item.time - time) < frameTimeTolerance(data.activeProject?.fps)); if (keyframe) selectCameraKeyframe(keyframe); setActiveTool('camera') }}
           onMoveCameraKeyframe={(oldTime, requestedTime) => {
             const moving = clip.cameraKeyframes.find((key) => Math.abs(key.time - oldTime) < frameTimeTolerance(data.activeProject?.fps))
@@ -2863,7 +2890,7 @@ function SilencePanel(props: {
   return (
     <>
       <div className="field-hint" style={{ marginBottom: 'var(--space-3)' }}>
-        Detected pauses stay editable. Drag a red edge on the timeline to adjust a cut. Previews and renders use the current boundaries.
+        Detected pauses stay editable: open a pause below and adjust its start and end. Previews and renders use the current boundaries.
       </div>
       <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
         <button className="btn sm" style={{ flex: 1 }} disabled={detecting !== null} onClick={() => void detect('auto')}>
