@@ -17,10 +17,17 @@ export function TranscriptTab() {
   const app = useAppStore()
   const data = useDataStore()
   const project = data.activeProject!
-  const [query, setQuery] = useState('')
+  // Seed from what this project was last showing, and write back on unmount;
+  // typing stays local so a keystroke does not re-render the whole shell.
+  const restoredUi = useAppStore.getState().transcriptUi[project.id]
+  const [query, setQuery] = useState(restoredUi?.query ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const [follow, setFollow] = useState(true)
+  const [follow, setFollow] = useState(restoredUi?.follow ?? true)
+  const queryRef = useRef(query)
+  queryRef.current = query
+  const followRef = useRef(follow)
+  followRef.current = follow
   const [currentTime, setCurrentTime] = useState(0)
   const [startedTranscribeTaskId, setStartedTranscribeTaskId] = useState<string | null>(null)
   const [transcribeProviderId, setTranscribeProviderId] = useState<'faster-whisper-local' | 'openai-compatible' | null>(null)
@@ -64,6 +71,27 @@ export function TranscriptTab() {
     setTranscriptionStarting(false)
     setStartedSpeakerTaskId(null)
     setSpeakerStarting(false)
+  }, [project.id])
+
+  // Restore the scroll offset once the rows are mounted.
+  useEffect(() => {
+    const list = listRef.current
+    const scroll = useAppStore.getState().transcriptUi[project.id]?.scroll ?? 0
+    if (list && scroll > 0) list.scrollTop = scroll
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id])
+
+  // Save the screen state when the tab, screen or project goes away.
+  useEffect(() => {
+    const id = project.id
+    return () => {
+      useAppStore.getState().setTranscriptUi(id, {
+        query: queryRef.current,
+        follow: followRef.current,
+        scroll: listRef.current?.scrollTop ?? 0
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id])
 
   useEffect(() => {

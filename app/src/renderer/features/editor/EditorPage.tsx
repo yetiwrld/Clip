@@ -1623,7 +1623,16 @@ export function EditorPage() {
             <ArrowLeft size={14} />
           </button>
           <div className="topbar-title">
-            <span className="editor-project-name" title={project.name}>{project.name}</span>
+            {/* The project name doubles as the breadcrumb back to the project,
+                so the hierarchy is visible without a separate bar. */}
+            <button
+              className="editor-project-link"
+              onClick={requestLeave}
+              title={`Back to ${project.name}`}
+              aria-label={`Back to ${project.name}`}
+            >
+              {project.name}
+            </button>
             <span className="topbar-crumb" aria-hidden="true">/</span>
             <input
               className="clip-title-input"

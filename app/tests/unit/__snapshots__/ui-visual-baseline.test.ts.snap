@@ -101,6 +101,19 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   min-height: 0
   overflow-y: auto
   padding-bottom: var(--space-4)",
+  ".editor-project-link": "(base)
+  background: transparent
+  border: 0
+  color: var(--text-3)
+  cursor: pointer
+  font-family: inherit
+  font-size: var(--fs-xs)
+  max-width: 190px
+  overflow: hidden
+  padding: 0
+  text-overflow: ellipsis
+  transition: color var(--dur-fast) var(--ease)
+  white-space: nowrap",
   ".editor-stage": "(base)
   align-items: stretch
   background: var(--surface)
@@ -283,6 +296,15 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   transition: background-color var(--dur-fast) var(--ease),
     border-color var(--dur-fast) var(--ease),
     color var(--dur-fast) var(--ease)",
+  ".nav-item .nav-badge": "(base)
+  background: var(--surface-4)
+  border-radius: var(--radius-pill)
+  color: var(--text-2)
+  font-size: var(--fs-xs)
+  margin-left: auto
+  min-width: 18px
+  padding: 1px var(--space-3)
+  text-align: center",
   ".nav-item.active": "(base)
   background: var(--surface-3)
   color: var(--text-1)
@@ -382,6 +404,15 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   ".text-body": "(base)
   font-size: var(--fs-base)
   line-height: var(--lh-normal)",
+  ".text-link": "(base)
+  background: none
+  border: 0
+  color: var(--accent)
+  cursor: pointer
+  font-family: inherit
+  font-size: inherit
+  line-height: inherit
+  padding: 0",
   ".timeline": "(base)
   width: 100%",
   ".toast": "(base)

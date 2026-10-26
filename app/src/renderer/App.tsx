@@ -113,18 +113,35 @@ export function App() {
         </div>
 
         <div className="nav-group-label">Workspace</div>
-        <button className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => navigate('dashboard')}>
+        <button
+          className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}
+          onClick={() => navigate('dashboard')}
+          aria-current={view === 'dashboard' ? 'page' : undefined}
+        >
           <FolderOpen size={16} /> Projects
         </button>
-        <button className={`nav-item ${view === 'queue' ? 'active' : ''}`} onClick={() => navigate('queue')}>
+        <button
+          className={`nav-item ${view === 'queue' ? 'active' : ''}`}
+          onClick={() => navigate('queue')}
+          aria-current={view === 'queue' ? 'page' : undefined}
+          title={
+            interrupted > 0
+              ? `Renders and other jobs. ${interrupted} interrupted job${interrupted === 1 ? '' : 's'} can be resumed or discarded here.`
+              : 'Renders and other background jobs'
+          }
+        >
           <ListVideo size={16} /> Render queue
           {activeRenders > 0 && <span className="nav-badge active-count">{activeRenders}</span>}
+          {/* The interrupted count used to be its own nav row, which duplicated
+              this destination. It is an alert about this screen, so it badges
+              this screen instead. */}
+          {interrupted > 0 && (
+            <span className="nav-badge warn-count" aria-label={`${interrupted} interrupted job${interrupted === 1 ? '' : 's'}`}>
+              <TriangleAlert size={12} aria-hidden="true" />
+              {interrupted}
+            </span>
+          )}
         </button>
-        {interrupted > 0 && (
-          <button className="nav-item" onClick={() => navigate('queue')} title="The last session closed with unfinished work — review it in the render queue">
-            <TriangleAlert size={16} style={{ color: 'var(--warn)' }} /> {interrupted} interrupted job{interrupted === 1 ? '' : 's'}
-          </button>
-        )}
 
         {/* Settings and the build footer are one bottom block: a single owner
             of the free space, so Settings always sits directly above the
@@ -134,7 +151,11 @@ export function App() {
             <Keyboard size={16} /> Shortcuts
             <kbd className="nav-kbd">{formatShortcut({ key: '/', mod: true })}</kbd>
           </button>
-          <button className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>
+          <button
+            className={`nav-item ${view === 'settings' ? 'active' : ''}`}
+            onClick={() => navigate('settings')}
+            aria-current={view === 'settings' ? 'page' : undefined}
+          >
             <SettingsIcon size={16} /> Settings
           </button>
 

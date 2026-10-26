@@ -51,9 +51,13 @@ export function ProjectPage() {
     return 'moments'
   }, [status])
 
+  // Suggest a tab the first time a project is opened, then leave the choice
+  // alone: a background job changing the project status must not pull the user
+  // out of the tab they are working in.
   useEffect(() => {
-    setTab(suggested)
-  }, [suggested, projectId])
+    if (projectId && app.projectTabs[projectId] == null) setTab(suggested)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
 
   if (loading && !project) {
     return (
@@ -107,18 +111,26 @@ export function ProjectPage() {
         <TabButton tab={tab} setTab={setTab} id="renders" icon={<ListVideo size={14} />} label="Renders" count={data.renders.length || undefined} />
       </div>
 
-      {tab === 'source' && <SourceTab />}
-      {tab === 'transcript' && <TranscriptTab />}
-      {tab === 'moments' && <MomentsTab />}
-      {tab === 'clips' && <ClipsTab />}
-      {tab === 'renders' && <RendersTab />}
+      {/* Keyed by project so per-project screen state cannot leak from the
+          previously open project. */}
+      {tab === 'source' && <SourceTab key={project.id} />}
+      {tab === 'transcript' && <TranscriptTab key={project.id} />}
+      {tab === 'moments' && <MomentsTab key={project.id} />}
+      {tab === 'clips' && <ClipsTab key={project.id} />}
+      {tab === 'renders' && <RendersTab key={project.id} />}
     </div>
   )
 }
 
 function TabButton(props: { tab: Tab; setTab: (t: Tab) => void; id: Tab; icon: React.ReactNode; label: string; count?: number }) {
+  const active = props.tab === props.id
   return (
-    <button className={`tab ${props.tab === props.id ? 'active' : ''}`} onClick={() => props.setTab(props.id)}>
+    <button
+      className={`tab ${active ? 'active' : ''}`}
+      onClick={() => props.setTab(props.id)}
+      aria-current={active ? 'page' : undefined}
+      title={`${props.label} tab`}
+    >
       {props.icon} {props.label}
       {props.count != null && <span className="count">{props.count}</span>}
     </button>

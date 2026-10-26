@@ -25,6 +25,22 @@ export interface Toast {
   timeoutMs?: number
 }
 
+/** What a screen showed last time: search text, follow mode, scroll offset. */
+export interface TranscriptUi {
+  query: string
+  follow: boolean
+  scroll: number
+}
+
+/** A place the user has been, complete enough to return to it. */
+export interface NavTarget {
+  view: View
+  projectId: string | null
+  clipId: string | null
+  projectTab: ProjectTab
+  settingsSection: SettingsSection
+}
+
 interface AppStore {
   view: View
   projectId: string | null
@@ -32,11 +48,27 @@ interface AppStore {
   navigate(view: View, opts?: { projectId?: string | null; clipId?: string | null }): void
   openProject(projectId: string): void
   openEditor(clipId: string, projectId: string): void
-  goBack(): { view: View; projectId: string | null } | null
 
-  /** Which project tab is open. Reset to Source when a project is opened. */
+  /** Back/forward over the screens that were actually visited. */
+  history: NavTarget[]
+  future: NavTarget[]
+  back(): void
+  forward(): void
+  canGoBack(): boolean
+  canGoForward(): boolean
+
+  /** Which project tab is open, and what each project was last showing. */
   projectTab: ProjectTab
+  projectTabs: Record<string, ProjectTab>
   setProjectTab(tab: ProjectTab): void
+
+  /**
+   * Per-project screen state, so switching tab or screen and coming back puts
+   * the search text, the follow switch and the scroll position where they were.
+   * Written on unmount, not on every keystroke: a write re-renders the shell.
+   */
+  transcriptUi: Record<string, TranscriptUi>
+  setTranscriptUi(projectId: string, patch: Partial<TranscriptUi>): void
 
   /** Which settings section is open. */
   settingsSection: SettingsSection
@@ -68,7 +100,23 @@ interface AppStore {
 }
 
 let toastSeq = 1
-let lastView: { view: View; projectId: string | null } = { view: 'dashboard', projectId: null }
+
+/** Bounded so a long session cannot grow the stack without limit. */
+const MAX_HISTORY = 25
+
+function targetFrom(state: Pick<AppStore, 'view' | 'projectId' | 'editorClipId' | 'projectTab' | 'settingsSection'>): NavTarget {
+  return {
+    view: state.view,
+    projectId: state.projectId,
+    clipId: state.editorClipId,
+    projectTab: state.projectTab,
+    settingsSection: state.settingsSection
+  }
+}
+
+function samePlace(a: NavTarget, b: NavTarget): boolean {
+  return a.view === b.view && a.projectId === b.projectId && a.clipId === b.clipId
+}
 
 export const useAppStore = create<AppStore>((set, get) => ({
   view: 'dashboard',
@@ -76,20 +124,92 @@ export const useAppStore = create<AppStore>((set, get) => ({
   editorClipId: null,
 
   navigate(view, opts) {
-    const current = { view: get().view, projectId: get().projectId }
-    if (current.view !== view || current.projectId !== (opts?.projectId ?? null)) {
-      lastView = current
+    const state = get()
+    const projectId = opts?.projectId ?? (view === 'project' || view === 'editor' ? state.projectId : null)
+    const clipId = view === 'editor' ? opts?.clipId ?? state.editorClipId : null
+    const next = { ...targetFrom(state), view, projectId, clipId }
+    // Selecting the screen you are already on is not a navigation step.
+    if (samePlace(targetFrom(state), next)) {
+      set({ view, projectId, editorClipId: clipId })
+      return
     }
-    set({ view, projectId: opts?.projectId ?? (view === 'project' || view === 'editor' ? get().projectId : null), editorClipId: view === 'editor' ? opts?.clipId ?? get().editorClipId : null })
+    set({
+      view,
+      projectId,
+      editorClipId: clipId,
+      history: [...state.history, targetFrom(state)].slice(-MAX_HISTORY),
+      future: []
+    })
   },
   openProject(projectId) {
-    lastView = { view: get().view, projectId: get().projectId }
-    set({ view: 'project', projectId, editorClipId: null, projectTab: 'source' })
+    const state = get()
+    const from = targetFrom(state)
+    // Returning to a project puts you back on the tab you left it on.
+    const tab = state.projectTabs[projectId] ?? 'source'
+    const next: NavTarget = { ...from, view: 'project', projectId, clipId: null, projectTab: tab }
+    set({
+      view: 'project',
+      projectId,
+      editorClipId: null,
+      projectTab: tab,
+      history: samePlace(from, next) ? state.history : [...state.history, from].slice(-MAX_HISTORY),
+      future: []
+    })
+  },
+
+  history: [],
+  future: [],
+  back() {
+    const state = get()
+    const previous = state.history[state.history.length - 1]
+    if (!previous) return
+    set({
+      view: previous.view,
+      projectId: previous.projectId,
+      editorClipId: previous.clipId,
+      projectTab: previous.projectTab,
+      settingsSection: previous.settingsSection,
+      history: state.history.slice(0, -1),
+      future: [...state.future, targetFrom(state)].slice(-MAX_HISTORY)
+    })
+  },
+  forward() {
+    const state = get()
+    const next = state.future[state.future.length - 1]
+    if (!next) return
+    set({
+      view: next.view,
+      projectId: next.projectId,
+      editorClipId: next.clipId,
+      projectTab: next.projectTab,
+      settingsSection: next.settingsSection,
+      history: [...state.history, targetFrom(state)].slice(-MAX_HISTORY),
+      future: state.future.slice(0, -1)
+    })
+  },
+  canGoBack() {
+    return get().history.length > 0
+  },
+  canGoForward() {
+    return get().future.length > 0
   },
 
   projectTab: 'source',
+  projectTabs: {},
   setProjectTab(projectTab) {
-    set({ projectTab })
+    const state = get()
+    set({
+      projectTab,
+      projectTabs: state.projectId ? { ...state.projectTabs, [state.projectId]: projectTab } : state.projectTabs
+    })
+  },
+
+  transcriptUi: {},
+  setTranscriptUi(projectId, patch) {
+    const current = get().transcriptUi[projectId] ?? { query: '', follow: true, scroll: 0 }
+    const next = { ...current, ...patch }
+    if (next.query === current.query && next.follow === current.follow && next.scroll === current.scroll) return
+    set({ transcriptUi: { ...get().transcriptUi, [projectId]: next } })
   },
 
   settingsSection: 'ai',
@@ -106,11 +226,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ paletteOpen: false })
   },
   openEditor(clipId, projectId) {
-    lastView = { view: 'project', projectId }
-    set({ view: 'editor', projectId, editorClipId: clipId })
-  },
-  goBack() {
-    return lastView
+    const state = get()
+    set({
+      view: 'editor',
+      projectId,
+      editorClipId: clipId,
+      history: [...state.history, targetFrom(state)].slice(-MAX_HISTORY),
+      future: []
+    })
   },
 
   appInfo: null,

@@ -421,6 +421,32 @@ textarea {
   color: var(--accent-strong);
 }
 
+/* An alert about the destination, not a second destination: interrupted work
+   lives in the render queue, so it badges the queue row. */
+.nav-item .nav-badge.warn-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* An inline button that reads as a link inside a sentence. */
+.text-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.text-link:hover { color: var(--accent-strong); }
+
 /* Shortcut hint on a nav row: quiet until the row is hovered. */
 .nav-item .nav-kbd {
   margin-left: auto;
@@ -2942,6 +2968,28 @@ details.error-details pre {
 .editor-body > .editor-stage { padding: var(--space-4); grid-column: 3; grid-row: 1; }
 .editor-body > .editor-inspector { grid-column:4; grid-row:1; width:auto; }
 .editor-project-name { max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-3); font-size: var(--fs-xs); }
+
+/* The crumb in the editor title: same look as the plain text it replaced, but
+   it goes back to the project (through the unsaved-changes guard). */
+.editor-project-link {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.editor-project-link:hover,
+.editor-project-link:focus-visible {
+  color: var(--text-1);
+}
 .editor-topbar-status { color:var(--text-2); font-family:var(--mono); font-size:var(--fs-xs); white-space:nowrap; }
 .editor-topbar-status span { padding: 0 var(--space-2); color:var(--text-3); }
 .editor-inspector { border-left: 1px solid var(--border); background: var(--surface); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; min-height: 0; padding-bottom: var(--space-4); }

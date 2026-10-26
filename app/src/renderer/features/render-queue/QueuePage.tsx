@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react'
-import { RotateCcw, History, Trash2, X } from 'lucide-react'
+import { RotateCcw, History, Trash2, X, ArrowLeft, Clapperboard } from 'lucide-react'
 import { api, errMessage } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { RenderList } from '../project/RendersTab'
 import { renderStageLabel, taskStateLabel, taskTypeLabel } from '../../copy/labels'
+import { EmptyState } from '../../components/ui'
 import { usePoll } from '../../hooks/usePoll'
 
 /**
@@ -15,6 +16,7 @@ import { usePoll } from '../../hooks/usePoll'
 export function QueuePage() {
   const app = useAppStore()
   const data = useDataStore()
+  const canGoBack = useAppStore((state) => state.history.length > 0)
 
   useEffect(() => {
     void data.loadTasks()
@@ -63,11 +65,41 @@ export function QueuePage() {
   return (
     <div className="page" data-density="compact">
       <div className="page-header">
+        {canGoBack && (
+          <button className="btn ghost" onClick={() => app.back()} aria-label="Back" title="Back to the previous screen">
+            <ArrowLeft size={14} />
+          </button>
+        )}
         <div className="page-heading">
           <div className="page-title">Render queue</div>
-          <div className="page-subtitle">Renders and other jobs run locally with FFmpeg. Set how many run at once in Settings → Video.</div>
+          <div className="page-subtitle">
+            Renders and other jobs run locally with FFmpeg. Set how many run at once in{' '}
+            <button
+              className="text-link"
+              onClick={() => {
+                app.setSettingsSection('video')
+                app.navigate('settings')
+              }}
+            >
+              Settings → Video &amp; rendering
+            </button>
+            .
+          </div>
         </div>
       </div>
+
+      {interrupted.length === 0 && running.length === 0 && history.length === 0 && (
+        <EmptyState
+          icon={<Clapperboard size={28} />}
+          title="Nothing queued"
+          hint="Renders you start from a clip appear here, along with transcription and analysis jobs. You can leave this screen while they run."
+          action={
+            <button className="btn" onClick={() => app.navigate('dashboard')}>
+              Go to Projects
+            </button>
+          }
+        />
+      )}
 
       {interrupted.length > 0 && (
         <div className="queue-group">

@@ -82,15 +82,21 @@ export function navigationCommands(): Command[] {
       id: 'nav.back',
       title: 'Go back',
       category: 'Navigate',
-      keywords: ['previous', 'return'],
+      keywords: ['previous', 'return', 'history'],
       shortcut: { key: 'arrowleft', alt: true },
-      enabled: () => app().view !== 'dashboard',
-      hint: 'Editor to project, anywhere else to Projects',
-      run: () => {
-        const state = app()
-        if (state.view === 'editor' && state.projectId) state.openProject(state.projectId)
-        else state.navigate('dashboard')
-      }
+      enabled: () => app().canGoBack(),
+      hint: 'Return to the screen you came from, with its tab and section',
+      run: () => app().back()
+    },
+    {
+      id: 'nav.forward',
+      title: 'Go forward',
+      category: 'Navigate',
+      keywords: ['next', 'redo navigation', 'history'],
+      shortcut: { key: 'arrowright', alt: true },
+      enabled: () => app().canGoForward(),
+      hint: 'Undo a step back',
+      run: () => app().forward()
     },
     {
       id: 'dashboard.newProject',
@@ -115,12 +121,15 @@ export function navigationCommands(): Command[] {
         app().setProjectTab(tab.id)
       }
     })),
+    // Settings sections are reachable from anywhere: "storage" or "captions"
+    // in the palette should take you there, not tell you to go to Settings
+    // first and look again.
     ...SETTINGS_SECTIONS.map((section) => ({
       id: `settings.${section.id}`,
       title: section.title,
       category: 'Settings' as const,
       keywords: section.keywords,
-      enabled: () => app().view === 'settings',
+      hint: 'Open this settings section',
       run: () => {
         app().navigate('settings')
         app().setSettingsSection(section.id)

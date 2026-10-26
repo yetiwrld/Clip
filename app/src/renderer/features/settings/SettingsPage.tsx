@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import {
   Bot, AudioLines, Video, Captions, Package, HardDrive, Wrench, ShieldCheck,
-  Download, FolderOpen, KeyRound, Trash2, TestTube2, Save, AlertTriangle, Check
-, RefreshCw } from 'lucide-react'
+  Download, FolderOpen, KeyRound, Trash2, TestTube2, Save, AlertTriangle, Check,
+  RefreshCw, ArrowLeft } from 'lucide-react'
 import { api, errMessage, isElectron } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { Field, Switch, formatBytes, Spinner, ErrorBox, Modal } from '../../components/ui'
@@ -17,6 +17,7 @@ export function SettingsPage() {
   const section = app.settingsSection as Section
   const setSection = app.setSettingsSection
   const settings = app.settings
+  const canGoBack = useAppStore((state) => state.history.length > 0)
 
   if (!settings) {
     return (
@@ -39,6 +40,16 @@ export function SettingsPage() {
   return (
     <div className="page" data-density="compact">
       <div className="page-header">
+        {canGoBack && (
+          <button
+            className="btn ghost"
+            onClick={() => app.back()}
+            aria-label="Back"
+            title="Back to the previous screen"
+          >
+            <ArrowLeft size={14} />
+          </button>
+        )}
         <div className="page-heading">
           <div className="page-title">Settings</div>
           <div className="page-subtitle">App preferences. Everything here is stored on this computer.</div>
@@ -72,6 +83,7 @@ export function SettingsPage() {
               className={`nav-item ${section === s.id ? 'active' : ''}`}
               style={{ width: '100%' }}
               onClick={() => setSection(s.id)}
+              aria-current={section === s.id ? 'page' : undefined}
             >
               {s.icon} {s.label}
             </button>
