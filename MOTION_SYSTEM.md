@@ -233,8 +233,8 @@ Where the per-frame budget actually is:
 * **The playhead reuses the existing loop.** The played strip is written by the
   rAF loop that already moves the cursor, as one custom property consumed by a
   `transform`, so playback does not add renders.
-* **Bundle cost:** renderer JS 1 324 → 1 335 kB (+11 kB), CSS 137.1 → 142.7 kB
-  (+5.5 kB). No new dependency; `package.json` is unchanged.
+* **Bundle cost:** renderer JS 1 324 → 1 335 kB (+11 kB), CSS 137.1 → 143.0 kB
+  (+5.9 kB). No new dependency; `package.json` is unchanged.
 
 ## 8.6 Accessibility and control
 
@@ -244,6 +244,9 @@ Where the per-frame budget actually is:
 * **System preference wins.** `prefers-reduced-motion: reduce` disables every
   ambient animation and collapses the global transition durations, exactly as
   before.
+* **Slow displays get a still version.** `@media (update: slow)` turns off the
+  wash and the pulse on e-ink and remote desktops, where a 34 s drift would tear
+  or queue up repaints.
 * **No information is motion-only.** Every animated state has a word, a number or
   a colour next to it: "Rendering · 42 % · 1m 04s", "Queued · Waiting",
   "Working, length unknown".

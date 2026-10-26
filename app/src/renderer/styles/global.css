@@ -5028,6 +5028,15 @@ html[data-hidden="true"] .status.working .dot {
   }
 }
 
+/* Slow-update displays (e-ink, remote desktops) get the still version: no wash,
+   no pulse. Function motion is already a transform or a tiny repaint. */
+@media (update: slow) {
+  html[data-motion="full"] .ambient-field::before,
+  html[data-motion="full"] .status.working .dot {
+    animation: none;
+  }
+}
+
 /* One row, three readings: what it is doing, how far, how long. */
 .job-activity {
   display: grid;
