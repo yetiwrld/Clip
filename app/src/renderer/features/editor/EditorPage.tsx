@@ -23,7 +23,7 @@ import { keptSegments, keptDuration } from '@shared/video/segments'
 import { effectiveItemSpeed, sourceTimeAtTimelineTime, timelineItemDuration, timelineItemEnd, timelineOverlayGeometry } from '@shared/video/time-map'
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
 import { playFromTime } from '@shared/video/playback'
-import { clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
+import { addAssetToTimeline, clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
 import { discreteTimelineGroup, emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, pruneTimelineHistory, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
 import { textLayerAppearanceAt, textLayerStateAt } from '@shared/video/textLayers'
 import {
@@ -284,17 +284,13 @@ export function EditorPage() {
       const newAssets = useDataStore.getState().assets.filter((asset) => !pending.existing.has(asset.id))
       let next = clipTimelineRef.current
       for (const asset of newAssets) {
-        let track = next.tracks.find((candidate) => candidate.type === asset.mediaType && candidate.id === pending.track.id)
-          ?? next.tracks.find((candidate) => candidate.type === asset.mediaType)
-        if (!track) {
-          track = { id: crypto.randomUUID(), name: asset.mediaType === 'audio' ? `Audio ${next.tracks.filter((t) => t.type === 'audio').length + 1}` : asset.mediaType === 'image' ? 'Graphics' : `Video ${next.tracks.filter((t) => t.type === 'video').length + 2}`, type: asset.mediaType, order: next.tracks.length, muted: false, hidden: false, locked: false }
-          next = { ...next, tracks: [...next.tracks, track] }
-        }
-        const assetDuration = asset.duration ?? 5
-        const item: TimelineItem = { id: crypto.randomUUID(), assetId: asset.id, trackId: track.id, startTime: pending.time, sourceIn: 0, sourceOut: assetDuration, volume: 1, muted: false, fadeIn: 0, fadeOut: 0, speed: 1, loop: false, x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 }
-        next = { ...next, items: [...next.items, item] }
+        // Prefer the track the files were dropped on, but never force a clip
+        // onto a locked track or one that does not take its media type.
+        const droppedOn = next.tracks.find((candidate) => candidate.id === pending.track.id && candidate.type === asset.mediaType && !candidate.locked)
+        const placed = addAssetToTimeline(next, asset, { at: pending.time, trackId: droppedOn?.id, newId: () => crypto.randomUUID() })
+        if (placed) next = placed.timeline
       }
-      if (newAssets.length) scheduleTimelineSave(next)
+      if (newAssets.length) scheduleTimelineSave(next, { discrete: true })
       pendingAssetDrop.current = null
       setAssetImporting(false)
       handlingAssetDrop.current = false
@@ -403,6 +399,27 @@ export function EditorPage() {
       if (placement) pendingAssetDrop.current = { taskId, existing: new Set(data.assets.map((asset) => asset.id)), ...placement }
       app.toast({ level: 'info', message: `Importing ${plural(selectedPaths.length, 'media file')} into the project.` })
     } catch (err) { setAssetImporting(false); app.toast({ level: 'error', ...errMessage(err) }) }
+  }
+  /**
+   * Put a library asset on the timeline at the playhead. Creating a clip this
+   * way is the shortest path to a timeline that cut, copy, split and delete can
+   * act on; the same helper backs drag-and-drop, so both produce one model.
+   */
+  function addAssetAtPlayhead(asset: ProjectAsset) {
+    const placed = addAssetToTimeline(clipTimelineRef.current, asset, {
+      at: Math.max(0, currentTime),
+      newId: () => crypto.randomUUID()
+    })
+    if (!placed) {
+      app.toast({ level: 'error', message: `“${asset.name}” is missing from disk, so it cannot be placed.` })
+      return
+    }
+    scheduleTimelineSave(placed.timeline, { discrete: true })
+    app.toast({
+      level: 'info',
+      message: `Added “${asset.name}” to ${placed.track.name} at ${formatClock(placed.item.startTime, true)}.`,
+      hint: placed.createdTrack ? 'A new track was created for it.' : undefined
+    })
   }
   async function renameAsset(asset: ProjectAsset) {
     if (!projectId) return
@@ -1865,7 +1882,7 @@ export function EditorPage() {
             sectionTitle={activeTool === 'audio' ? 'Project audio' : 'Project media'} importLabel={activeTool === 'audio' ? 'Import audio' : 'Import media'}
             waveforms={assetWaveforms} filterOverride={activeTool === 'audio' ? 'audio' : undefined}
             onImport={() => void importAssets()} onRename={(asset) => void renameAsset(asset)} onRemove={(asset) => void removeAsset(asset)}
-            onRelink={(asset) => void relinkAsset(asset)} onDropFiles={(paths) => void importAssets(paths)} />}
+            onRelink={(asset) => void relinkAsset(asset)} onDropFiles={(paths) => void importAssets(paths)} onAddToTimeline={addAssetAtPlayhead} />}
           {activeTool === 'moments' && <div className="editor-moments-panel">
             {data.candidates.filter((candidate) => candidate.status !== 'rejected').length === 0
               ? <div className="editor-panel-empty"><Sparkles size={20} /><strong>No moments yet</strong><span>Run the analysis to find strong moments in this project.</span><button className="btn sm" onClick={async () => { try { await api['analysis.start']({ projectId: project.id, providerId: 'heuristic-local' }); app.toast({ level: 'info', message: 'Moment analysis started.', hint: 'Results appear here when it finishes.' }) } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) } }}>Analyze now</button></div>
@@ -2476,7 +2493,7 @@ export function EditorPage() {
             else offsets[mapKey] = nextOffset
             updateClip({ captionTimingOffsets: offsets })
           }}
-          onSelectTextLayer={(layer) => { setSelectedTextLayerId(layer.id); setSelectedTimelineItem(null); setSelectedCueKey(null); setSelectedMomentId(null); seekTo(layer.startTime) }}
+          onSelectTextLayer={(layer) => { setSelectedTextLayerId(layer.id); setSelectedTimelineItem(null); setSelectedCueKey(null); setSelectedMomentId(null) }}
           onChangeTextLayer={updateTextLayer}
           onSelectItem={(item) => { setSelectedTimelineItem(item); setSourceClipSelected(false); if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
           onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setSourceClipSelected(false); setSelectedTextLayerId(null); setSelectedMomentId(null) }}

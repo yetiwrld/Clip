@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AudioLines, ChevronDown, ChevronLeft, ChevronRight, ClipboardPaste, Copy, CopyPlus, Eye, EyeOff, Film, Image as ImageIcon,
+  AudioLines, ClipboardPaste, Copy, CopyPlus, Eye, EyeOff, Film, Image as ImageIcon,
   Lock, Magnet, Maximize2, Plus, Redo2, Scissors, Slice, Trash2, Type, Undo2, Unlock,
   Volume2, VolumeX, ZoomIn, ZoomOut
 } from 'lucide-react'
@@ -9,7 +9,7 @@ import { formatClock } from '@shared/utils/time'
 import { effectiveItemSpeed, sourceDeltaForTimelineDelta, timelineItemDuration, timelineItemEnd } from '@shared/video/time-map'
 import { frameDuration, frameTimeTolerance, snapTimeToFrame } from '@shared/video/frame-rate'
 import {
-  copyTimelineItems, cutTimelineItems, deleteTimelineItems, duplicateTimelineItems,
+  addAssetToTimeline, copyTimelineItems, cutTimelineItems, deleteTimelineItems, duplicateTimelineItems,
   fitTimelineZoom, hasTimelineOverlap, pasteTimelineItems, resolveTimelineOverlaps, selectTimelineRange,
   selectableTimelineIds, splitTimelineItemsAt, TIMELINE_ZOOM_MAX, TIMELINE_ZOOM_MIN, timelineZoomFromSlider,
   timelineZoomSliderValue
@@ -578,14 +578,10 @@ export function MultiTrackTimeline(props: {
       props.onNotice?.(`Drop ${asset.mediaType} media onto a ${track.type} track.`)
       return
     }
-    const duration = asset.duration ?? 5
-    const item: TimelineItem = {
-      id: crypto.randomUUID(), assetId, trackId: track.id, startTime: Math.max(0, time), sourceIn: 0,
-      sourceOut: duration, volume: 1, muted: false, fadeIn: 0, fadeOut: 0, speed: 1, loop: false,
-      x: 0, y: 0, scale: 1, rotation: 0, opacity: 1
-    }
-    props.onChange({ ...props.timeline, items: [...props.timeline.items, item] }, { discrete: true })
-    selectOnly(item.id)
+    const placed = addAssetToTimeline(props.timeline, asset, { at: time, trackId: track.id, newId: () => crypto.randomUUID() })
+    if (!placed) return
+    props.onChange(placed.timeline, { discrete: true })
+    selectOnly(placed.item.id)
   }
   function timeFromEvent(event: React.DragEvent | React.PointerEvent, track: TimelineTrack): number {
     const lane = event.currentTarget instanceof HTMLElement ? event.currentTarget.querySelector('.multi-track-lane') : null
@@ -963,18 +959,16 @@ export function MultiTrackTimeline(props: {
     closeMenus()
   }
 
-  function deleteSelected(ripple = false) {
+  function deleteSelected() {
     if (selectionLocked) {
       props.onNotice?.('The selected clips are on a locked track. Unlock the track to edit them.')
       return
     }
-    const result = deleteTimelineItems(props.timeline, selectedIdsRef.current, { ripple })
+    const result = deleteTimelineItems(props.timeline, selectedIdsRef.current)
     if (!result) return
     commit(result.timeline)
     applySelection([])
-    showFeedback(ripple
-      ? (result.removedIds.length === 1 ? 'Deleted 1 clip and closed the gap.' : `Deleted ${result.removedIds.length} clips and closed the gaps.`)
-      : `Deleted ${clipCount(result.removedIds.length)}.`)
+    showFeedback(`Deleted ${clipCount(result.removedIds.length)}.`)
     closeMenus()
   }
 
@@ -992,33 +986,21 @@ export function MultiTrackTimeline(props: {
 
   function setSnap() { commit({ ...props.timeline, snapEnabled: !props.timeline.snapEnabled }) }
 
-  // The main source is not a TimelineItem: it is the project's clip with an
-  // in-point and an out-point. These two buttons are its real edits, so the
-  // toolbar is useful even on a project whose timeline has no other media yet.
-  function trimSourceIn() {
-    if (!props.sourceClip) return
-    const at = snapTimeToFrame(props.currentTime, props.fps)
-    const start = Math.max(0, Math.min(at, props.sourceClip.endTime - frameDuration(props.fps)))
-    props.onChangeSourceRange?.(start, props.sourceClip.endTime)
-    showFeedback(`Clip start moved to ${formatClock(start, true)}.`)
-  }
-
-  function trimSourceOut() {
-    if (!props.sourceClip) return
-    const at = snapTimeToFrame(props.currentTime, props.fps)
-    const end = Math.min(span, Math.max(at, props.sourceClip.startTime + frameDuration(props.fps)))
-    props.onChangeSourceRange?.(props.sourceClip.startTime, end)
-    showFeedback(`Clip end moved to ${formatClock(end, true)}.`)
-  }
-
-  const sourceSelected = Boolean(props.selectedSource && props.sourceClip)
-  const canTrimSource = Boolean(props.sourceClip) && props.currentTime > props.sourceClip!.startTime + 0.001 && props.currentTime < props.sourceClip!.endTime - 0.001
 
   function closeMenus() {
     setContextMenu(null)
   }
 
   const hasSelection = selectedIds.length > 0
+  // Why an edit command cannot run right now. The source clip is a real
+  // selection, so telling the user to select a clip they already selected is
+  // the wrong answer; say what is actually true.
+  const editDisabledHint = selectionLocked
+    ? 'the selection is locked'
+    : props.selectedSource
+      ? 'the main source is one clip — trim its edges'
+      : 'select a timeline clip first'
+
   // These subscriptions repaint the menus when the clipboard changes or the
   // commands finish registering (they register in an effect, after first paint).
   // The values themselves are read live so the render always matches the store.
@@ -1040,8 +1022,7 @@ export function MultiTrackTimeline(props: {
   useEffect(() => {
     commandHandlers.current = {
       hasSelection: () => selectedIdsRef.current.length > 0,
-      deleteSelected: () => deleteSelected(false),
-      rippleDeleteSelected: () => deleteSelected(true),
+      deleteSelected,
       duplicateSelected,
       cutSelected: () => void cutSelected(),
       copySelected: () => void copySelected(),
@@ -1058,28 +1039,22 @@ export function MultiTrackTimeline(props: {
   useEffect(() => registerCommands(timelineCommands(() => commandHandlers.current as TimelineHandlers)), [])
 
   return <section className="multi-track-editor" aria-label="Multi-track timeline editor">
-    <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+X C V cut, copy, paste · Ctrl/⌘+B split · Delete to remove">
+    <div className="multi-track-toolbar">
       <div className="row timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
-        {sourceSelected && <>
-          <TimelineAction commandId="editor.markStart" label="Trim in" description="Set the clip start at the playhead" disabledHint="move the playhead inside the clip" icon={<ChevronLeft size={14} />} onClick={trimSourceIn} disabled={!canTrimSource} />
-          <TimelineAction commandId="editor.markEnd" label="Trim out" description="Set the clip end at the playhead" disabledHint="move the playhead inside the clip" icon={<ChevronRight size={14} />} onClick={trimSourceOut} disabled={!canTrimSource} />
-          <span className="timeline-toolbar-divider" aria-hidden="true" />
-        </>}
-        <TimelineAction commandId="timeline.cut" label="Cut" description="Cut selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<Scissors size={14} />} onClick={() => void cutSelected()} disabled={!hasSelection || selectionLocked} />
-        <TimelineAction commandId="timeline.copy" label="Copy" description="Copy selected clips" icon={<Copy size={14} />} onClick={() => void copySelected()} disabled={!hasSelection} />
-        <TimelineAction commandId="timeline.paste" label="Paste" description="Paste clips at the playhead" disabledHint="copy a clip first" icon={<ClipboardPaste size={14} />} onClick={() => void pasteCopied()} disabled={!hasClipboard} />
+        <TimelineAction commandId="timeline.cut" description="Cut selected clips" disabledHint={editDisabledHint} icon={<Scissors size={20} />} onClick={() => void cutSelected()} disabled={!hasSelection || selectionLocked} />
+        <TimelineAction commandId="timeline.copy" description="Copy selected clips" icon={<Copy size={20} />} onClick={() => void copySelected()} disabled={!hasSelection} />
+        <TimelineAction commandId="timeline.paste" description="Paste clips at the playhead" disabledHint="copy a clip first" icon={<ClipboardPaste size={20} />} onClick={() => void pasteCopied()} disabled={!hasClipboard} />
         <span className="timeline-toolbar-divider" aria-hidden="true" />
-        <TimelineAction commandId="timeline.split" label="Split" description="Split clips at playhead" disabledHint="move the playhead inside the clip first" icon={<Slice size={14} />} onClick={splitAtPlayhead} disabled={!canSplit} />
-        <TimelineAction commandId="timeline.duplicate" label="Duplicate" description="Duplicate selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<CopyPlus size={14} />} onClick={duplicateSelected} disabled={!hasSelection || selectionLocked} />
+        <TimelineAction commandId="timeline.split" description="Split clips at playhead" disabledHint="move the playhead inside a clip first" icon={<Slice size={20} />} onClick={splitAtPlayhead} disabled={!canSplit} />
+        <TimelineAction commandId="timeline.duplicate" description="Duplicate selected clips" disabledHint={editDisabledHint} icon={<CopyPlus size={20} />} onClick={duplicateSelected} disabled={!hasSelection || selectionLocked} />
         <span className="timeline-toolbar-divider" aria-hidden="true" />
-        <TimelineAction commandId="timeline.delete" label="Delete" description="Delete selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<Trash2 size={14} />} onClick={() => deleteSelected(false)} disabled={!hasSelection || selectionLocked} />
-        <TimelineAction commandId="timeline.rippleDelete" label="Ripple delete" description="Ripple delete selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<Trash2 size={14} />} onClick={() => deleteSelected(true)} disabled={!hasSelection || selectionLocked} danger />
+        <TimelineAction commandId="timeline.delete" description="Delete selected clips" disabledHint={editDisabledHint} icon={<Trash2 size={20} />} onClick={deleteSelected} disabled={!hasSelection || selectionLocked} />
         <span className="timeline-toolbar-divider" aria-hidden="true" />
-        <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title={`Magnetic snapping ${props.timeline.snapEnabled ? 'on' : 'off'} — clips snap to the playhead and to each other · Shift+S`} aria-label={`Magnetic snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
-          <Magnet size={12} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
+        <button type="button" className={`btn sm icon timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title={`Magnetic snapping ${props.timeline.snapEnabled ? 'on' : 'off'} — clips snap to the playhead and to each other · Shift+S`} aria-label={`Magnetic snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
+          <Magnet size={16} />
         </button>
         <details className="timeline-add-track-menu" ref={trackMenuRef}>
-          <summary className="btn sm timeline-add-track-summary" aria-label="Add timeline track" aria-haspopup="menu"><Plus size={14} /> Add track <ChevronDown size={12} /></summary>
+          <summary className="btn sm icon timeline-add-track-summary" aria-label="Add timeline track" aria-haspopup="menu" title="Add a track — video, audio or graphics"><Plus size={16} /></summary>
           <div className="timeline-add-track-options" role="menu" aria-label="Track type">
             <button type="button" role="menuitem" onClick={() => addTrack('video')}><Film size={14} /> Video track</button>
             <button type="button" role="menuitem" onClick={() => addTrack('audio')}><AudioLines size={14} /> Audio track</button>
@@ -1097,16 +1072,16 @@ export function MultiTrackTimeline(props: {
           aria-live={feedback ? 'polite' : 'off'}
         >
           {feedback ?? (props.selectedSource
-            ? 'Main source selected · use Trim in/out or drag its edges'
+            ? 'Main source selected · drag its edges to trim'
             : selectionLocked
               ? 'Selected clips are locked'
               : hasSelection
                 ? (canSplit ? `${clipCount(selectedIds.length)} selected` : `${clipCount(selectedIds.length)} selected · move the playhead to split`)
                 : 'Select a clip to edit')}
         </span>
-        <label className="timeline-zoom-control">
+        <label className="timeline-zoom-control" title="Timeline zoom">
           <ZoomOut size={12} aria-hidden="true" />
-          <input type="range" aria-label="Timeline zoom" min="0" max="100" step="1" value={timelineZoomSliderValue(pixelsPerSecond)} onChange={(event) => setZoomFromSlider(Number(event.target.value))} />
+          <input type="range" aria-label="Timeline zoom" title="Timeline zoom" min="0" max="100" step="1" value={timelineZoomSliderValue(pixelsPerSecond)} onChange={(event) => setZoomFromSlider(Number(event.target.value))} />
           <ZoomIn size={12} aria-hidden="true" />
         </label>
         <button type="button" className="btn ghost sm icon" onClick={fitTimeline} title="Fit full project in the timeline" aria-label="Fit full project in timeline"><Maximize2 size={14} /></button>
@@ -1144,10 +1119,10 @@ export function MultiTrackTimeline(props: {
               {props.captions.map((caption) => (
                 <div key={caption.key} role="group" className={`timeline-caption-block${props.selectedCaptionKey === caption.key ? ' selected' : ''}`}
                   style={{ left: caption.startTime * pixelsPerSecond, width: Math.max(20, (caption.endTime - caption.startTime) * pixelsPerSecond) }}>
-                  <button type="button" className="timeline-caption-content" aria-label={`Caption at ${formatClock(caption.startTime, true)}: ${caption.text}`} title="Click to seek · drag to move" onPointerDown={(event) => {
+                  <button type="button" className="timeline-caption-content" aria-label={`Caption at ${formatClock(caption.startTime, true)}: ${caption.text}`} title="Click to select · drag to move · double-click to move the playhead" onDoubleClick={() => seekTo(caption.startTime)} onPointerDown={(event) => {
                     props.onSelectCaption?.(caption.key)
                     beginEditDrag(event, { mode: 'caption', startX: event.clientX, key: caption.key, start: caption.startTime, offset: props.captionOffsets?.[caption.key] ?? 0 })
-                  }} onClick={(event) => { if (event.detail !== 0) return; seekTo(caption.startTime); props.onSelectCaption?.(caption.key) }}>{caption.text}</button>
+                  }} onClick={(event) => { if (event.detail !== 0) return; props.onSelectCaption?.(caption.key) }}>{caption.text}</button>
                   <button type="button" role="slider" aria-orientation="horizontal" className="caption-trim-handle left" aria-label={`Adjust start of caption at ${formatClock(caption.startTime, true)}`} aria-valuemin={0} aria-valuemax={caption.endTime - 0.15} aria-valuenow={caption.startTime} title="Drag or use arrow keys to adjust caption start" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => adjustCaptionByKey(event, caption.key, 'start')} onPointerDown={(event) => {
                     event.stopPropagation()
                     props.onSelectCaption?.(caption.key)
@@ -1170,14 +1145,14 @@ export function MultiTrackTimeline(props: {
           <div className="multi-track-lane">
             {props.textLayers.length === 0 && <span className="timeline-empty-track">Add a text layer in Text / graphics to place it here.</span>}
             {props.textLayers.map((layer) => <div key={layer.id} role="group" className={`timeline-text-block${props.selectedTextLayerId === layer.id ? ' selected' : ''}`} style={{ left: layer.startTime * pixelsPerSecond, width: Math.max(24, (layer.endTime - layer.startTime) * pixelsPerSecond) }}>
-              <button type="button" className="timeline-text-content" aria-label={`Text layer ${layer.text || 'untitled'} at ${formatClock(layer.startTime, true)}`} title="Click to select · drag to move" onClick={(event) => { if (event.detail !== 0) return; props.onSelectTextLayer?.(layer); seekTo(layer.startTime) }} onPointerDown={(event) => { props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text', startX: event.clientX, layer }) }}>{layer.text || 'Text layer'}</button>
+              <button type="button" className="timeline-text-content" aria-label={`Text layer ${layer.text || 'untitled'} at ${formatClock(layer.startTime, true)}`} title="Click to select · drag to move · double-click to move the playhead" onDoubleClick={() => seekTo(layer.startTime)} onClick={(event) => { if (event.detail !== 0) return; props.onSelectTextLayer?.(layer) }} onPointerDown={(event) => { props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text', startX: event.clientX, layer }) }}>{layer.text || 'Text layer'}</button>
               <button type="button" role="slider" aria-orientation="horizontal" className="text-trim-handle left" aria-label={`Adjust start of text layer ${layer.text || 'untitled'}`} aria-valuemin={0} aria-valuemax={layer.endTime - 0.1} aria-valuenow={layer.startTime} title="Drag or use arrow keys to adjust text start" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => adjustTextLayerByKey(event, layer, 'left')} onPointerDown={(event) => { event.stopPropagation(); props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text-left', startX: event.clientX, layer }) }} />
               <button type="button" role="slider" aria-orientation="horizontal" className="text-trim-handle right" aria-label={`Adjust end of text layer ${layer.text || 'untitled'}`} aria-valuemin={layer.startTime + 0.1} aria-valuemax={span} aria-valuenow={layer.endTime} title="Drag or use arrow keys to adjust text end" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => adjustTextLayerByKey(event, layer, 'right')} onPointerDown={(event) => { event.stopPropagation(); props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text-right', startX: event.clientX, layer }) }} />
             </div>)}
           </div>
         </div>}
         {(props.cameraKeyframes?.length || props.trackingKeyframes?.length) ? <div className="multi-track-row camera-track-row"><div className="multi-track-label"><span className="track-title"><Film size={14} /> Camera / tracking</span><small>{props.cameraKeyframes?.length ?? 0} keyframes</small></div><div className="multi-track-lane">{props.trackingKeyframes?.map((keyframe, index) => <button type="button" key={`track-${keyframe.time}-${index}`} className={`timeline-tracking-marker${selectedTrackingTime === keyframe.time ? ' selected' : ''}`} style={{ left: keyframe.time * pixelsPerSecond }} aria-label={`Tracking sample at ${formatClock(keyframe.time, true)}, ${Math.round(keyframe.score * 100)} percent confidence`} title={`Tracking sample · ${formatClock(keyframe.time, true)} · ${Math.round(keyframe.score * 100)}% confidence`} onClick={() => { setSelectedTrackingTime(keyframe.time); if (props.onSelectTrackingKeyframe) props.onSelectTrackingKeyframe(keyframe); else seekTo(keyframe.time) }}>•</button>)}{props.cameraKeyframes?.map((keyframe, index) => <button type="button" key={`${keyframe.time}-${index}`} className={`timeline-keyframe-marker${props.selectedCameraKeyframeTime !== null && Math.abs(keyframe.time - (props.selectedCameraKeyframeTime ?? -100)) < frameTimeTolerance(props.fps) ? ' selected' : ''}`} style={{ left: keyframe.time * pixelsPerSecond }} aria-label={`Camera keyframe at ${formatClock(keyframe.time, true)}`} title={`Camera keyframe ${formatClock(keyframe.time, true)} · ${keyframe.easing}`} onClick={(event) => { if (event.detail === 0) props.onSelectCameraKeyframe?.(keyframe.time) }} onPointerDown={(event) => { props.onSelectCameraKeyframe?.(keyframe.time); beginEditDrag(event, { mode: 'camera', startX: event.clientX, time: keyframe.time }) }}>◆</button>)}</div></div> : null}
-        {[...props.timeline.tracks].sort((a, b) => a.order - b.order).map((track) => {
+        {[...props.timeline.tracks].sort((a, b) => a.order - b.order).map((track, trackIndex) => {
           const TrackIcon = track.type === 'audio' ? AudioLines : track.type === 'image' ? Eye : Volume2
           return <div className={`multi-track-row ${dragTarget === track.id ? 'drop-target' : ''} ${track.hidden ? 'track-hidden' : ''} ${track.locked ? 'track-locked' : ''}`} key={track.id} data-track-id={track.id}
             onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = track.locked ? 'none' : 'copy'; setDragTarget(track.id); setDropTime(timeFromEvent(event, track)) }}
@@ -1198,6 +1173,7 @@ export function MultiTrackTimeline(props: {
               event.preventDefault()
               setContextMenu({ x: event.clientX, y: event.clientY })
             }}>
+              {trackIndex === 0 && props.timeline.items.length === 0 && <span className="multi-track-empty-hint">Drag media here, or press + in the Media panel</span>}
               {dragTarget === track.id && dropTime != null && <div className="multi-track-drop-line" style={{ left: dropTime * pixelsPerSecond }} />}
               {snapGuide !== null && <div className="timeline-snap-guide" style={{ left: snapGuide * pixelsPerSecond }} aria-hidden="true" />}
               {props.timeline.items.filter((item) => item.trackId === track.id).map((item) => {
@@ -1248,8 +1224,7 @@ export function MultiTrackTimeline(props: {
           <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection || selectionLocked} onClick={duplicateSelected}>Duplicate{menuShortcut('timeline.duplicate')}</button>
           <span className="menu-sep" aria-hidden="true" />
           <button type="button" role="menuitem" className="timeline-menu-item" disabled={!canSplit} onClick={splitAtPlayhead}>Split at playhead{menuShortcut('timeline.split')}</button>
-          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection || selectionLocked} onClick={() => deleteSelected(false)}>Delete{menuShortcut('timeline.delete')}</button>
-          <button type="button" role="menuitem" className="timeline-menu-item danger" disabled={!hasSelection || selectionLocked} onClick={() => deleteSelected(true)}>Ripple delete{menuShortcut('timeline.rippleDelete')}</button>
+          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection || selectionLocked} onClick={deleteSelected}>Delete{menuShortcut('timeline.delete')}</button>
           <span className="menu-sep" aria-hidden="true" />
           <button type="button" role="menuitem" className="timeline-menu-item" onClick={selectAllClips}>Select all clips{menuShortcut('timeline.selectAll')}</button>
           <button type="button" role="menuitem" className="timeline-menu-item" onClick={setSnap}>Snapping {props.timeline.snapEnabled ? 'on' : 'off'}</button>
@@ -1332,7 +1307,6 @@ export function TimelineInspector(props: { item: TimelineItem; asset?: ProjectAs
  */
 function TimelineAction(props: {
   commandId: string
-  label: string
   description: string
   /** Why the button is unavailable, shown in the tooltip while it is. */
   disabledHint?: string
@@ -1342,19 +1316,23 @@ function TimelineAction(props: {
   danger?: boolean
 }) {
   const shortcut = shortcutLabelFor(props.commandId)
-  const parts = [props.description, props.disabled ? props.disabledHint : null, shortcut]
+  const title = [props.description, props.disabled ? props.disabledHint : null, shortcut]
     .filter((part): part is string => Boolean(part))
+    .join(' · ')
+  // The title sits on the wrapper as well: a disabled button does not receive
+  // hover events in every browser, and the hint must still be readable.
   return (
-    <button
-      type="button"
-      className={`btn sm timeline-action${props.danger ? ' danger' : ''}`}
-      onClick={props.onClick}
-      disabled={props.disabled}
-      title={parts.join(' · ')}
-      aria-label={props.description}
-    >
-      {props.icon}
-      <span className="timeline-action-label">{props.label}</span>
-    </button>
+    <span className={`timeline-action-wrap${props.disabled ? ' is-disabled' : ''}`} title={title}>
+      <button
+        type="button"
+        className={`btn sm icon timeline-action${props.danger ? ' danger' : ''}`}
+        onClick={props.onClick}
+        disabled={props.disabled}
+        title={title}
+        aria-label={props.description}
+      >
+        {props.icon}
+      </button>
+    </span>
   )
 }

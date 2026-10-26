@@ -1,8 +1,68 @@
-import type { ClipTimeline, TimelineItem, TimelineTrack, TimelineTrackType } from '../types'
+import type { ClipTimeline, ProjectAsset, TimelineItem, TimelineTrack, TimelineTrackType } from '../types'
 import { effectiveItemSpeed, sourceDeltaForTimelineDelta, timelineItemDuration, timelineItemEnd } from '../video/time-map'
 
 /** Least source amount a trimmed or split piece may keep; below it the piece goes. */
 const MIN_SOURCE = 0.02
+
+/** Default name for a new track of one type, matching the Add-track menu. */
+export function timelineTrackName(tracks: TimelineTrack[], type: TimelineTrackType): string {
+  const sameType = tracks.filter((track) => track.type === type).length
+  if (type === 'audio') return `Audio ${sameType + 1}`
+  if (type === 'image') return `Graphics ${sameType + 1}`
+  return `Video ${sameType + 2}`
+}
+
+export interface TimelinePlacement {
+  timeline: ClipTimeline
+  item: TimelineItem
+  track: TimelineTrack
+  createdTrack: boolean
+}
+
+/**
+ * Put one library asset on the timeline at `at`.
+ *
+ * When `trackId` is given that track must be unlocked and must take the
+ * asset's media type. Otherwise the earliest unlocked track of that type is
+ * used, and a new one is created when there is none. This is the one
+ * implementation behind a drop, the library's add button and a project import,
+ * so a clip is always built from the same defaults.
+ */
+export function addAssetToTimeline(
+  timeline: ClipTimeline,
+  asset: ProjectAsset,
+  options: { at: number; trackId?: string; newId: () => string }
+): TimelinePlacement | null {
+  if (!asset || asset.missing) return null
+  const requested = options.trackId ? timeline.tracks.find((track) => track.id === options.trackId) : undefined
+  if (requested && (requested.locked || requested.type !== asset.mediaType)) return null
+  let track = requested ?? [...timeline.tracks]
+    .filter((candidate) => candidate.type === asset.mediaType && !candidate.locked)
+    .sort((a, b) => a.order - b.order)[0]
+  let tracks = timeline.tracks
+  let createdTrack = false
+  if (!track) {
+    createdTrack = true
+    track = {
+      id: options.newId(),
+      name: timelineTrackName(timeline.tracks, asset.mediaType),
+      type: asset.mediaType,
+      order: timeline.tracks.length,
+      muted: false,
+      hidden: false,
+      locked: false
+    }
+    tracks = [...timeline.tracks, track]
+  }
+  const at = Math.max(0, Number.isFinite(options.at) ? options.at : 0)
+  const item: TimelineItem = {
+    id: options.newId(), assetId: asset.id, trackId: track.id, startTime: at,
+    sourceIn: 0, sourceOut: asset.duration ?? 5, volume: 1, muted: false,
+    fadeIn: 0, fadeOut: 0, speed: 1, loop: false,
+    x: 0, y: 0, scale: 1, rotation: 0, opacity: 1
+  }
+  return { timeline: { ...timeline, tracks, items: [...timeline.items, item] }, item, track, createdTrack }
+}
 
 export interface TimelineItemEditResult {
   timeline: ClipTimeline
@@ -107,7 +167,7 @@ export function fitTimelineZoom(viewportWidth: number, labelWidth: number, durat
 }
 
 // ---------------------------------------------------------------------------
-// Multi-clip editing: copy, cut, paste, duplicate, ripple delete, selection.
+// Multi-clip editing: copy, cut, paste, duplicate, delete, selection.
 //
 // Everything here is a pure function over `ClipTimeline`. The timeline's source
 // of truth is that value, so a command is "real" exactly when these functions
@@ -221,38 +281,18 @@ export function copyTimelineItems(timeline: ClipTimeline, ids: string[]): Timeli
 }
 
 /**
- * Remove clips. `ripple` closes the gaps afterwards: on each track that lost
- * content, clips that start later move left by the removed time. Nothing on a
- * locked track is removed or moved.
+ * Remove clips. The gap stays where the clips were; nothing else moves. Locked
+ * tracks are never touched.
  */
 export function deleteTimelineItems(
   timeline: ClipTimeline,
-  ids: string[],
-  options: { ripple?: boolean } = {}
+  ids: string[]
 ): TimelineDeleteResult | null {
   const targets = editableTimelineItems(timeline, ids)
   if (targets.length === 0) return null
   const removedIds = targets.map((item) => item.id)
   const removed = new Set(removedIds)
-  let items = timeline.items.filter((item) => !removed.has(item.id))
-  if (options.ripple) {
-    const gaps = new Map<string, Array<{ start: number; end: number }>>()
-    for (const item of targets) {
-      const list = gaps.get(item.trackId) ?? []
-      list.push({ start: item.startTime, end: timelineItemEnd(item) })
-      gaps.set(item.trackId, list)
-    }
-    items = items.map((item) => {
-      const ranges = gaps.get(item.trackId)
-      if (!ranges || ranges.length === 0) return item
-      let shift = 0
-      for (const range of ranges) {
-        // Only content that starts at or after the hole closes over it.
-        if (range.end <= item.startTime + 1e-6) shift += Math.max(0, range.end - range.start)
-      }
-      return shift > 0 ? { ...item, startTime: Math.max(0, item.startTime - shift) } : item
-    })
-  }
+  const items = timeline.items.filter((item) => !removed.has(item.id))
   return { timeline: { ...timeline, items }, removedIds }
 }
 

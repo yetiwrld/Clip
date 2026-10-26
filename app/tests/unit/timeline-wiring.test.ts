@@ -55,20 +55,19 @@ function render(over: Partial<React.ComponentProps<typeof MultiTrackTimeline>> =
 }
 
 /**
- * The toolbar rows, in order, with their disabled state. The toolbar is the
- * primary place the commands are found, so the test reads it as the user sees
- * it rather than hunting for a dropdown.
+ * The toolbar buttons, in order, with their disabled state. With icon-only
+ * controls the accessible name is the only text, so that is what the test reads.
  */
 function toolbarRows(html: string): Array<{ label: string; disabled: boolean }> {
   const region = html.slice(html.indexOf('aria-label="Timeline editing tools"'))
   const toolbar = region.slice(0, region.indexOf('timeline-selection-status'))
-  return [...toolbar.matchAll(/<button[\s\S]*?<\/button>/g)]
-    .filter((match) => match[0].includes('timeline-action-label'))
-    .map((match) => {
-      const tag = /^<button([^>]*)>/.exec(match[0])?.[1] ?? ''
-      const label = match[0].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
-      return { label, disabled: /\sdisabled=""/.test(tag) }
-    })
+  return [...toolbar.matchAll(/<button[^>]*class="[^"]*timeline-action[^"]*"[^>]*>/g)].map((match) => {
+    const tag = match[0]
+    return {
+      label: /aria-label="([^"]*)"/.exec(tag)?.[1] ?? '',
+      disabled: /\sdisabled=""/.test(tag)
+    }
+  })
 }
 
 /** The rows of the right-click menu, which mirrors the toolbar. */
@@ -92,18 +91,36 @@ afterEach(() => {
 })
 
 describe('timeline edit toolbar', () => {
-  it('shows every command as a named button, in the order of the work', () => {
-    const rows = toolbarRows(render())
+  it('shows every command as an icon, in the order of the work', () => {
+    const html = render()
+    const rows = toolbarRows(html)
     expect(rows.map((row) => row.label)).toEqual([
-      'Cut', 'Copy', 'Paste', 'Split', 'Duplicate', 'Delete', 'Ripple delete'
+      'Cut selected clips', 'Copy selected clips', 'Paste clips at the playhead',
+      'Split clips at playhead', 'Duplicate selected clips', 'Delete selected clips'
     ])
+    // Icon-only: the words live in the hover text, not on the toolbar.
+    expect(html).not.toContain('timeline-action-label')
+    expect(html).not.toContain('Ripple delete')
+  })
+
+  it('puts the action and its shortcut in the hover text of every icon', () => {
+    const html = render()
+    expect(html).toContain('title="Cut selected clips')
+    expect(html).toContain('title="Copy selected clips')
+    expect(html).toContain('title="Paste clips at the playhead')
+    expect(html).toContain('title="Split clips at playhead')
+    expect(html).toContain('title="Duplicate selected clips')
+    expect(html).toContain('title="Delete selected clips')
+    expect(html).toContain('title="Magnetic snapping')
+    expect(html).toContain('title="Add a track')
+    expect(html).toContain('title="Timeline zoom"')
+    expect(html).toContain('title="Fit full project in the timeline"')
   })
 
   it('writes the real shortcut into each tooltip from the command registry', () => {
     const dispose = registerCommands(timelineCommands(() => ({
       hasSelection: () => false,
       deleteSelected: noop,
-      rippleDeleteSelected: noop,
       duplicateSelected: noop,
       cutSelected: noop,
       copySelected: noop,
@@ -125,34 +142,32 @@ describe('timeline edit toolbar', () => {
     expect(html).toMatch(/title="Paste clips at the playhead[^"]*· Ctrl\+V"/)
     expect(html).toMatch(/title="Split clips at playhead[^"]*· Ctrl\+B"/)
     expect(html).toMatch(/title="Duplicate selected clips[^"]*· Ctrl\+D"/)
-    expect(html).toMatch(/title="Ripple delete selected clips[^"]*· Shift\+Del"/)
   })
 
   it('explains why a disabled command cannot run', () => {
     const html = render()
     expect(html).toContain('Paste clips at the playhead · copy a clip first')
-    expect(html).toContain('Split clips at playhead · move the playhead inside the clip first')
+    expect(html).toContain('Split clips at playhead · move the playhead inside a clip first')
   })
 
   it('disables what cannot run: no selection, empty clipboard, playhead outside every clip', () => {
     const byLabel = new Map(toolbarRows(render()).map((row) => [row.label, row.disabled]))
-    expect(byLabel.get('Cut')).toBe(true)
-    expect(byLabel.get('Copy')).toBe(true)
+    expect(byLabel.get('Cut selected clips')).toBe(true)
+    expect(byLabel.get('Copy selected clips')).toBe(true)
     // Nothing has been copied, so Paste is visibly unavailable rather than
     // silently doing nothing.
-    expect(byLabel.get('Paste')).toBe(true)
-    expect(byLabel.get('Duplicate')).toBe(true)
-    expect(byLabel.get('Delete')).toBe(true)
-    expect(byLabel.get('Ripple delete')).toBe(true)
+    expect(byLabel.get('Paste clips at the playhead')).toBe(true)
+    expect(byLabel.get('Duplicate selected clips')).toBe(true)
+    expect(byLabel.get('Delete selected clips')).toBe(true)
     // Nothing is selected and the playhead at 0 is on the clip's leading edge.
-    expect(byLabel.get('Split')).toBe(true)
+    expect(byLabel.get('Split clips at playhead')).toBe(true)
 
     useTimelineClipboard.getState().setClipboard(copyTimelineItems(timeline, ['a']))
     const withClipboard = new Map(toolbarRows(render()).map((row) => [row.label, row.disabled]))
-    expect(withClipboard.get('Paste')).toBe(false)
+    expect(withClipboard.get('Paste clips at the playhead')).toBe(false)
 
     const midClip = new Map(toolbarRows(render({ currentTime: 2 })).map((row) => [row.label, row.disabled]))
-    expect(midClip.get('Split')).toBe(false)
+    expect(midClip.get('Split clips at playhead')).toBe(false)
   })
 
   it('keeps the right-click menu in step with the toolbar', () => {
@@ -178,16 +193,11 @@ describe('timeline edit toolbar', () => {
     expect(render({ selectedSource: true })).toContain('Main source selected')
   })
 
-  it('gives the main source real trim controls when it is selected', () => {
-    const source = { name: 'Source', startTime: 2, endTime: 8 }
-    const inside = new Map(toolbarRows(render({ selectedSource: true, sourceClip: source, currentTime: 5 })).map((row) => [row.label, row.disabled]))
-    expect(inside.get('Trim in')).toBe(false)
-    expect(inside.get('Trim out')).toBe(false)
-    expect(render({ selectedSource: true, sourceClip: source, currentTime: 5 })).toContain('Main source selected')
-    // At the clip's own leading edge, trimming in would do nothing.
-    const edge = new Map(toolbarRows(render({ selectedSource: true, sourceClip: source, currentTime: 2 })).map((row) => [row.label, row.disabled]))
-    expect(edge.get('Trim in')).toBe(true)
-    expect(edge.get('Trim out')).toBe(true)
+  it('names the main source without adding a second set of controls', () => {
+    const html = render({ selectedSource: true, sourceClip: { name: 'Source', startTime: 2, endTime: 8 }, currentTime: 5 })
+    expect(html).toContain('Main source selected')
+    expect(html).not.toContain('Trim in')
+    expect(html).not.toContain('Trim out')
   })
 
   it('draws a draggable playhead handle and a real clip body', () => {

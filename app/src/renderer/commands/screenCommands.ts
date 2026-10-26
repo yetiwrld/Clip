@@ -225,7 +225,6 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
 export interface TimelineHandlers {
   hasSelection(): boolean
   deleteSelected(): void
-  rippleDeleteSelected(): void
   duplicateSelected(): void
   cutSelected(): void
   copySelected(): void
@@ -306,16 +305,6 @@ export function timelineCommands(get: () => TimelineHandlers): Command[] {
       shortcut: [{ key: 'delete' }, { key: 'backspace' }],
       enabled: () => Boolean(get()?.hasSelection()),
       run: () => get().deleteSelected()
-    },
-    {
-      id: 'timeline.rippleDelete',
-      title: 'Ripple delete',
-      category: 'Timeline',
-      keywords: ['remove', 'close gap', 'shift delete'],
-      hint: 'Removes the selection and closes the gap',
-      shortcut: { key: 'delete', shift: true },
-      enabled: () => Boolean(get()?.hasSelection()),
-      run: () => get().rippleDeleteSelected()
     },
     {
       id: 'timeline.selectAll',

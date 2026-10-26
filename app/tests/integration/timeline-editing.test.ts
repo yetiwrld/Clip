@@ -137,10 +137,10 @@ describe('timeline edits survive a restart', () => {
     expect(reopened.tracks).toEqual(saved.tracks)
   })
 
-  it('stores a ripple delete and refuses a corrupt timeline', async () => {
+  it('stores a delete and refuses a corrupt timeline', async () => {
     const root = newRoot()
     const ctx = await open(root)
-    const projectId = makeProject(ctx, 'Ripple')
+    const projectId = makeProject(ctx, 'Delete')
     const clipId = makeClip(ctx, projectId)
     const backend = createBackend(ctx, null)
 
@@ -154,13 +154,13 @@ describe('timeline edits survive a restart', () => {
       ],
       snapEnabled: true
     }
-    const rippled = deleteTimelineItems(original, ['b'], { ripple: true })!.timeline
-    await backend.invoke('timeline.save', { clipId, timeline: rippled })
-    expect(clipTimelineRepo.get(ctx.db, clipId).items.find((entry) => entry.id === 'c')!.startTime).toBe(2)
+    const deleted = deleteTimelineItems(original, ['b'])!.timeline
+    await backend.invoke('timeline.save', { clipId, timeline: deleted })
+    expect(clipTimelineRepo.get(ctx.db, clipId).items.find((entry) => entry.id === 'c')!.startTime).toBe(5)
 
     // A clip whose source-out is before its source-in would render nothing and
     // is rejected before it can be written.
-    const corrupt = { ...rippled, items: [{ ...rippled.items[0], sourceIn: 5, sourceOut: 1 }] }
+    const corrupt = { ...deleted, items: [{ ...deleted.items[0], sourceIn: 5, sourceOut: 1 }] }
     await expect(backend.invoke('timeline.save', { clipId, timeline: corrupt })).rejects.toMatchObject({
       code: 'VALIDATION_FAILED'
     })

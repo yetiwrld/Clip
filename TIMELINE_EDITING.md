@@ -4,9 +4,9 @@ What the editor could do before, what it does now, and what it still does not do
 Written for this task: "Implement Professional Video Editor Editing Controls and
 Timeline Operations".
 
-The short version: cut, copy, paste, duplicate, delete, ripple delete, split,
-trim, move, multi-select, snapping and undo/redo now act on the real
-`ClipTimeline` the project saves. One implementation is shared by the keyboard,
+The short version: cut, copy, paste, duplicate, delete, split, trim, move,
+multi-select, snapping and undo/redo now act on the real `ClipTimeline` the
+project saves. One implementation is shared by the keyboard,
 the labelled toolbar, the right-click menu and the command palette.
 
 ---
@@ -26,7 +26,7 @@ the labelled toolbar, the right-click menu and the command palette.
 | Preview | Stage, multi-track media elements, silence skipping. | **Untouched.** |
 
 Gaps found: no copy, cut or paste of clips; no multi-selection or range
-selection; delete only ever removed one clip; no ripple delete; no cross-track
+selection; delete only ever removed one clip; no cross-track
 drag; no context menu; no edit menu; discrete commands could be merged into the
 undo step of a neighbouring drag; drags did not snap to other clips' edges for
 trims; times were rounded to 0.01 s instead of the project frame grid.
@@ -45,13 +45,15 @@ trims; times were rounded to 0.01 s instead of the project frame grid.
 | Duplicate | Ctrl/⌘ D | Copies the selection directly after itself. |
 | Split | Ctrl/⌘ B | Splits every selected clip (or every clip under the playhead when nothing is selected). The right-hand pieces become the selection. |
 | Delete | Delete / Backspace | Removes the selection and leaves a gap. |
-| Ripple delete | Shift Delete | Removes the selection and closes the gap on the affected tracks. |
 | Select all | Ctrl/⌘ A | Selects every clip on an unlocked track. |
 | Clear selection | Esc | Clears the selection (closes the properties panel first). |
 | Snapping | Shift S | Toggles magnetic snapping. |
 
 Split, trim and move all map through clip speed: a 2× clip cut one second into
 its timeline life cuts two seconds into its source.
+
+Ripple delete is not offered. Delete leaves the gap, so a remove never shifts
+clips the user did not select.
 
 ### The clip clipboard
 
@@ -121,19 +123,31 @@ system. That is the existing design and it is reliable for these operations.
 
 ### Menus, toolbar and feedback
 
-- **Toolbar**: Cut, Copy, Paste, Split, Duplicate, Delete and Ripple delete are
-  visible, labelled buttons next to snapping, Add track, Undo and Redo. Each
-  carries its shortcut in the tooltip and is disabled when it cannot run.
-  A disabled button also says why: "Split clips at playhead · move the playhead
-  inside the clip first · Ctrl+B". Selecting the main source adds Trim in and
-  Trim out, which move the clip's own in/out points to the playhead (I / O do the
-  same thing from the keyboard).
+- **Toolbar**: Cut, Copy, Paste, Split, Duplicate and Delete are icon-only
+  buttons on the full 30px control height, next to snapping, Add track, Undo and
+  Redo. Hovering any icon shows its name and shortcut (and the reason it is
+  disabled): "Split clips at playhead · move the playhead inside a clip first ·
+  Ctrl+B". The main source clip is trimmed with its edge handles or the I / O
+  keys; when it is selected the edit buttons say so ("the main source is one
+  clip — trim its edges") instead of asking for a clip that is already selected.
+- **Selecting is not seeking**: clicking a timeline clip, a caption block or a
+  text layer selects it and leaves the playhead alone. Double-click moves the
+  playhead to that block. Only the ruler, the playhead grip and empty space move
+  it.
 - **Status line**: names the selection ("2 clips selected"), warns when the
   playhead still has to move for a split, says when the selection is on a locked
   track, and shows the result of the last command ("Copied 2 clips", "Pasted 3
   clips at 0:12.0") without opening a toast.
 - **Right-click menu**: the same actions for the clip or the empty space under
   the pointer, with the same shortcuts and disabled states.
+- **Getting media onto the timeline**: every card in the Media panel has a
+  `+` button that places the asset at the playhead, on the first unlocked track
+  that takes its media type (creating one when needed). Dragging a card onto a
+  track does the same thing through the same helper
+  (`addAssetToTimeline` in `src/shared/editor/timeline-editing.ts`), and an
+  empty lane says where media comes from. Until a clip is on a track there is
+  nothing for cut, split or delete to act on, which is why that path is now one
+  click rather than a drag.
 - **Command palette**: the same commands, searchable, gated by the same
   `enabled()` checks.
 - Errors still use the toast when they need attention: "Move the playhead inside
@@ -176,7 +190,7 @@ other edit. Nothing in the menus edits state directly.
 | Arrows changed from "one second" to "one frame"; Shift+arrow = one second | Frame stepping is the desktop convention and the request asked for frame-accurate playhead movement. `,` and `.` still step frames too, so nothing was lost. |
 | Ctrl+C/V/X/A are claimed only when a selection or the clip clipboard exists | Outside the editing context those keys keep their native behaviour. Text fields always keep them: the dispatcher checks the focused element first. |
 | Paste overwrites the space it takes | The render path treats clips on one track as a sequence; leaving two clips stacked in the same interval would look correct in the timeline and render unpredictably. |
-| Ripple delete is a separate command (Shift+Delete) | Plain delete must not move unrelated clips, and paste/cut must stay non-rippling. |
+| Delete never moves unrelated clips | There is no ripple mode: a remove leaves a gap, and later edits are never shifted silently. |
 | Escape is shared with the properties panel | The panel registers last, so it closes first when open; Escape then clears the selection. The conflict test allows exactly this pair. |
 | Selection stays in the timeline component | The parent already owned the primary clip for the inspector; adding a second owner would create two sources of truth. |
 
@@ -186,7 +200,7 @@ other edit. Nothing in the menus edits state directly.
 
 | Not done | Why |
 |---|---|
-| Insert (ripple) editing for paste | The timeline has no insert mode today; paste is an overwrite edit and drag-drop is free placement. Adding insert semantics would change how dropping media behaves, which was out of scope for this pass. |
+| Insert editing for paste | The timeline has no insert mode today; paste is an overwrite edit and drag-drop is free placement. Adding insert semantics would change how dropping media behaves, which was out of scope for this pass. |
 | Linking/unlinking audio and video | The data model has no linked pairs: an item references one asset on one track. There is nothing to link. |
 | Marquee (rubber-band) selection | Multi-select, range select and select-all cover the workflow without a new pointer mode. |
 | Keyboard nudging of clips | Not requested in a form that did not collide with playhead keys. |
@@ -197,14 +211,14 @@ other edit. Nothing in the menus edits state directly.
 
 | Test | What it proves |
 |---|---|
-| `tests/unit/timeline-clipboard.test.ts` (24) | Copy keeps properties and relative timing; cut stores and removes; paste tiles, overwrites and splits; locks are respected; ripple closes gaps; duplicate and split keep source intervals; range select; drop-on-clip resolution. |
+| `tests/unit/timeline-clipboard.test.ts` (21) | Copy keeps properties and relative timing; cut stores and removes; paste tiles, overwrites and splits; locks are respected; delete leaves a gap and never touches a locked track; duplicate and split keep source intervals; range select; drop-on-clip resolution. |
 | `tests/unit/timeline-wiring.test.ts` (16) | The labelled toolbar, its order, tooltips, disabled states and disabled hints are rendered from the real commands; tapping a clip or the main source has no seek; the playhead grip exists; undo/redo reflect both histories; the timeline registers in the shared registry and has no keyboard listener of its own; every edit flows through the persisted save path; each operation has one call site. |
 | `tests/unit/commands.test.ts` (23) | Cut/copy/paste/select-all are inert in text fields and unavailable without a selection or clipboard; Escape ordering; no duplicate shortcuts beyond the documented pair. |
 | `tests/unit/timeline-commands.test.ts` (7) | A discrete command is never merged into a surrounding drag; drag values coalesce; undo order and redo branching. |
 | `tests/unit/frame-rate.test.ts` (4) | Frame rounding at 25 fps and 23.976 fps, negative and invalid input. |
 | `tests/unit/playback.test.ts` (4) | Pressing play keeps a playhead outside the clip range where it is, restarts only at the end, clamps to the media, and does not guess before metadata loads. |
-| `tests/integration/timeline-editing.test.ts` (3) | Split, cut and paste saved through the real dispatcher and read back after a restart; ripple delete persisted; a corrupt timeline is rejected; undo/redo round trip. |
-| Full suite | 55 files / 605 tests pass. |
+| `tests/integration/timeline-editing.test.ts` (3) | Split, cut and paste saved through the real dispatcher and read back after a restart; delete persisted; a corrupt timeline is rejected; undo/redo round trip. |
+| Full suite | 55 files / 606 tests pass. |
 | Typecheck | `tsc` clean for the renderer and for main/shared. |
 | Build | `electron-vite build` succeeds. |
 | Preview | Built app served on :8787; `timeline.get`/`timeline.save` round trip through the real backend; new command strings present in the bundle. |

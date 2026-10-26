@@ -47,7 +47,6 @@ function stubTimelineHandlers() {
   return {
     hasSelection: () => true,
     deleteSelected: noop,
-    rippleDeleteSelected: noop,
     duplicateSelected: noop,
     cutSelected: noop,
     copySelected: noop,

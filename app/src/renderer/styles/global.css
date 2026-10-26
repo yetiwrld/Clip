@@ -3071,7 +3071,6 @@ details.error-details pre {
 .timeline-toolbar-actions > .btn { white-space:nowrap; }
 .timeline-snap,.timeline-add-track-summary { display:inline-flex; align-items:center; gap: var(--space-3); }
 .timeline-snap[aria-pressed="true"] { color:var(--accent); }
-.snap-state { min-width:20px; color:var(--text-3); font-size: var(--fs-micro); }
 
 .timeline-zoom-control input[type="range"] { width:clamp(72px, 9vw, 124px); accent-color:var(--accent); }
 .timeline-zoom-control .zoom-value { min-width:52px; color:var(--text-2); text-align:right; }
@@ -3790,7 +3789,7 @@ details.error-details pre {
 }
 
 .timeline-toolbar-actions .btn.sm {
-  height: 26px;
+  height: var(--control-h);
 }
 
 /* The edit actions are labelled buttons, not icons hidden behind a dropdown:
@@ -3802,9 +3801,45 @@ details.error-details pre {
   row-gap: var(--space-2);
 }
 
+.timeline-action-wrap {
+  display: inline-flex;
+}
+
+/* A disabled button swallows hover in some browsers. Let the wrapper take it,
+   so the reason in the title is still readable. */
+.timeline-action-wrap.is-disabled {
+  cursor: not-allowed;
+}
+
+.timeline-action-wrap.is-disabled .timeline-action {
+  pointer-events: none;
+}
+
 .timeline-action {
-  gap: var(--space-2);
   color: var(--text-2);
+  font-size: var(--fs-base);
+}
+
+/* Empty lanes say how to get media onto them. It never blocks a drop. */
+.multi-track-empty-hint {
+  position: absolute;
+  top: 50%;
+  left: var(--space-4);
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* The six edit commands are the most-used controls on this bar, so they get
+   the full control height even though they are icon-only. A 24px icon button
+   was easy to miss and easy to miss with the pointer. */
+.multi-track-toolbar .timeline-toolbar-actions .btn.sm.timeline-action {
+  width: var(--control-h);
+  min-width: var(--control-h);
+  min-height: var(--control-h);
+  height: var(--control-h);
 }
 
 .timeline-action:hover:not(:disabled) {
@@ -3876,7 +3911,6 @@ details.error-details pre {
 }
 
 @media (max-width: 720px) {
-  .timeline-action-label,
   .timeline-selection-status:not(.is-feedback) {
     display: none;
   }

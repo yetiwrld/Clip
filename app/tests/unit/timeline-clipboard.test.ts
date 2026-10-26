@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { ClipTimeline, TimelineItem } from '../../src/shared/types'
+import type { ClipTimeline, ProjectAsset, TimelineItem } from '../../src/shared/types'
 import { useTimelineClipboard } from '../../src/renderer/features/editor/timeline-clipboard'
 import {
+  addAssetToTimeline,
   copyTimelineItems,
   cutTimelineItems,
   deleteTimelineItems,
@@ -164,7 +165,41 @@ describe('paste', () => {
   })
 })
 
-describe('delete and ripple delete', () => {
+const asset = (over: Partial<ProjectAsset> = {}): ProjectAsset => ({
+  id: 'asset-1', projectId: 'project-1', name: 'clip.mp4', originalName: 'clip.mp4',
+  mediaType: 'video', path: '/media/clip.mp4', thumbnailPath: null, duration: 8,
+  width: 1920, height: 1080, audioChannels: 2, sizeBytes: 1024, missing: false,
+  createdAt: '2026-01-01T00:00:00.000Z', ...over
+})
+
+describe('adding a library asset to the timeline', () => {
+  it('puts the clip on a compatible track at the playhead, keeping the asset interval', () => {
+    const placed = addAssetToTimeline(timeline([item({ id: 'a' })]), asset(), { at: 12, newId: ids() })!
+    expect(placed.item).toMatchObject({ assetId: 'asset-1', trackId: 'video-1', startTime: 12, sourceIn: 0, sourceOut: 8, speed: 1 })
+    expect(placed.createdTrack).toBe(false)
+    expect(placed.timeline.items.map((entry) => entry.id)).toEqual(['a', placed.item.id])
+    // The input timeline is untouched, so an undo step can be recorded from it.
+    expect(timeline([item({ id: 'a' })]).items).toHaveLength(1)
+  })
+
+  it('creates a track that takes the media type when none exists', () => {
+    const placed = addAssetToTimeline({ tracks, items: [], snapEnabled: true }, asset({ mediaType: 'image', duration: null }), { at: 2, newId: ids() })!
+    expect(placed.createdTrack).toBe(true)
+    expect(placed.track).toMatchObject({ type: 'image', name: 'Graphics 1' })
+    expect(placed.item.sourceOut).toBe(5)
+    expect(placed.timeline.tracks).toHaveLength(4)
+  })
+
+  it('never lands on a locked track and refuses missing media', () => {
+    const locked = { tracks: tracks.map((track) => track.id === 'video-1' ? { ...track, locked: true } : track), items: [], snapEnabled: true }
+    const placed = addAssetToTimeline(locked, asset(), { at: 0, newId: ids() })!
+    expect(placed.track.id).toBe('video-2')
+    expect(addAssetToTimeline(locked, asset({ missing: true }), { at: 0, newId: ids() })).toBeNull()
+    expect(addAssetToTimeline(locked, asset(), { at: 0, trackId: 'video-1', newId: ids() })).toBeNull()
+  })
+})
+
+describe('delete', () => {
   const three = timeline([
     item({ id: 'a', startTime: 0, sourceOut: 2 }),
     item({ id: 'b', startTime: 2, sourceOut: 3 }),
@@ -178,29 +213,12 @@ describe('delete and ripple delete', () => {
     expect(result.timeline.items.find((entry) => entry.id === 'c')!.startTime).toBe(5)
   })
 
-  it('ripple delete closes the gap on that track only', () => {
-    const result = deleteTimelineItems(three, ['b'], { ripple: true })!
-    expect(result.timeline.items.map((entry) => entry.id)).toEqual(['a', 'c', 'audio'])
-    expect(result.timeline.items.find((entry) => entry.id === 'c')!.startTime).toBe(2)
-    // A different track keeps its sync.
-    expect(result.timeline.items.find((entry) => entry.id === 'audio')!.startTime).toBe(5)
-  })
-
-  it('ripple delete of several clips closes each gap in order', () => {
-    const result = deleteTimelineItems(three, ['a', 'b'], { ripple: true })!
-    expect(result.timeline.items.find((entry) => entry.id === 'c')!.startTime).toBe(0)
-  })
-
-  it('never removes or shifts a locked track', () => {
+  it('never removes a clip on a locked track, or moves anything else', () => {
     const locked = { ...three, tracks: tracks.map((track) => (track.id === 'audio-1' ? { ...track, locked: true } : track)) }
-    const result = deleteTimelineItems(locked, ['b', 'audio'], { ripple: true })!
+    const result = deleteTimelineItems(locked, ['b', 'audio'])!
     expect(result.removedIds).toEqual(['b'])
     expect(result.timeline.items.find((entry) => entry.id === 'audio')!.startTime).toBe(5)
-  })
-
-  it('clamps a shifted clip to the start of the timeline', () => {
-    const result = deleteTimelineItems(timeline([item({ id: 'a', startTime: 0, sourceOut: 5 }), item({ id: 'b', startTime: 5, sourceOut: 1 })]), ['a'], { ripple: true })!
-    expect(result.timeline.items[0].startTime).toBe(0)
+    expect(result.timeline.items.find((entry) => entry.id === 'c')!.startTime).toBe(5)
   })
 })
 

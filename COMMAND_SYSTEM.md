@@ -100,7 +100,6 @@ Timeline, registered while the timeline is mounted:
 | Ctrl D | Duplicate the selection after itself |
 | Ctrl B | Split at the playhead |
 | Delete / Backspace | Delete the selection, leaving a gap |
-| Shift Delete | Ripple delete: remove it and close the gap |
 | Ctrl A | Select every clip on an unlocked track |
 | Esc | Clear the timeline selection (closes the properties panel first) |
 | Shift S | Toggle magnetic snapping |
