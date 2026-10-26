@@ -188,9 +188,10 @@ Deliberately **not** added, and why:
 | `null` | 34 %-wide sliver travelling across the track | `aria-busy="true"`, `aria-valuetext="Working, length unknown"`, text "Working" |
 
 A queued job draws **no bar at all** — it is not working yet, and a moving bar
-would say it is. The job block also states elapsed time from the real start
-timestamp, so a stalled render is visibly stalled: the number stops, the clock
-keeps going.
+would say it is. A working job with a real start timestamp also shows elapsed
+time, so a stalled render is visibly stalled: the number stops, the clock keeps
+going. Jobs whose backend record has no start time show no clock at all, rather
+than counting from "created" and calling it a duration.
 
 With reduce-motion, the indeterminate bar does not freeze into something that
 looks like a stuck partial bar; it becomes a static striped track, so it still

@@ -151,14 +151,14 @@ describe('a running job shows three honest readings', () => {
     renderToStaticMarkup(React.createElement(JobActivity, props))
 
   it('shows no bar and says Waiting while queued', () => {
-    const html = render({ state: 'queued', statusLabel: 'Queued', progress: 0, ticking: false })
+    const html = render({ state: 'queued', statusLabel: 'Queued', progress: 0 })
     expect(html).toContain('Waiting')
     expect(html).not.toContain('progress-track')
     expect(html).not.toContain('0%')
   })
 
   it('shows the indeterminate bar when the backend gave no estimate', () => {
-    const html = render({ state: 'working', statusLabel: 'Rendering', progress: null, ticking: false })
+    const html = render({ state: 'working', statusLabel: 'Rendering', progress: null })
     expect(html).toContain('Working')
     expect(html).toContain('progress-track indeterminate')
     expect(html).not.toContain('%')
@@ -170,12 +170,18 @@ describe('a running job shows three honest readings', () => {
       statusLabel: 'Rendering',
       progress: 0.42,
       samples: [0.2, 0.3, 0.42],
-      startedAt: '2026-01-01T10:00:00.000Z',
-      ticking: false
+      startedAt: '2026-01-01T10:00:00.000Z'
     })
     expect(html).toContain('42%')
     expect(html).toContain('activity-graph')
     expect(html).toContain('aria-hidden="true"')
+  })
+
+  it('shows no clock when the backend recorded no start time', () => {
+    const html = render({ state: 'working', statusLabel: 'Transcribing', progress: 0.3 })
+    expect(html).toContain('30%')
+    // No elapsed readout: counting from "created" would not be a real duration.
+    expect(html).not.toMatch(/· \d+[smh]/)
   })
 })
 

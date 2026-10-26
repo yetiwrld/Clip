@@ -25,12 +25,14 @@ export function JobActivity(props: {
   progress: number | null | undefined
   /** Measured samples for the graph; omitted when there is no history. */
   samples?: readonly number[]
-  /** ISO timestamp of when the job started, for the elapsed readout. */
+  /**
+   * ISO timestamp of when the job actually started. Omitted when the backend
+   * does not record one — the block then shows progress without a clock rather
+   * than counting from a moment that is only a guess.
+   */
   startedAt?: string | null
-  /** Drives the one-second clock. Off means a static "now". */
-  ticking?: boolean
 }) {
-  const now = useNow(props.ticking ?? true)
+  const now = useNow(Boolean(props.startedAt))
   const percent = progressPercent(props.progress)
   const elapsed = props.state === 'working' && props.startedAt ? formatElapsed(props.startedAt, now) : null
 

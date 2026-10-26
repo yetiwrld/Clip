@@ -137,7 +137,7 @@ function RenderRow({
               statusLabel={renderStageLabel(render.stage) || (render.status === 'queued' ? 'Queued' : 'Working')}
               progress={render.status === 'queued' ? null : render.progress}
               samples={activity}
-              startedAt={render.status === 'queued' ? null : render.startedAt ?? render.createdAt}
+              startedAt={render.status === 'queued' ? null : render.startedAt}
             />
           </div>
         ) : render.status === 'failed' && render.error ? (

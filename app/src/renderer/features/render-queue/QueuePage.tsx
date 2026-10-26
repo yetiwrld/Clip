@@ -148,7 +148,6 @@ export function QueuePage() {
                   statusLabel={t.message ?? (t.state === 'queued' ? 'Queued' : renderStageLabel(t.stage) || 'Working…')}
                   progress={t.progress}
                   samples={data.activity[t.id]}
-                  startedAt={t.state === 'running' ? t.createdAt : null}
                 />
               </div>
               <div className="q-actions">
