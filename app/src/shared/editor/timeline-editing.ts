@@ -35,13 +35,20 @@ export interface TimelinePlacement {
 export function addAssetToTimeline(
   timeline: ClipTimeline,
   asset: ProjectAsset,
-  options: { at: number; trackId?: string; newId: () => string }
+  /**
+   * `reservedTrackId` is the track the main video owns. Other media is placed on
+   * the next track that fits instead of stacking on top of the source.
+   */
+  options: { at: number; trackId?: string; reservedTrackId?: string | null; newId: () => string }
 ): TimelinePlacement | null {
   if (!asset || asset.missing) return null
-  const requested = options.trackId ? timeline.tracks.find((track) => track.id === options.trackId) : undefined
+  const reservedId = options.reservedTrackId ?? null
+  const requested = options.trackId && options.trackId !== reservedId
+    ? timeline.tracks.find((track) => track.id === options.trackId)
+    : undefined
   if (requested && (requested.locked || requested.type !== asset.mediaType)) return null
   let track = requested ?? [...timeline.tracks]
-    .filter((candidate) => candidate.type === asset.mediaType && !candidate.locked)
+    .filter((candidate) => candidate.type === asset.mediaType && !candidate.locked && candidate.id !== reservedId)
     .sort((a, b) => a.order - b.order)[0]
   let tracks = timeline.tracks
   let createdTrack = false

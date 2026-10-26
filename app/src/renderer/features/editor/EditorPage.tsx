@@ -289,7 +289,7 @@ export function EditorPage() {
         // Prefer the track the files were dropped on, but never force a clip
         // onto a locked track or one that does not take its media type.
         const droppedOn = next.tracks.find((candidate) => candidate.id === pending.track.id && candidate.type === asset.mediaType && !candidate.locked)
-        const placed = addAssetToTimeline(next, asset, { at: pending.time, trackId: droppedOn?.id, newId: () => crypto.randomUUID() })
+        const placed = addAssetToTimeline(next, asset, { at: pending.time, trackId: droppedOn?.id, reservedTrackId: mainTrackRow?.id ?? null, newId: () => crypto.randomUUID() })
         if (placed) next = placed.timeline
       }
       if (newAssets.length) scheduleTimelineSave(next, { discrete: true })
@@ -410,6 +410,7 @@ export function EditorPage() {
   function addAssetAtPlayhead(asset: ProjectAsset) {
     const placed = addAssetToTimeline(clipTimelineRef.current, asset, {
       at: Math.max(0, currentTime),
+      reservedTrackId: mainTrackRow?.id ?? null,
       newId: () => crypto.randomUUID()
     })
     if (!placed) {
@@ -1315,6 +1316,8 @@ export function EditorPage() {
     () => [...clipTimeline.tracks].sort((a, b) => a.order - b.order).find((track) => track.type === 'video') ?? null,
     [clipTimeline.tracks]
   )
+  /** Video 1 belongs to the main video, so other media is placed beside it. */
+  const reservedTrackId = mainTrackRow?.id ?? null
 
   /** Removing a piece hides that source range, exactly like a silence cut. */
   function removeMainPiece(piece: MainTrackPiece) {
