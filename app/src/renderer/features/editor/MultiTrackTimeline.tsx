@@ -1145,10 +1145,9 @@ export function MultiTrackTimeline(props: {
             </div>
           </div>
         ) : null}
-        {props.textLayers && <div className="multi-track-row text-track-row">
+        {props.textLayers && props.textLayers.length > 0 && <div className="multi-track-row text-track-row">
           <div className="multi-track-label"><span className="track-title"><Type size={14} /> Text / graphics</span><small>{props.textLayers.length === 1 ? '1 layer' : `${props.textLayers.length} layers`}</small></div>
           <div className="multi-track-lane">
-            {props.textLayers.length === 0 && <span className="timeline-empty-track">Add a text layer in Text / graphics to place it here.</span>}
             {props.textLayers.map((layer) => <div key={layer.id} role="group" className={`timeline-text-block${props.selectedTextLayerId === layer.id ? ' selected' : ''}`} style={{ left: layer.startTime * pixelsPerSecond, width: Math.max(24, (layer.endTime - layer.startTime) * pixelsPerSecond) }}>
               <button type="button" className="timeline-text-content" aria-label={`Text layer ${layer.text || 'untitled'} at ${formatClock(layer.startTime, true)}`} title="Click to select · drag to move · double-click to move the playhead" onDoubleClick={() => seekTo(layer.startTime)} onClick={(event) => { if (event.detail !== 0) return; props.onSelectTextLayer?.(layer) }} onPointerDown={(event) => { props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text', startX: event.clientX, layer }) }}>{layer.text || 'Text layer'}</button>
               <button type="button" role="slider" aria-orientation="horizontal" className="text-trim-handle left" aria-label={`Adjust start of text layer ${layer.text || 'untitled'}`} aria-valuemin={0} aria-valuemax={layer.endTime - 0.1} aria-valuenow={layer.startTime} title="Drag or use arrow keys to adjust text start" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => adjustTextLayerByKey(event, layer, 'left')} onPointerDown={(event) => { event.stopPropagation(); props.onSelectTextLayer?.(layer); beginEditDrag(event, { mode: 'text-left', startX: event.clientX, layer }) }} />

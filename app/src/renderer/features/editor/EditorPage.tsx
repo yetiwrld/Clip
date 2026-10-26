@@ -220,10 +220,12 @@ export function EditorPage() {
         setSelectedTimelineItem(null)
         setMainClipSelected(false)
         setSegments(document.transcript)
+        // A new project starts with the two tracks every cut has: the video and
+        // its sound. Text, graphics and extra audio tracks appear when they are
+        // actually added, so an empty project is not a wall of empty rows.
         const initialTracks: TimelineTrack[] = [
           { id: crypto.randomUUID(), name: 'Video 1', type: 'video', order: 0, muted: false, hidden: false, locked: false },
-          { id: crypto.randomUUID(), name: 'Graphics', type: 'image', order: 1, muted: false, hidden: false, locked: false },
-          { id: crypto.randomUUID(), name: 'Audio 1', type: 'audio', order: 2, muted: false, hidden: false, locked: false }
+          { id: crypto.randomUUID(), name: 'Audio 1', type: 'audio', order: 1, muted: false, hidden: false, locked: false }
         ]
         const restoredTimeline = savedTimeline.tracks.length ? savedTimeline : { ...savedTimeline, tracks: initialTracks }
         clipTimelineRef.current = restoredTimeline
@@ -2477,9 +2479,11 @@ export function EditorPage() {
           trackingKeyframes={clip.trackingKeyframes}
           cameraKeyframes={clip.cameraKeyframes}
           fps={project.fps}
-          mainClip={mainClipRow && clip ? {
+          mainClip={mainClipRow && clip && project?.sourcePath ? {
             trackId: mainClipRow.id,
-            name: sourceAsset?.name ?? project.name ?? 'Main clip',
+            // The video's own name, never the project's: this block is the
+            // footage, and a project name there reads like demo content.
+            name: sourceAsset?.name ?? (project.sourceFilename ? project.sourceFilename : 'Main video'),
             duration: mainClipDuration,
             thumbnail: sourceAsset?.thumbnailPath ? mediaUrl(sourceAsset.thumbnailPath) : (filmstrip?.[0] ? mediaUrl(filmstrip[0].path) : null),
             peaks: sourceAsset ? assetWaveforms[sourceAsset.id] ?? null : null,

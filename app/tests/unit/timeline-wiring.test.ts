@@ -254,6 +254,20 @@ describe('timeline edit toolbar', () => {
     expect(source).toContain('props.onCommitEdit?.()')
   })
 
+  it('shows only the rows a project actually has', () => {
+    const busy = render({ textLayers: [], captions: [], cameraKeyframes: [] })
+    expect(busy).not.toContain('caption-track-row')
+    expect(busy).not.toContain('text-track-row')
+    expect(busy).not.toContain('camera-track-row')
+    // The rows that remain are the tracks themselves.
+    expect(busy).toContain('data-track-id="video-1"')
+
+    const withText = render({
+      textLayers: [{ id: 't1', text: 'Hello', startTime: 0, endTime: 2, x: 0.5, y: 0.3, fontSize: 64, fontFamily: 'Inter', fontWeight: 600, color: '#fff', backgroundOpacity: 0, backgroundColor: '#000', opacity: 1, rotation: 0, scale: 1, keyframes: [] } as never]
+    })
+    expect(withText).toContain('text-track-row')
+  })
+
   it('labels the ruler like an editor: 00:00, not 0:00.0', () => {
     const html = render({ duration: 30 })
     const ruler = html.slice(html.indexOf('multi-track-ruler-body'), html.indexOf('data-track-id='))
