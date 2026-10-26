@@ -42,6 +42,10 @@ export const appSettingsSchema = z.object({
   general: z.object({
     firstRunCompleted: z.boolean()
   }),
+  help: z.object({
+    tourCompleted: z.boolean(),
+    dismissedTips: z.array(z.string().min(1).max(80)).max(100)
+  }),
   ai: z.object({
     activeProvider: z.enum(['heuristic-local', 'openai-compatible', 'anthropic', 'none']),
     openai: aiProviderRuntimeConfigSchema,

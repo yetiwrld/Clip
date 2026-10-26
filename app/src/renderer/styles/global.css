@@ -151,6 +151,7 @@
   --z-fullscreen: 350;    /* the stage, fullscreen */
   --z-modal: 400;
   --z-palette: 450;       /* command palette, above dialogs it may be opened from */
+  --z-tour: 460;          /* guided tour card and spotlight, below toasts */
   --z-toast: 500;
 
   /* ---- elevation (minimal, neutral only) ---- */
@@ -4621,5 +4622,292 @@ button:disabled {
   /* The narrowest phones drop the least useful hint first. */
   .palette-foot-hint--optional {
     display: none;
+  }
+}
+
+/* ============================================================== help & onboarding */
+
+/* The welcome screen offers real next steps, one card each. */
+.welcome-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.welcome-paths .btn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.welcome-paths-title {
+  margin-top: var(--space-5);
+  color: var(--text-3);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* Help screen. */
+.help-steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: var(--space-6);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.help-steps strong {
+  color: var(--text-1);
+  font-weight: var(--fw-medium);
+}
+
+.help-actions {
+  margin-top: var(--space-4);
+}
+
+.help-lead {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+  line-height: var(--lh-normal);
+}
+
+.help-note {
+  margin: var(--space-3) 0 0;
+  color: var(--text-3);
+  line-height: var(--lh-normal);
+}
+
+.help-faq {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.help-faq:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.help-faq summary {
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.help-faq summary:hover {
+  color: var(--accent-strong);
+}
+
+.help-faq summary:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.help-faq p {
+  max-width: var(--read-max);
+  margin: var(--space-2) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.help-about {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-4);
+}
+
+.help-about .mono {
+  overflow-wrap: anywhere;
+}
+
+.help-about-wide {
+  grid-column: 1 / -1;
+}
+
+/* Contextual help: a small button that opens one short explanation. */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.info-tip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.info-tip-button:hover,
+.info-tip-button[aria-expanded="true"] {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+}
+
+.info-tip-button:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.info-tip-pop {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--z-popover);
+  width: min(280px, 60vw);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-2);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-align: left;
+}
+
+.info-tip-end .info-tip-pop {
+  left: auto;
+  right: 0;
+}
+
+/* Contextual help: a one-line note that can be dismissed for good. */
+.tip-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.tip-note > svg {
+  flex: 0 0 auto;
+  margin-top: var(--space-1);
+  color: var(--accent-strong);
+}
+
+.tip-note-text {
+  flex: 1;
+}
+
+.tip-note-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.tip-note-close:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.tip-note-close:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+/* Guided tour. The layer itself never blocks the app: only the card takes
+   pointer events, so every control underneath stays usable. */
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-tour);
+  pointer-events: none;
+}
+
+.tour-spotlight {
+  position: fixed;
+  border-radius: var(--radius-md);
+  /* The ring marks the control; the huge spread dims everything else. A
+     shadow is the only way to cut a hole out of a fixed layer without four
+     separate blocker elements, so this one is exempt from the elevation scale
+     (see ui-consistency.test.ts). */
+  box-shadow: 0 0 0 var(--focus-ring) var(--accent), 0 0 0 9999px var(--scrim);
+  transition: top var(--dur-base) var(--ease), left var(--dur-base) var(--ease),
+    width var(--dur-base) var(--ease), height var(--dur-base) var(--ease);
+}
+
+.tour-card {
+  position: fixed;
+  width: 320px;
+  padding: var(--space-4) var(--space-5) var(--space-4);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-3);
+  pointer-events: auto;
+}
+
+.tour-card:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.tour-step-count {
+  color: var(--accent-strong);
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.tour-title {
+  margin-top: var(--space-2);
+  color: var(--text-1);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+}
+
+.tour-body {
+  margin: var(--space-2) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .tour-card {
+    width: min(320px, calc(100vw - var(--space-6)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight {
+    transition: none;
   }
 }

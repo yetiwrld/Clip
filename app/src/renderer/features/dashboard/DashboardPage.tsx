@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Film, Plus, MoreHorizontal, Pencil, Trash2, Clapperboard } from 'lucide-react'
-import { api, isElectron, mediaUrl, errMessage } from '../../api/client'
-import { pickUpload } from '../../api/upload'
+import { api, mediaUrl, errMessage } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { ConfirmDialog, EmptyState, Modal, formatRelative } from '../../components/ui'
+import { importVideoFile } from './importVideo'
 import { plural, taskTypeLabel } from '../../copy/labels'
 import { formatClock } from '@shared/utils/time'
 import type { ProjectSummary } from '@shared/types'
@@ -46,27 +46,8 @@ export function DashboardPage() {
   async function handleImportFile() {
     setImporting('file')
     try {
-      let filePath: string | null = null
-      if (isElectron) {
-        const picked = await api['media.pickSourceFile']()
-        filePath = picked.filePath
-      } else {
-        // Pick and upload before creating anything, so a cancelled chooser does
-        // not leave an empty project behind in the browser preview.
-        filePath = await pickUpload(['video/*', 'audio/*', '.mkv', '.webm'])
-      }
-      if (!filePath) {
-        app.toast({ level: 'warn', message: 'Import cancelled.' })
-        return
-      }
-      const baseName = filePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || 'Imported video'
-      const id = await createProject(baseName)
-      if (!id) return
-      await api['media.importFile']({ projectId: id, filePath })
-      await data.refreshProjects()
-      app.openProject(id)
-    } catch (err) {
-      app.toast({ level: 'error', ...errMessage(err) })
+      // Shared with the welcome screen: pick, create, import, open.
+      await importVideoFile()
     } finally {
       setImporting(null)
     }
@@ -157,7 +138,7 @@ export function DashboardPage() {
 
       {/* Both ways in share one grid, so the inputs, the buttons and the note
           underneath line up on the same column edges at every width. */}
-      <div className="create-bar">
+      <div className="create-bar" data-tour="create-bar">
         <label className="field-label" htmlFor="new-project-name">New project</label>
         <input
           id="new-project-name"

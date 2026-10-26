@@ -105,9 +105,7 @@ async function main(): Promise<void> {
   // ---- renderer-side maths, measured on the same data ----------------------
   const { buildCues } = await import('../src/shared/captions/segmentation')
   const { computeCrop } = await import('../src/shared/video/crop')
-  const segments = (await backend.invoke('transcript.get', { projectId })) as Array<{
-    id: number; startTime: number; endTime: number; text: string; speaker: string | null; confidence: number | null; words: unknown[] | null
-  }>
+  const segments = (await backend.invoke('transcript.get', { projectId })) as Parameters<typeof buildCues>[0]
 
   const captionOptions = {
     maxWordsPerCue: 6,

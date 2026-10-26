@@ -55,6 +55,25 @@ export function navigationCommands(): Command[] {
       run: () => app().openPalette('shortcuts')
     },
     {
+      id: 'help.open',
+      title: 'Help and setup',
+      category: 'Help',
+      keywords: ['documentation', 'faq', 'getting started', 'troubleshooting', 'version'],
+      hint: 'What the app does, setup check and common questions',
+      run: () => app().navigate('help')
+    },
+    {
+      id: 'help.tour',
+      title: 'Take the guided tour',
+      category: 'Help',
+      keywords: ['onboarding', 'walkthrough', 'learn', 'show me around'],
+      hint: 'Six short stops over the controls you need first',
+      run: () => {
+        app().navigate('dashboard')
+        app().startTour()
+      }
+    },
+    {
       id: 'nav.dashboard',
       title: 'Go to Projects',
       category: 'Navigate',

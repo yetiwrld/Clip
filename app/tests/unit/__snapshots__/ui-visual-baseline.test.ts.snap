@@ -193,6 +193,49 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   font-size: var(--fs-sm)
   font-weight: var(--fw-medium)
   letter-spacing: 0.2px",
+  ".help-about": "(base)
+  display: grid
+  gap: var(--space-4)
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr))",
+  ".help-faq": "(base)
+  border-top: 1px solid var(--border)
+  padding: var(--space-3) 0",
+  ".help-steps": "(base)
+  color: var(--text-2)
+  display: grid
+  font-size: var(--fs-sm)
+  gap: var(--space-3)
+  line-height: var(--lh-normal)
+  margin: 0
+  padding-left: var(--space-6)",
+  ".info-tip-button": "(base)
+  align-items: center
+  background: transparent
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-round)
+  color: var(--text-3)
+  cursor: pointer
+  display: inline-flex
+  height: var(--control-h-sm)
+  justify-content: center
+  padding: 0
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease)
+  width: var(--control-h-sm)",
+  ".info-tip-pop": "(base)
+  background: var(--surface-3)
+  border: 1px solid var(--border-strong)
+  border-radius: var(--radius-md)
+  box-shadow: var(--shadow-2)
+  color: var(--text-2)
+  font-size: var(--fs-xs)
+  left: 0
+  line-height: var(--lh-normal)
+  padding: var(--space-3) var(--space-4)
+  position: absolute
+  text-align: left
+  top: calc(100% + var(--space-2))
+  width: min(280px, 60vw)
+  z-index: var(--z-popover)",
   ".input": "(base)
   background: var(--surface-2)
   border: 1px solid var(--border-strong)
@@ -415,6 +458,18 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   padding: 0",
   ".timeline": "(base)
   width: 100%",
+  ".tip-note": "(base)
+  align-items: flex-start
+  background: var(--surface-2)
+  border: 1px solid var(--border)
+  border-left: 2px solid var(--accent)
+  border-radius: var(--radius-md)
+  color: var(--text-2)
+  display: flex
+  font-size: var(--fs-xs)
+  gap: var(--space-3)
+  line-height: var(--lh-normal)
+  padding: var(--space-3) var(--space-4)",
   ".toast": "(base)
   align-items: flex-start
   background: var(--surface-2)
@@ -437,6 +492,47 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   right: var(--space-5)
   width: min(380px, calc(100vw - var(--space-8)))
   z-index: var(--z-toast)",
+  ".tour-actions": "(base)
+  align-items: center
+  display: flex
+  gap: var(--space-2)
+  margin-top: var(--space-4)",
+  ".tour-body": "(base)
+  color: var(--text-2)
+  font-size: var(--fs-xs)
+  line-height: var(--lh-normal)
+  margin: var(--space-2) 0 0",
+  ".tour-card": "(base)
+  background: var(--surface-2)
+  border: 1px solid var(--accent-border)
+  border-radius: var(--radius-lg)
+  box-shadow: var(--shadow-3)
+  padding: var(--space-4) var(--space-5) var(--space-4)
+  position: fixed
+  width: 320px
+@media (max-width: 640px)
+  width: min(320px, calc(100vw - var(--space-6)))",
+  ".tour-layer": "(base)
+  inset: 0
+  position: fixed
+  z-index: var(--z-tour)",
+  ".tour-spotlight": "(base)
+  border-radius: var(--radius-md)
+  box-shadow: 0 0 0 var(--focus-ring) var(--accent), 0 0 0 9999px var(--scrim)
+  position: fixed
+  transition: top var(--dur-base) var(--ease), left var(--dur-base) var(--ease),
+    width var(--dur-base) var(--ease), height var(--dur-base) var(--ease)
+@media (prefers-reduced-motion: reduce)
+  transition: none",
+  ".tour-title": "(base)
+  color: var(--text-1)
+  font-size: var(--fs-base)
+  font-weight: var(--fw-medium)
+  margin-top: var(--space-2)",
+  ".welcome-paths": "(base)
+  display: grid
+  gap: var(--space-3)
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))",
 }
 `;
 

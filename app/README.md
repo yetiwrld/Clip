@@ -60,7 +60,15 @@ verified on a Windows machine.
 
 Local faster-whisper transcription is optional and requires Python plus the `faster-whisper` package; transcript import and cloud transcription do not need that setup. Optional local speaker grouping requires Python plus `resemblyzer` (`python -m pip install resemblyzer`). Its model weights may download once on first use; afterward speaker analysis stays on-device. The app never sends audio to a cloud service for speaker grouping.
 
-On first launch, a short welcome guide covers the workflow: import a video, find highlights, then edit and export clips. The FFmpeg/FFprobe setup check is available from the guide but does not get in the way of starting a project.
+On first launch, a short welcome screen covers the workflow (import a video, find
+the moments, edit and render) and offers the ways in that actually exist: start a
+new project, import a video, open an existing project, or take an optional guided
+tour. **Skip intro** and **Start creating** both go straight into the app; no
+setup step is required. The FFmpeg/FFprobe setup check lives behind **Check
+setup** on that screen, in **Settings → Advanced**, and on the **Help** screen,
+which also has getting started, the shortcut list, common questions,
+troubleshooting and the app version. The tour can be replayed from Help or from
+the command palette (`Ctrl/⌘ K` → “Take the guided tour”).
 
 ## Run on Windows (development version)
 
@@ -117,9 +125,10 @@ the full tests, generate the fixtures first:
 
 ```powershell
 npm run fixtures
-npm test              # 291 total (194 unit + 97 integration)
+npm test              # 450 tests across 48 files (unit + integration)
 npm run typecheck
 npm run build
+npm run test:visual   # component markup + CSS contract baseline
 ```
 
 Other useful commands:
@@ -128,6 +137,8 @@ Other useful commands:
 npm run preview:web   # optional browser preview at http://localhost:8787
 npm run test:unit
 npm run test:integration
+npm run test:visual:update   # approve an intended visual change
+npm run verify        # typecheck, then the whole suite
 ```
 
 The browser preview is for development; `npm run dev` is the normal way to

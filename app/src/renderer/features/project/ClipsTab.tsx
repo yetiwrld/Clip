@@ -4,6 +4,7 @@ import { api, errMessage, mediaUrl, copyText } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, Modal, ProgressBar, Spinner } from '../../components/ui'
+import { TipNote } from '../help/InfoTip'
 import { clipStatusLabel, plural } from '../../copy/labels'
 import type { ClipDeletionSnapshot } from '@shared/types'
 import { getCaptionStyle } from '@shared/constants'
@@ -112,6 +113,10 @@ export function ClipsTab() {
 
   return (
     <div className="stack">
+      <TipNote id="clips.render-queue">
+        Rendering runs in the background. Start a render, then keep editing or close the project — the job carries on and the finished file
+        stays in this tab.
+      </TipNote>
       {error ? <ErrorBox error={error} /> : null}
       {renderable.length > 0 && (
         <div className="row export-bar">

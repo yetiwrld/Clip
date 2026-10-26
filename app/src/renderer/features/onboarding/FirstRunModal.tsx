@@ -1,20 +1,41 @@
 import React, { useState } from 'react'
-import { ArrowLeft, ArrowRight, Cpu, HardDrive, KeyRound, Video } from 'lucide-react'
-import { useAppStore } from '../../stores/app'
+import { ArrowLeft, ArrowRight, CircleHelp, Clapperboard, Compass, Cpu, Film, HardDrive, Plus, Video } from 'lucide-react'
 
-/** Lightweight first-run guide for users opening the desktop app for the first time. */
+import { useAppStore } from '../../stores/app'
+import { useDataStore } from '../../stores/data'
+import { importVideoFile } from '../dashboard/importVideo'
+
+/**
+ * First run only.
+ *
+ * Three real steps, plus the ways in that actually exist: start a new project,
+ * import a video, open a project that is already here, or take the tour. Every
+ * button closes the welcome screen first, so nothing lingers over the app. There
+ * is no sample project because the app cannot make one yet, and no setup step is
+ * required to continue.
+ */
 export function FirstRunModal() {
   const app = useAppStore()
+  const projects = useDataStore((state) => state.projects.length)
   const [page, setPage] = useState<'welcome' | 'environment'>('welcome')
 
-  async function finish() {
+  async function finish(next?: () => void): Promise<void> {
     await app.saveSettings({ general: { firstRunCompleted: true } })
+    next?.()
   }
 
   const deps = app.dependencies
-  const missing = deps.filter((dependency) =>
-    !dependency.available && (dependency.id === 'ffmpeg' || dependency.id === 'ffprobe')
+  const missing = deps.filter(
+    (dependency) => !dependency.available && (dependency.id === 'ffmpeg' || dependency.id === 'ffprobe')
   )
+
+  function startNewProject(): void {
+    void finish(() => {
+      app.navigate('dashboard')
+      // The name field is the first thing to fill in; focusing it saves a click.
+      window.setTimeout(() => document.getElementById('new-project-name')?.focus(), 0)
+    })
+  }
 
   return (
     <div className="modal-backdrop">
@@ -47,6 +68,35 @@ export function FirstRunModal() {
                   <p>Trim, crop, style captions, then render and export clips that are ready to share.</p>
                 </section>
               </div>
+
+              <div>
+                <div className="welcome-paths-title">Start with</div>
+                <div className="welcome-paths">
+                  <button className="btn primary" onClick={startNewProject}>
+                    <Plus size={14} /> New project
+                  </button>
+                  <button className="btn" onClick={() => void finish(() => void importVideoFile())}>
+                    <Film size={14} /> Import a video
+                  </button>
+                  {projects > 0 && (
+                    <button className="btn" onClick={() => void finish(() => app.navigate('dashboard'))}>
+                      <Clapperboard size={14} /> Open a project
+                    </button>
+                  )}
+                  <button
+                    className="btn ghost"
+                    onClick={() =>
+                      void finish(() => {
+                        app.navigate('dashboard')
+                        app.startTour()
+                      })
+                    }
+                  >
+                    <Compass size={14} /> Take the tour
+                  </button>
+                </div>
+              </div>
+
               <div className="welcome-privacy">
                 <HardDrive size={14} />
                 <span>Your videos stay on this computer by default. Cloud features are used only when you choose them.</span>
@@ -93,8 +143,11 @@ export function FirstRunModal() {
                 <ArrowLeft size={14} /> Back
               </button>
               <span className="header-spacer" />
+              <button className="btn" onClick={() => void finish(() => app.navigate('help'))}>
+                <CircleHelp size={14} /> Help
+              </button>
               <button className="btn primary" onClick={() => void finish()}>
-                <KeyRound size={14} /> Start creating
+                Start creating
               </button>
             </div>
           </>

@@ -718,6 +718,7 @@ export const settingsRepo = {
   defaults(): AppSettings {
     return {
       general: { firstRunCompleted: false },
+      help: { tourCompleted: false, dismissedTips: [] },
       ai: {
         activeProvider: 'none',
         openai: { baseUrl: 'https://api.openai.com/v1', model: '', temperature: 0.4, maxTokens: 4096, jsonMode: false, supportsAudio: false, authStyle: 'bearer' },

@@ -3,7 +3,7 @@ import type { AppInfo, AppSettings, DependencyStatus, ProviderAvailability, Proj
 import type { PaletteMode } from '../commands/types'
 import { api, errMessage } from '../api/client'
 
-export type View = 'dashboard' | 'project' | 'editor' | 'queue' | 'settings'
+export type View = 'dashboard' | 'project' | 'editor' | 'queue' | 'settings' | 'help'
 
 /** Tabs on the project screen. Kept in the store so commands can switch them. */
 export type ProjectTab = 'source' | 'transcript' | 'moments' | 'clips' | 'renders'
@@ -73,6 +73,14 @@ interface AppStore {
   /** Which settings section is open. */
   settingsSection: SettingsSection
   setSettingsSection(section: SettingsSection): void
+
+  /** The guided tour is a single overlay owned by the app shell. */
+  tourOpen: boolean
+  startTour(): void
+  closeTour(): void
+  /** Help state lives in settings so it survives a restart. */
+  dismissTip(id: string): Promise<void>
+  isTipDismissed(id: string): boolean
 
   /** The command palette is a single overlay owned by the app shell. */
   paletteOpen: boolean
@@ -215,6 +223,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
   settingsSection: 'ai',
   setSettingsSection(settingsSection) {
     set({ settingsSection })
+  },
+
+  tourOpen: false,
+  startTour() {
+    set({ tourOpen: true })
+  },
+  closeTour() {
+    set({ tourOpen: false })
+    // Finishing and skipping are the same thing for the user: do not ask again.
+    void get().saveSettings({ help: { tourCompleted: true } })
+  },
+  isTipDismissed(id) {
+    return (get().settings?.help.dismissedTips ?? []).includes(id)
+  },
+  async dismissTip(id) {
+    const dismissed = get().settings?.help.dismissedTips ?? []
+    if (dismissed.includes(id)) return
+    await get().saveSettings({ help: { dismissedTips: [...dismissed, id] } })
   },
 
   paletteOpen: false,

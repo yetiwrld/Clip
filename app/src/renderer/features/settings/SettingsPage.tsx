@@ -4,6 +4,7 @@ import {
   Download, FolderOpen, KeyRound, Trash2, TestTube2, Save, AlertTriangle, Check,
   RefreshCw, ArrowLeft } from 'lucide-react'
 import { api, errMessage, isElectron } from '../../api/client'
+import { InfoTip } from '../help/InfoTip'
 import { useAppStore } from '../../stores/app'
 import { Field, Switch, formatBytes, Spinner, ErrorBox, Modal } from '../../components/ui'
 import { CAPTION_STYLES, QUALITY_PRESETS, RESOLUTION_PRESETS } from '@shared/constants'
@@ -821,6 +822,13 @@ function AdvancedSection() {
   return (
     <div className="settings-section stack">
       <div className="section-title">Advanced</div>
+      <div className="row" style={{ gap: 'var(--space-2)' }}>
+        <span className="field-label">Video tools</span>
+        <InfoTip label="FFmpeg detection" align="end">
+          The app looks for FFmpeg in your system PATH first, then in its own bundled copy. Set a path below only when neither is found, or
+          to use a different build. Rendering, thumbnails and audio cutting all need it.
+        </InfoTip>
+      </div>
       <Field label="FFmpeg path override" hint="Leave blank to detect it: system PATH first, then the bundled copy.">
         <input className="input mono" defaultValue={settings.advanced.ffmpegPath} placeholder={ffmpeg?.available ? `auto: ${ffmpeg.message}` : 'not detected'} onBlur={(e) => void app.saveSettings({ advanced: { ffmpegPath: e.target.value } })} />
       </Field>

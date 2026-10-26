@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { FolderOpen, ListVideo, Settings as SettingsIcon, X, TriangleAlert, Keyboard } from 'lucide-react'
+import { FolderOpen, ListVideo, Settings as SettingsIcon, X, TriangleAlert, Keyboard, CircleHelp } from 'lucide-react'
 import { useAppStore } from './stores/app'
 import { useDataStore } from './stores/data'
 import { subscribeEvents, isPreview, mediaUrl, api } from './api/client'
@@ -10,6 +10,8 @@ import { ProjectPage } from './features/project/ProjectPage'
 import { EditorPage } from './features/editor/EditorPage'
 import { QueuePage } from './features/render-queue/QueuePage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { HelpPage } from './features/help/HelpPage'
+import { TourOverlay } from './features/help/TourOverlay'
 import { FirstRunModal } from './features/onboarding/FirstRunModal'
 import { UpdatePrompt } from './features/updates/UpdatePrompt'
 import { CommandPalette } from './components/CommandPalette'
@@ -117,6 +119,7 @@ export function App() {
           className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}
           onClick={() => navigate('dashboard')}
           aria-current={view === 'dashboard' ? 'page' : undefined}
+          data-tour="projects"
         >
           <FolderOpen size={16} /> Projects
         </button>
@@ -124,6 +127,7 @@ export function App() {
           className={`nav-item ${view === 'queue' ? 'active' : ''}`}
           onClick={() => navigate('queue')}
           aria-current={view === 'queue' ? 'page' : undefined}
+          data-tour="queue"
           title={
             interrupted > 0
               ? `Renders and other jobs. ${interrupted} interrupted job${interrupted === 1 ? '' : 's'} can be resumed or discarded here.`
@@ -147,14 +151,29 @@ export function App() {
             of the free space, so Settings always sits directly above the
             version/workspace/preview lines instead of floating mid-gap. */}
         <div className="sidebar-bottom">
-          <button className="nav-item" onClick={() => openPalette('shortcuts')} title="Searchable keyboard shortcut reference">
+          <button
+            className="nav-item"
+            onClick={() => openPalette('shortcuts')}
+            title="Searchable keyboard shortcut reference"
+            data-tour="shortcuts"
+          >
             <Keyboard size={16} /> Shortcuts
             <kbd className="nav-kbd">{formatShortcut({ key: '/', mod: true })}</kbd>
+          </button>
+          <button
+            className={`nav-item ${view === 'help' ? 'active' : ''}`}
+            onClick={() => navigate('help')}
+            aria-current={view === 'help' ? 'page' : undefined}
+            title="Getting started, shortcuts, setup check and troubleshooting"
+            data-tour="help"
+          >
+            <CircleHelp size={16} /> Help
           </button>
           <button
             className={`nav-item ${view === 'settings' ? 'active' : ''}`}
             onClick={() => navigate('settings')}
             aria-current={view === 'settings' ? 'page' : undefined}
+            data-tour="settings"
           >
             <SettingsIcon size={16} /> Settings
           </button>
@@ -174,9 +193,11 @@ export function App() {
         {view === 'editor' && <EditorPage />}
         {view === 'queue' && <QueuePage />}
         {view === 'settings' && <SettingsPage />}
+        {view === 'help' && <HelpPage />}
       </main>
 
       <CommandPalette />
+      <TourOverlay />
 
       <div className="toasts">
         {toasts.map((t) => (

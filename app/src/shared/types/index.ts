@@ -521,6 +521,18 @@ export interface GeneralSettings {
   firstRunCompleted: boolean
 }
 
+/**
+ * Onboarding and help state. Kept in settings (the document the app already
+ * validates and writes durably) so a returning user is not shown the welcome
+ * screen or a dismissed tip again.
+ */
+export interface HelpSettings {
+  /** The guided tour was finished or skipped. */
+  tourCompleted: boolean
+  /** Ids of the inline tips the user dismissed. Order is not important. */
+  dismissedTips: string[]
+}
+
 export interface VideoSettings {
   targetDurationPreset: DurationPresetId
   renderPreset: 'ultrafast' | 'veryfast' | 'medium' | 'slow'
@@ -557,6 +569,7 @@ export interface AdvancedSettings {
 
 export interface AppSettings {
   general: GeneralSettings
+  help: HelpSettings
   ai: AiSettings
   transcription: TranscriptionSettings
   video: VideoSettings

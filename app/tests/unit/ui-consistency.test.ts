@@ -175,6 +175,9 @@ describe('design-system compliance', () => {
           if (value.startsWith('var(--shadow') || value === 'none') continue
           // Rings and HUD outlines are drawn over media, not chrome elevation.
           if (inMediaLayer(rule.selector) || rule.selector.includes('focus') || rule.selector.includes('camera')) continue
+          // The tour spotlight dims everything except one rectangle; only a
+          // shadow with a huge spread can cut that hole out of a fixed layer.
+          if (rule.selector.includes('tour-spotlight')) continue
           shadowOffenders.push(`${rel(cssPath)}:${rule.line} ${rule.selector} ${value}`)
         }
       }
