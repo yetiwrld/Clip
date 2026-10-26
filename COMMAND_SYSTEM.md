@@ -85,8 +85,8 @@ Editor, registered while the editor screen is mounted:
 | Space | Play or pause |
 | J / K / L | Rewind / pause / play forward |
 | , / . | Step one frame back or forward |
-| ← / → | One second back or forward |
-| Shift ← / → | Five seconds back or forward |
+| ← / → | Playhead one frame back or forward |
+| Shift ← / → | Playhead one second back or forward |
 | Home / End | Clip start / clip end |
 | I / O | Set clip start / end at the playhead |
 | Ctrl Z / Ctrl Shift Z / Ctrl Y | Undo / redo |
@@ -96,10 +96,19 @@ Timeline, registered while the timeline is mounted:
 
 | Keys | Command |
 |---|---|
-| Delete | Delete the selected timeline item |
-| Ctrl D | Duplicate it |
-| Ctrl B | Split it at the playhead |
+| Ctrl X / C / V | Cut, copy, paste clips through the editor's own clipboard |
+| Ctrl D | Duplicate the selection after itself |
+| Ctrl B | Split at the playhead |
+| Delete / Backspace | Delete the selection, leaving a gap |
+| Shift Delete | Ripple delete: remove it and close the gap |
+| Ctrl A | Select every clip on an unlocked track |
+| Esc | Clear the timeline selection (closes the properties panel first) |
 | Shift S | Toggle magnetic snapping |
+
+The timeline's copy, cut, paste, duplicate and split keys belong to the editing
+context only. Inside a text field, subtitle editor, track name or numeric input
+they keep their normal text behaviour: the dispatcher checks the focused element
+before it consults the clipboard at all.
 
 Palette-only (no shortcut, because a slip would be costly or the action is
 rare): Export clip, Optimize clip boundaries, Toggle inspector, New project,
@@ -126,9 +135,14 @@ every project tab, every settings section, and one entry per project.
 ## Why there is no conflict with the operating system
 
 Ctrl+K, Ctrl+/, Ctrl+1…3 and Alt+← are not text-editing or window-management
-keys. Ctrl+W, Ctrl+R, F5, Ctrl+C/V/X/A and the function keys are left alone, so
-the renderer never fights the browser or the window manager. Everything the app
-does claim is `preventDefault`ed only on an exact match.
+keys. The function keys and Ctrl+W / Ctrl+R / F5 are left alone, so the renderer
+never fights the browser or the window manager.
+
+Ctrl+C/V/X/A are claimed only while a timeline selection or the clip clipboard
+makes them meaningful, and never inside a text field — check `enabled()` in
+`timelineCommands`. Outside that context they fall through to the browser's own
+copy, paste, cut and select-all. Everything the app does claim is
+`preventDefault`ed only on an exact match.
 
 ## Adding or rebinding a command
 

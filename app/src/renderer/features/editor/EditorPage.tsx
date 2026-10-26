@@ -23,7 +23,7 @@ import { keptSegments, keptDuration } from '@shared/video/segments'
 import { effectiveItemSpeed, sourceTimeAtTimelineTime, timelineItemDuration, timelineItemEnd, timelineOverlayGeometry } from '@shared/video/time-map'
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
 import { clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
-import { emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
+import { discreteTimelineGroup, emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, pruneTimelineHistory, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
 import { textLayerAppearanceAt, textLayerStateAt } from '@shared/video/textLayers'
 import {
   ASPECT_RATIOS, CAPTION_FONTS, CAPTION_STYLES, RESOLUTION_PRESETS, QUALITY_PRESETS, estimateRenderSizeMb,
@@ -299,14 +299,25 @@ export function EditorPage() {
     if (!assetImportTask && assetImporting && !pendingAssetDrop.current) setAssetImporting(false)
   }, [assetImportTask, assetImporting])
 
-  function scheduleTimelineSave(next: ClipTimeline) {
+  function scheduleTimelineSave(next: ClipTimeline, options: { discrete?: boolean; gesture?: string } = {}) {
     const targetClipId = activeClipIdRef.current
     if (!targetClipId) return
     const now = Date.now()
     const command = { type: 'timeline.replace' as const, timeline: next, issuedAt: now }
     const before = clipTimelineRef.current
     const executed = executeTimelineCommand(before, command)
-    timelineHistoryRef.current = recordTimelineCommand(timelineHistoryRef.current, before, executed, now)
+    // A drag reports dozens of values a second and becomes one undo step. A
+    // cut, paste or delete is a step of its own, and a gesture that follows it
+    // can never fold into it.
+    timelineHistoryRef.current = recordTimelineCommand(timelineHistoryRef.current, before, executed, now, {
+      // A drag names its gesture so the whole drag is one undo step; a command
+      // takes a group nobody else can share; anything else coalesces by time.
+      group: options.discrete ? discreteTimelineGroup() : options.gesture
+    })
+    setHistoryState({
+      canUndo: timelineHistoryRef.current.undo.length > 0 || historyRef.current.past.length > 0,
+      canRedo: false
+    })
     clipTimelineRef.current = executed
     pendingTimelineClipId.current = targetClipId
     setClipTimeline(executed)
@@ -330,6 +341,12 @@ export function EditorPage() {
     timelineHistoryRef.current = result.history
     clipTimelineRef.current = result.timeline
     setClipTimeline(result.timeline)
+    // The restored value may not contain the clip the inspector is showing.
+    setSelectedTimelineItem((current) => (current && result.timeline!.items.some((item) => item.id === current.id) ? current : null))
+    setHistoryState({
+      canUndo: result.history.undo.length > 0 || historyRef.current.past.length > 0,
+      canRedo: result.history.redo.length > 0 || historyRef.current.future.length > 0
+    })
     saveTimelineImmediately(result.timeline)
   }
   function redoTimeline() {
@@ -338,6 +355,11 @@ export function EditorPage() {
     timelineHistoryRef.current = result.history
     clipTimelineRef.current = result.timeline
     setClipTimeline(result.timeline)
+    setSelectedTimelineItem((current) => (current && result.timeline!.items.some((item) => item.id === current.id) ? current : null))
+    setHistoryState({
+      canUndo: result.history.undo.length > 0 || historyRef.current.past.length > 0,
+      canRedo: result.history.redo.length > 0 || historyRef.current.future.length > 0
+    })
     saveTimelineImmediately(result.timeline)
   }
   async function saveTimelineNow(next: ClipTimeline, targetClipId: string | null = activeClipIdRef.current): Promise<boolean> {
@@ -386,8 +408,16 @@ export function EditorPage() {
   async function removeAsset(asset: ProjectAsset) {
     if (!projectId) return
     if (!window.confirm(`Remove “${asset.name}” from this project? The project's copy of the file is deleted. Your original file is not affected. This cannot be undone.`)) return
-    try { await api['media.assets.remove']({ assetId: asset.id }); await data.loadAssets(projectId) }
-    catch (err) { app.toast({ level: 'error', ...errMessage(err) }) }
+    try {
+      await api['media.assets.remove']({ assetId: asset.id })
+      // Undo must not bring back a clip whose media no longer exists.
+      timelineHistoryRef.current = pruneTimelineHistory(timelineHistoryRef.current, asset.id)
+      setHistoryState({
+        canUndo: timelineHistoryRef.current.undo.length > 0 || historyRef.current.past.length > 0,
+        canRedo: timelineHistoryRef.current.redo.length > 0 || historyRef.current.future.length > 0
+      })
+      await data.loadAssets(projectId)
+    } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) }
   }
   async function relinkAsset(asset: ProjectAsset) {
     if (!projectId) return
@@ -1166,6 +1196,8 @@ export function EditorPage() {
       },
       undo: undoAction,
       redo: redoAction,
+      canUndo: () => timelineHistoryRef.current.undo.length > 0 || historyRef.current.past.length > 0,
+      canRedo: () => timelineHistoryRef.current.redo.length > 0 || historyRef.current.future.length > 0,
       exportClip: () => void queueRender(false),
       optimizeBoundaries: () => void optimizeBoundaries(),
       toggleInspector: () => setInspectorOpen((open) => !open),

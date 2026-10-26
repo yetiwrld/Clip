@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Clip, ClipTimeline } from '../../src/shared/types'
 import {
+  discreteTimelineGroup,
   emptyTimelineCommandHistory,
   executeClipCommand,
+  pruneTimelineHistory,
   executeTimelineCommand,
   recordTimelineCommand,
   redoTimelineCommand,
@@ -42,6 +44,50 @@ describe('timeline edit command boundary', () => {
     expect(branched.undo).toHaveLength(1)
     const redone = redoTimelineCommand(undone.history)
     expect(redone.timeline).toBe(withSnapOff)
+  })
+
+  it('never swallows a discrete command into the drag around it', () => {
+    let history = recordTimelineCommand(emptyTimelineCommandHistory(), base, withSnapOff, 100, { group: 'gesture' })
+    // A cut/paste/delete lands 50 ms after a drag value: it must be its own step.
+    history = recordTimelineCommand(history, withSnapOff, withTrack, 150, { group: discreteTimelineGroup() })
+    history = recordTimelineCommand(history, withTrack, base, 200, { group: 'gesture' })
+    expect(history.undo).toHaveLength(3)
+    expect(history.undo.map((entry) => entry.before)).toEqual([base, withSnapOff, withTrack])
+    // Undoing three times walks back through each step in order.
+    const first = undoTimelineCommand(history)
+    const second = undoTimelineCommand(first.history)
+    const third = undoTimelineCommand(second.history)
+    expect([first.timeline, second.timeline, third.timeline]).toEqual([withTrack, withSnapOff, base])
+    expect(third.history.undo).toHaveLength(0)
+  })
+
+  it('keeps coalescing the values of one drag, however long it lasts', () => {
+    let history = recordTimelineCommand(emptyTimelineCommandHistory(), base, withSnapOff, 100, { group: 'drag-1' })
+    // A three-second drag: every value still belongs to the same undo step.
+    for (let step = 1; step <= 30; step += 1) {
+      history = recordTimelineCommand(history, withSnapOff, withTrack, 100 + step * 100, { group: 'drag-1' })
+    }
+    expect(history.undo).toHaveLength(1)
+    expect(history.undo[0].after).toBe(withTrack)
+    // The next drag is a new step.
+    history = recordTimelineCommand(history, withTrack, base, 5000, { group: 'drag-2' })
+    expect(history.undo).toHaveLength(2)
+  })
+
+  it('forgets undo steps that would restore removed media', () => {
+    const withClip = {
+      ...withTrack,
+      items: [{ id: 'x', assetId: 'gone-asset', trackId: 't1', startTime: 0, sourceIn: 0, sourceOut: 2, volume: 1, muted: false, fadeIn: 0, fadeOut: 0, speed: 1, loop: false, x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 }]
+    }
+    // The clip existed before the edit and not after it: undo would restore it.
+    const history = recordTimelineCommand(emptyTimelineCommandHistory(), withClip, withTrack, 100, { group: discreteTimelineGroup() })
+    const pruned = pruneTimelineHistory(history, 'gone-asset')
+    expect(pruned.undo).toHaveLength(0)
+    expect(pruned.redo).toHaveLength(0)
+    // Unrelated history is left alone, and the same object comes back when
+    // nothing matches.
+    const untouched = recordTimelineCommand(emptyTimelineCommandHistory(), withTrack, withSnapOff, 100, { group: discreteTimelineGroup() })
+    expect(pruneTimelineHistory(untouched, 'gone-asset')).toBe(untouched)
   })
 
   it('bounds undo history and starts separate commands after the coalesce window', () => {

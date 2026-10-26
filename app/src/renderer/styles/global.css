@@ -3083,6 +3083,21 @@ details.error-details pre {
 .timeline-add-track-options button:hover,.timeline-add-track-options button:focus-visible { background:var(--surface-3); color:var(--text-1); outline:none; }
 .multi-track-lane { background-image:linear-gradient(to right, transparent calc(100% - 1px), var(--border) calc(100% - 1px)); background-size:var(--timeline-grid-size,40px) 100%; }
 .multi-track-ruler-body button:hover { background:var(--surface-2); color:var(--text-1); }
+
+/* Editing feedback: the clip being dragged lifts, and a snapped edge shows the
+   line it locked onto. Both are geometry on the timeline surface, never
+   decoration, and both work with motion turned off. */
+.multi-track-item.dragging { z-index: var(--z-drag); opacity: .92; }
+.timeline-snap-guide { position: absolute; top: 0; bottom: 0; width: 1px; z-index: var(--z-handle); background: var(--accent); pointer-events: none; }
+
+/* Shared row shape for the Edit menu and the right-click menu. */
+.timeline-edit-menu { min-width: 236px; }
+.timeline-menu-item { justify-content: space-between; }
+.timeline-menu-label { display: inline-flex; align-items: center; gap: var(--space-3); }
+.timeline-menu-item:disabled { color: var(--text-3); cursor: not-allowed; }
+.timeline-menu-item:disabled:hover { background: transparent; }
+.menu-shortcut { margin-left: auto; padding-left: var(--space-4); color: var(--text-3); font-family: var(--mono); font-size: var(--fs-micro); }
+.timeline-context-menu { min-width: 216px; }
 .track-title input { width: 100%; min-width: 0; border: 1px solid transparent; outline: 0; color: var(--text-1); background: transparent; font-size: var(--fs-xs); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); overflow: hidden; text-overflow: ellipsis; }
 .track-title input:focus-visible { border-color:var(--accent); outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent); }
 .track-tools button { display: grid; place-items: center; border: 0; background: transparent; color: var(--text-3); padding: 1px var(--space-2); cursor: pointer; min-width: 24px; min-height: 22px; border-radius: var(--radius-control); }

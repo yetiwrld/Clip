@@ -27,6 +27,27 @@ export function frameTime(frameIndex: number, fps: number | null | undefined): n
   return frameIndex * rate.denominator / rate.numerator
 }
 
+/**
+ * Round a timeline time onto the project's frame grid.
+ *
+ * Pointer maths produces arbitrary floats; a professional edit stores times a
+ * frame can actually be cut at. Six decimals keeps 23.976 fps grids exact
+ * enough for the payload schema without exposing float noise to the UI.
+ */
+export function snapTimeToFrame(seconds: number, fps: number | null | undefined): number {
+  if (!Number.isFinite(seconds)) return 0
+  const duration = frameDuration(fps)
+  // A timeline time is never negative, so the clamp belongs here rather than in
+  // every caller.
+  const frames = Math.max(0, Math.round(seconds / duration))
+  return Number((frames * duration).toFixed(6))
+}
+
+/** Whole frames between two times, rounded — used by the nudge commands. */
+export function framesBetween(from: number, to: number, fps: number | null | undefined): number {
+  return Math.round((to - from) / frameDuration(fps))
+}
+
 /** Tolerance for identifying a frame-timed keyframe selected on a seconds UI. */
 export function frameTimeTolerance(fps: number | null | undefined): number {
   return frameDuration(fps) / 2 + 1e-6

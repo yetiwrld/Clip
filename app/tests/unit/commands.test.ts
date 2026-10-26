@@ -32,6 +32,8 @@ function stubEditorHandlers() {
     goToEnd: noop,
     undo: noop,
     redo: noop,
+    canUndo: () => true,
+    canRedo: () => true,
     exportClip: noop,
     optimizeBoundaries: noop,
     toggleInspector: noop,
@@ -45,8 +47,16 @@ function stubTimelineHandlers() {
   return {
     hasSelection: () => true,
     deleteSelected: noop,
+    rippleDeleteSelected: noop,
     duplicateSelected: noop,
+    cutSelected: noop,
+    copySelected: noop,
+    pasteSelected: noop,
+    hasClipboard: () => true,
     splitSelected: noop,
+    canSplit: () => true,
+    selectAll: noop,
+    clearSelection: noop,
     toggleSnap: noop
   }
 }
@@ -156,7 +166,51 @@ describe('the shipped command set', () => {
   })
 
   it('has no conflicting shortcuts', () => {
-    expect(findShortcutConflicts(all)).toEqual([])
+    // The one deliberate pair: Escape closes the properties panel while it is
+    // open and otherwise clears the timeline selection. They are never both
+    // available, and the editor registers last so the panel wins when both are.
+    const allowed = new Set(['editor.closeInspector|timeline.clearSelection'])
+    const conflicts = findShortcutConflicts(all).filter((entry) => !allowed.has(entry.ids.slice().sort().join('|')))
+    expect(conflicts).toEqual([])
+    expect(findShortcutConflicts(all).map((entry) => entry.ids.slice().sort().join('|'))).toEqual([...allowed])
+  })
+
+  it('lets Escape close the properties panel, then clear the selection', () => {
+    // The editor registers after the timeline, so it wins while it is enabled.
+    const inspectorOpen = [
+      ...timelineCommands(stubTimelineHandlers),
+      ...editorCommands(() => ({ ...stubEditorHandlers(), inspectorOpen: () => true }))
+    ]
+    expect(pickCommand(inspectorOpen, key({ key: 'Escape' }), context())?.id).toBe('editor.closeInspector')
+    const inspectorClosed = [
+      ...timelineCommands(stubTimelineHandlers),
+      ...editorCommands(() => ({ ...stubEditorHandlers(), inspectorOpen: () => false }))
+    ]
+    expect(pickCommand(inspectorClosed, key({ key: 'Escape' }), context())?.id).toBe('timeline.clearSelection')
+  })
+
+  it('gates copy, cut and paste on a real selection or clipboard', () => {
+    const empty = timelineCommands(() => ({
+      ...stubTimelineHandlers(),
+      hasSelection: () => false,
+      hasClipboard: () => false
+    }))
+    const byId = new Map(empty.map((command) => [command.id, command]))
+    expect(byId.get('timeline.copy')?.enabled?.()).toBe(false)
+    expect(byId.get('timeline.cut')?.enabled?.()).toBe(false)
+    expect(byId.get('timeline.paste')?.enabled?.()).toBe(false)
+    expect(byId.get('timeline.delete')?.enabled?.()).toBe(false)
+  })
+
+  it('keeps clip clipboard keys and text editing apart', () => {
+    const editable = context({ inEditable: true })
+    for (const spec of [{ key: 'x' }, { key: 'c' }, { key: 'v' }, { key: 'a' }]) {
+      const event = key({ key: spec.key, ctrlKey: true })
+      // With the editor mounted a shortcut exists, but a text field keeps its
+      // own copy/paste/cut/select-all.
+      expect(pickCommand(all, event, editable)).toBeNull()
+      expect(pickCommand(all, event, context())?.id).toBe(`timeline.${spec.key === 'x' ? 'cut' : spec.key === 'c' ? 'copy' : spec.key === 'v' ? 'paste' : 'selectAll'}`)
+    }
   })
 
   it('lists a shortcut reference with no orphans: every shortcut belongs to a command', () => {

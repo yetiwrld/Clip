@@ -23,6 +23,8 @@ export interface EditorHandlers {
   goToEnd(): void
   undo(): void
   redo(): void
+  canUndo(): boolean
+  canRedo(): boolean
   exportClip(): void
   optimizeBoundaries(): void
   toggleInspector(): void
@@ -89,40 +91,42 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
       run: () => get().stepFrame(1)
     },
     {
-      id: 'editor.seekBack',
-      title: 'Back one second',
+      id: 'editor.stepBack',
+      title: 'Playhead back one frame',
       category: 'Playback',
-      keywords: ['scrub'],
+      keywords: ['arrow', 'scrub', 'previous frame'],
       shortcut: { key: 'arrowleft' },
+      enabled: available,
+      run: () => get().stepFrame(-1)
+    },
+    {
+      id: 'editor.stepForward',
+      title: 'Playhead forward one frame',
+      category: 'Playback',
+      keywords: ['arrow', 'scrub', 'next frame'],
+      shortcut: { key: 'arrowright' },
+      enabled: available,
+      run: () => get().stepFrame(1)
+    },
+    {
+      id: 'editor.seekBack',
+      title: 'Playhead back one second',
+      category: 'Playback',
+      keywords: ['shift arrow', 'scrub'],
+      shortcut: { key: 'arrowleft', shift: true },
+      hidden: true,
       enabled: available,
       run: () => get().seekBy(-1)
     },
     {
       id: 'editor.seekForward',
-      title: 'Forward one second',
+      title: 'Playhead forward one second',
       category: 'Playback',
-      keywords: ['scrub'],
-      shortcut: { key: 'arrowright' },
-      enabled: available,
-      run: () => get().seekBy(1)
-    },
-    {
-      id: 'editor.seekBackFive',
-      title: 'Back five seconds',
-      category: 'Playback',
-      shortcut: { key: 'arrowleft', shift: true },
-      hidden: true,
-      enabled: available,
-      run: () => get().seekBy(-5)
-    },
-    {
-      id: 'editor.seekForwardFive',
-      title: 'Forward five seconds',
-      category: 'Playback',
+      keywords: ['shift arrow', 'scrub'],
       shortcut: { key: 'arrowright', shift: true },
       hidden: true,
       enabled: available,
-      run: () => get().seekBy(5)
+      run: () => get().seekBy(1)
     },
     {
       id: 'editor.goToStart',
@@ -166,7 +170,7 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
       category: 'Editing',
       keywords: ['revert', 'back'],
       shortcut: { key: 'z', mod: true },
-      enabled: available,
+      enabled: () => Boolean(get()?.hasClip()) && Boolean(get()?.canUndo()),
       run: () => get().undo()
     },
     {
@@ -175,7 +179,7 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
       category: 'Editing',
       keywords: ['repeat', 'forward'],
       shortcut: [{ key: 'z', mod: true, shift: true }, { key: 'y', mod: true }],
-      enabled: available,
+      enabled: () => Boolean(get()?.hasClip()) && Boolean(get()?.canRedo()),
       run: () => get().redo()
     },
     {
@@ -221,26 +225,63 @@ export function editorCommands(get: () => EditorHandlers): Command[] {
 export interface TimelineHandlers {
   hasSelection(): boolean
   deleteSelected(): void
+  rippleDeleteSelected(): void
   duplicateSelected(): void
+  cutSelected(): void
+  copySelected(): void
+  pasteSelected(): void
+  hasClipboard(): boolean
   splitSelected(): void
+  canSplit(): boolean
+  selectAll(): void
+  clearSelection(): void
   toggleSnap(): void
 }
 
+/**
+ * Timeline editing commands.
+ *
+ * These are the real operations: each handler mutates the `ClipTimeline` the
+ * editor renders and stores, then persists it through the normal save path, so
+ * a shortcut, a menu row and a toolbar button do exactly the same thing.
+ * Copy and paste use the editor's own clip clipboard, never the system one, and
+ * every command stays out of text fields (the registry checks that first).
+ */
 export function timelineCommands(get: () => TimelineHandlers): Command[] {
   return [
     {
-      id: 'timeline.delete',
-      title: 'Delete selected timeline item',
+      id: 'timeline.cut',
+      title: 'Cut',
       category: 'Timeline',
-      keywords: ['remove', 'cut'],
-      hint: 'Selected clip, caption block or text layer',
-      shortcut: { key: 'delete' },
+      keywords: ['clipboard', 'remove', 'move'],
+      hint: 'Selection to the clip clipboard',
+      shortcut: { key: 'x', mod: true },
       enabled: () => Boolean(get()?.hasSelection()),
-      run: () => get().deleteSelected()
+      run: () => get().cutSelected()
+    },
+    {
+      id: 'timeline.copy',
+      title: 'Copy',
+      category: 'Timeline',
+      keywords: ['clipboard', 'duplicate'],
+      hint: 'Selection to the clip clipboard',
+      shortcut: { key: 'c', mod: true },
+      enabled: () => Boolean(get()?.hasSelection()),
+      run: () => get().copySelected()
+    },
+    {
+      id: 'timeline.paste',
+      title: 'Paste at playhead',
+      category: 'Timeline',
+      keywords: ['clipboard', 'insert'],
+      hint: 'Clips from the clip clipboard, relative timing kept',
+      shortcut: { key: 'v', mod: true },
+      enabled: () => Boolean(get()?.hasClipboard()),
+      run: () => get().pasteSelected()
     },
     {
       id: 'timeline.duplicate',
-      title: 'Duplicate timeline item',
+      title: 'Duplicate selection',
       category: 'Timeline',
       keywords: ['copy', 'clone'],
       shortcut: { key: 'd', mod: true },
@@ -251,10 +292,48 @@ export function timelineCommands(get: () => TimelineHandlers): Command[] {
       id: 'timeline.split',
       title: 'Split at playhead',
       category: 'Timeline',
-      keywords: ['razor', 'cut'],
+      keywords: ['razor', 'cut', 'slice'],
       shortcut: { key: 'b', mod: true },
-      enabled: () => Boolean(get()?.hasSelection()),
+      enabled: () => Boolean(get()?.canSplit()),
       run: () => get().splitSelected()
+    },
+    {
+      id: 'timeline.delete',
+      title: 'Delete selection',
+      category: 'Timeline',
+      keywords: ['remove', 'clear', 'backspace'],
+      hint: 'Leaves a gap',
+      shortcut: [{ key: 'delete' }, { key: 'backspace' }],
+      enabled: () => Boolean(get()?.hasSelection()),
+      run: () => get().deleteSelected()
+    },
+    {
+      id: 'timeline.rippleDelete',
+      title: 'Ripple delete',
+      category: 'Timeline',
+      keywords: ['remove', 'close gap', 'shift delete'],
+      hint: 'Removes the selection and closes the gap',
+      shortcut: { key: 'delete', shift: true },
+      enabled: () => Boolean(get()?.hasSelection()),
+      run: () => get().rippleDeleteSelected()
+    },
+    {
+      id: 'timeline.selectAll',
+      title: 'Select all clips',
+      category: 'Timeline',
+      keywords: ['everything', 'selection'],
+      shortcut: { key: 'a', mod: true },
+      run: () => get().selectAll()
+    },
+    {
+      id: 'timeline.clearSelection',
+      title: 'Clear timeline selection',
+      category: 'Timeline',
+      keywords: ['escape', 'deselect'],
+      shortcut: { key: 'escape' },
+      hidden: true,
+      enabled: () => Boolean(get()?.hasSelection()),
+      run: () => get().clearSelection()
     },
     {
       id: 'timeline.snap',
