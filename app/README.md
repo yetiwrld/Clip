@@ -125,7 +125,7 @@ the full tests, generate the fixtures first:
 
 ```powershell
 npm run fixtures
-npm test              # 450 tests across 48 files (unit + integration)
+npm test              # 451 tests across 48 files (unit + integration)
 npm run typecheck
 npm run build
 npm run test:visual   # component markup + CSS contract baseline

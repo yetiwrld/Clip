@@ -157,8 +157,8 @@ A test checks every `api[...]` method the page uses against `src/shared/ipc.ts`.
 - Help is a real view, has a sidebar row, mounts the tour, and is reachable from
   the palette.
 
-Full suite: **48 files, 450 tests pass**. `tsc -p tsconfig.web.json` clean,
-`electron-vite build` clean (`index-CQUJsnHu.js`, `index-B9pLto0s.css`).
+Full suite: **48 files, 451 tests pass**. `tsc -p tsconfig.web.json` clean,
+`electron-vite build` clean (`index-Bs7TKiy5.js`, `index-B9pLto0s.css`).
 
 The visual baseline in `tests/unit/ui-visual-baseline.test.ts` now also locks the
 new surface: `.welcome-paths`, `.help-steps`, `.help-faq`, `.help-about`,
