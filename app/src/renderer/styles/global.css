@@ -2930,7 +2930,7 @@ details.error-details pre {
 
 .timeline-item-thumbnail { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.48; pointer-events:none; }
 .timeline-item-body span { float:right; font-family: var(--mono); font-size: var(--fs-micro); opacity:.7; }
-.timeline-trim { position:absolute; top:0; bottom:0; width:6px; z-index: var(--z-marker); border:0; background:rgba(255,255,255,.14); cursor:ew-resize; }
+.timeline-trim { position:absolute; top:0; bottom:0; width:var(--space-3); z-index: var(--z-marker); border:0; background:rgba(255,255,255,.14); cursor:ew-resize; }
 .timeline-trim.left { left:0; }.timeline-trim.right { right:0; }
 .timeline-trim:hover { background:rgba(255,255,255,.55); }
 
@@ -3088,6 +3088,7 @@ details.error-details pre {
    line it locked onto. Both are geometry on the timeline surface, never
    decoration, and both work with motion turned off. */
 .multi-track-item.dragging { z-index: var(--z-drag); opacity: .92; }
+.multi-track-item.dragging .timeline-item-body { cursor: grabbing; }
 .timeline-snap-guide { position: absolute; top: 0; bottom: 0; width: 1px; z-index: var(--z-handle); background: var(--accent); pointer-events: none; }
 
 /* Shared row shape for the Edit menu and the right-click menu. */
@@ -3790,6 +3791,95 @@ details.error-details pre {
 
 .timeline-toolbar-actions .btn.sm {
   height: 26px;
+}
+
+/* The edit actions are labelled buttons, not icons hidden behind a dropdown:
+   the command bar is the place people look for cut, copy and paste. */
+.multi-track-toolbar { flex: none; }
+
+.multi-track-toolbar > div.timeline-toolbar-actions {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+
+.timeline-action {
+  gap: var(--space-2);
+  color: var(--text-2);
+}
+
+.timeline-action:hover:not(:disabled) {
+  color: var(--text-1);
+}
+
+.timeline-action.danger:not(:disabled) {
+  color: var(--danger);
+}
+
+.timeline-action.danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.timeline-selection-status {
+  max-width: 300px;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-selection-status.is-feedback {
+  color: var(--accent);
+}
+
+.timeline-selection-status.is-locked {
+  color: var(--text-2);
+}
+
+/* A real grab handle for the playhead. The line already existed; without a
+   cap it was hard to see that it could be dragged. */
+.timeline-playhead-grip {
+  position: absolute;
+  z-index: var(--z-sticky);
+  top: 0;
+  left: var(--grip-x, 0);
+  width: 16px;
+  height: 26px;
+  margin-left: calc(var(--space-3) * -1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.timeline-playhead-grip::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-xs) var(--radius-xs) var(--radius-round) var(--radius-round);
+  background: var(--accent);
+  box-shadow: var(--shadow-1);
+}
+
+.timeline-playhead-grip:hover::after,
+.timeline-playhead-grip:focus-visible::after {
+  height: 14px;
+}
+
+.timeline-playhead-grip:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (max-width: 720px) {
+  .timeline-action-label,
+  .timeline-selection-status:not(.is-feedback) {
+    display: none;
+  }
 }
 
 .timeline-toolbar-right {

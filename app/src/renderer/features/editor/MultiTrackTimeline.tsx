@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AudioLines, ChevronDown, ClipboardPaste, Copy, CopyPlus, Eye, EyeOff, Film, Image as ImageIcon,
-  ListChecks, Lock, Magnet, Maximize2, Plus, Scissors, Slice, Trash2, Type, Unlock, Volume2, VolumeX,
-  ZoomIn, ZoomOut
+  AudioLines, ChevronDown, ChevronLeft, ChevronRight, ClipboardPaste, Copy, CopyPlus, Eye, EyeOff, Film, Image as ImageIcon,
+  Lock, Magnet, Maximize2, Plus, Redo2, Scissors, Slice, Trash2, Type, Undo2, Unlock,
+  Volume2, VolumeX, ZoomIn, ZoomOut
 } from 'lucide-react'
 import type { CameraKeyframe, ClipTimeline, ProjectAsset, TextLayer, TimelineItem, TimelineTrack } from '@shared/types'
 import { formatClock } from '@shared/utils/time'
@@ -86,6 +86,11 @@ export function MultiTrackTimeline(props: {
   onNotice?: (message: string) => void
   snapTargets?: number[]
   onSelectItem?: (item: TimelineItem | null) => void
+  /** Undo and redo live in the editor; the timeline shows the same buttons. */
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
   onDropFiles: (paths: string[], time: number, track: TimelineTrack) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -99,6 +104,7 @@ export function MultiTrackTimeline(props: {
   const cursorDragCleanupRef = useRef<(() => void) | null>(null)
   const cursorRef = useRef<HTMLDivElement>(null)
   const cursorLabelRef = useRef<HTMLSpanElement>(null)
+  const playheadGripRef = useRef<HTMLButtonElement>(null)
   const pinnedTimeRef = useRef<number | null>(null)
   const cursorDraggingRef = useRef(false)
   const dragSeekFrameRef = useRef<number | null>(null)
@@ -120,7 +126,9 @@ export function MultiTrackTimeline(props: {
   const [snapGuide, setSnapGuide] = useState<number | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-  const editMenuRef = useRef<HTMLDetailsElement>(null)
+  /** Short, non-blocking confirmation for copy/cut/paste and the like. */
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const feedbackTimerRef = useRef<number | null>(null)
   const [selectedTrackingTime, setSelectedTrackingTime] = useState<number | null>(null)
   const span = Math.max(30, props.duration || 30)
   pixelsPerSecondRef.current = pixelsPerSecond
@@ -128,7 +136,11 @@ export function MultiTrackTimeline(props: {
   const width = Math.max(timelineViewportWidth, labelWidthFallback + span * pixelsPerSecond)
   const gridStep = pixelsPerSecond > 100 ? 1 : pixelsPerSecond > 45 ? 5 : pixelsPerSecond > 15 ? 10 : 60
   const assetById = useMemo(() => new Map(props.assets.map((asset) => [asset.id, asset])), [props.assets])
-  const splittableIds = props.timeline.items
+  // Split acts on the selection when there is one, and on everything under the
+  // playhead otherwise. The button must describe that same set: enabling it for
+  // a clip the command will not touch was a dead control.
+  const splitCandidates = props.timeline.items.filter((item) => selectedIds.length === 0 || selectedIds.includes(item.id))
+  const splittableIds = splitCandidates
     .filter((item) => {
       const track = props.timeline.tracks.find((candidate) => candidate.id === item.trackId)
       if (!track || track.locked) return false
@@ -136,6 +148,10 @@ export function MultiTrackTimeline(props: {
     })
     .map((item) => item.id)
   const canSplit = splittableIds.length > 0
+  /** Selected clips on a locked track can be seen but never edited. */
+  const selectedItemList = props.timeline.items.filter((item) => selectedIds.includes(item.id))
+  const selectionLocked = selectedItemList.length > 0 &&
+    selectedItemList.every((item) => props.timeline.tracks.find((track) => track.id === item.trackId)?.locked)
   const sourceFilmstripFrames = useMemo(() => {
     const frames = props.sourceClip?.filmstrip ?? []
     if (!frames.length || !props.sourceClip) return []
@@ -156,6 +172,7 @@ export function MultiTrackTimeline(props: {
   useEffect(() => () => {
     cursorDragCleanupRef.current?.()
     if (dragSeekFrameRef.current !== null) cancelAnimationFrame(dragSeekFrameRef.current)
+    if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current)
   }, [])
 
   // Drop selected clips that no longer exist (delete, undo, a paste that was
@@ -276,6 +293,8 @@ export function MultiTrackTimeline(props: {
     const cursor = cursorRef.current
     if (!cursor) return
     cursor.style.setProperty('--cursor-x', `${getTrackLabelWidth() + time * pixelsPerSecond}px`)
+    // The ruler cap follows the same frames as the line, not the slower state tick.
+    playheadGripRef.current?.style.setProperty('--grip-x', `${time * pixelsPerSecond}px`)
     cursor.classList.toggle('hovering', hovering)
     if (cursorLabelRef.current) cursorLabelRef.current.textContent = formatClock(time, true)
   }
@@ -420,12 +439,13 @@ export function MultiTrackTimeline(props: {
     const time = Math.max(0, Math.min(span, (viewport.scrollLeft + x - labelWidth) / pixelsPerSecond))
     if (pinnedTimeRef.current === null) positionCursor(time, true)
   }
-  function beginCursorDrag(event: React.PointerEvent<HTMLDivElement>) {
+  function beginCursorDrag(event: React.PointerEvent, fromPlayheadGrip = false) {
     const target = event.target instanceof HTMLElement ? event.target : null
-    if (event.button !== 0 || target?.closest('.multi-track-label, .multi-track-item, .source-track-clip, .source-cut-region, .timeline-caption-block, .timeline-text-block, .timeline-tracking-marker, .timeline-keyframe-marker, .timeline-trim, .source-trim-handle, .source-cut-handle, .caption-trim-handle, .text-trim-handle, button, input')) return
+    if (event.button !== 0) return
+    if (!fromPlayheadGrip && target?.closest('.multi-track-label, .multi-track-item, .source-track-clip, .source-cut-region, .timeline-caption-block, .timeline-text-block, .timeline-tracking-marker, .timeline-keyframe-marker, .timeline-trim, .source-trim-handle, .source-cut-handle, .caption-trim-handle, .text-trim-handle, button, input')) return
     // A plain press on empty timeline space drops the selection, the way
     // clicking off a clip does in a desktop editor.
-    if (!event.shiftKey && !event.ctrlKey && !event.metaKey && target?.closest('.multi-track-lane')) {
+    if (!fromPlayheadGrip && !event.shiftKey && !event.ctrlKey && !event.metaKey && target?.closest('.multi-track-lane')) {
       selectionAnchorRef.current = null
       applySelection([])
     }
@@ -662,13 +682,19 @@ export function MultiTrackTimeline(props: {
     if (!next.includes(item.id)) return
 
     // A trim is always a single-clip gesture; moving can carry the selection.
+    // A locked track never moves, even when its clip is part of a multi-select.
     const movingIds = mode === 'move' ? next : [item.id]
-    const moving = props.timeline.items.filter((candidate) => movingIds.includes(candidate.id))
+    const moving = props.timeline.items.filter((candidate) => {
+      if (!movingIds.includes(candidate.id)) return false
+      return !props.timeline.tracks.find((row) => row.id === candidate.trackId)?.locked
+    })
+    if (moving.length === 0) return
     const gesture = crypto.randomUUID()
     dragRef.current = { id: item.id, mode, startX: event.clientX, initial: item, moving, moved: false, gesture }
     setDraggingId(item.id)
     dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
-    if (mode === 'move') seekTo(item.startTime)
+    // Selecting is not seeking. Tapping a clip used to put the playhead on its
+    // first frame, which made a preview that was already playing restart.
 
     const onMove = (move: PointerEvent) => {
       const state = dragRef.current
@@ -683,7 +709,6 @@ export function MultiTrackTimeline(props: {
         // track that takes its media type.
         const target = state.moving.length === 1 ? trackAtPointer(move.clientX, move.clientY, original) : null
         setDragTarget(target?.id ?? null)
-        setDropTime(null)
 
         const groupStart = Math.min(...state.moving.map((entry) => entry.startTime))
         let delta = Math.max(-groupStart, dt)
@@ -703,6 +728,8 @@ export function MultiTrackTimeline(props: {
           }
         }
         if (guide === null) delta = snapTimeToFrame(original.startTime + delta, props.fps) - original.startTime
+        // A line in the target lane says exactly where the clip will land.
+        setDropTime(target ? Math.max(0, original.startTime + delta) : null)
         const movingSet = new Set(state.moving.map((entry) => entry.id))
         const items = props.timeline.items.map((entry) => {
           if (!movingSet.has(entry.id)) return entry
@@ -828,13 +855,28 @@ export function MultiTrackTimeline(props: {
     )
   }
   // ------------------------------------------------------- edit commands ---
-  // One implementation per command, shared by the Edit menu, the context menu,
-  // the toolbar and the shortcut registry. Nothing here is a separate code path.
+  // One implementation per command, shared by the toolbar, the context menu
+  // and the shortcut registry. Nothing here is a separate code path.
 
   /** A discrete edit is one undo step of its own, never merged with a drag. */
   function commit(next: ClipTimeline) {
     props.onChange(next, { discrete: true })
   }
+
+  /**
+   * Short, in-place confirmation. It sits in the toolbar's status slot instead
+   * of raising a toast, so a copy or a paste never interrupts the next action.
+   */
+  function showFeedback(message: string) {
+    setFeedback(message)
+    if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current)
+    feedbackTimerRef.current = window.setTimeout(() => {
+      feedbackTimerRef.current = null
+      setFeedback(null)
+    }, 2400)
+  }
+
+  const clipCount = (count: number) => `${count} clip${count === 1 ? '' : 's'}`
 
   function splitAtPlayhead() {
     // With a selection, split what the playhead crosses in it; with none, split
@@ -848,7 +890,10 @@ export function MultiTrackTimeline(props: {
           return Boolean(track && !track.locked)
         })
         .map((item) => item.id)
-    const result = splitTimelineItemsAt(props.timeline, ids, props.currentTime, () => crypto.randomUUID())
+    // Cut on a frame boundary: a split at an arbitrary float leaves a segment
+    // that starts between two frames, which the renderer cannot produce.
+    const at = snapTimeToFrame(props.currentTime, props.fps)
+    const result = splitTimelineItemsAt(props.timeline, ids, at, () => crypto.randomUUID())
     if (!result) {
       props.onNotice?.('Move the playhead inside a selected clip to split it.')
       return
@@ -861,16 +906,22 @@ export function MultiTrackTimeline(props: {
     const clipboard = copyTimelineItems(props.timeline, selectedIdsRef.current)
     if (!clipboard) return false
     useTimelineClipboard.getState().setClipboard(clipboard)
+    showFeedback(`Copied ${clipCount(clipboard.entries.length)}. Paste at the playhead.`)
     closeMenus()
     return true
   }
 
   function cutSelected() {
+    if (selectionLocked) {
+      props.onNotice?.('The selected clips are on a locked track. Unlock the track to edit them.')
+      return false
+    }
     const result = cutTimelineItems(props.timeline, selectedIdsRef.current)
     if (!result) return false
     useTimelineClipboard.getState().setClipboard(result.clipboard)
     commit(result.timeline)
     applySelection([])
+    showFeedback(`Cut ${clipCount(result.clipboard.entries.length)}.`)
     closeMenus()
     return true
   }
@@ -892,27 +943,38 @@ export function MultiTrackTimeline(props: {
     commit(result.timeline)
     applySelection(result.ids, result.ids[0])
     store.rememberPaste(at, store.clipboard.span)
-    if (result.skipped > 0) {
-      props.onNotice?.(`Pasted ${result.ids.length} of ${result.ids.length + result.skipped} clips — the rest had no compatible track.`)
-    }
+    showFeedback(result.skipped > 0
+      ? `Pasted ${result.ids.length} of ${result.ids.length + result.skipped} clips — the rest had no compatible track.`
+      : `Pasted ${clipCount(result.ids.length)} at ${formatClock(at, true)}.`)
     closeMenus()
     return true
   }
 
   function duplicateSelected() {
+    if (selectionLocked) {
+      props.onNotice?.('The selected clips are on a locked track. Unlock the track to edit them.')
+      return
+    }
     const result = duplicateTimelineItems(props.timeline, selectedIdsRef.current, () => crypto.randomUUID())
     if (!result) return
     commit(result.timeline)
     applySelection(result.ids, result.ids[0])
+    showFeedback(`Duplicated ${clipCount(result.ids.length)}.`)
     closeMenus()
   }
 
   function deleteSelected(ripple = false) {
+    if (selectionLocked) {
+      props.onNotice?.('The selected clips are on a locked track. Unlock the track to edit them.')
+      return
+    }
     const result = deleteTimelineItems(props.timeline, selectedIdsRef.current, { ripple })
     if (!result) return
     commit(result.timeline)
     applySelection([])
-    if (ripple) props.onNotice?.(result.removedIds.length === 1 ? 'Deleted 1 clip and closed the gap.' : `Deleted ${result.removedIds.length} clips and closed the gaps.`)
+    showFeedback(ripple
+      ? (result.removedIds.length === 1 ? 'Deleted 1 clip and closed the gap.' : `Deleted ${result.removedIds.length} clips and closed the gaps.`)
+      : `Deleted ${clipCount(result.removedIds.length)}.`)
     closeMenus()
   }
 
@@ -930,15 +992,39 @@ export function MultiTrackTimeline(props: {
 
   function setSnap() { commit({ ...props.timeline, snapEnabled: !props.timeline.snapEnabled }) }
 
+  // The main source is not a TimelineItem: it is the project's clip with an
+  // in-point and an out-point. These two buttons are its real edits, so the
+  // toolbar is useful even on a project whose timeline has no other media yet.
+  function trimSourceIn() {
+    if (!props.sourceClip) return
+    const at = snapTimeToFrame(props.currentTime, props.fps)
+    const start = Math.max(0, Math.min(at, props.sourceClip.endTime - frameDuration(props.fps)))
+    props.onChangeSourceRange?.(start, props.sourceClip.endTime)
+    showFeedback(`Clip start moved to ${formatClock(start, true)}.`)
+  }
+
+  function trimSourceOut() {
+    if (!props.sourceClip) return
+    const at = snapTimeToFrame(props.currentTime, props.fps)
+    const end = Math.min(span, Math.max(at, props.sourceClip.startTime + frameDuration(props.fps)))
+    props.onChangeSourceRange?.(props.sourceClip.startTime, end)
+    showFeedback(`Clip end moved to ${formatClock(end, true)}.`)
+  }
+
+  const sourceSelected = Boolean(props.selectedSource && props.sourceClip)
+  const canTrimSource = Boolean(props.sourceClip) && props.currentTime > props.sourceClip!.startTime + 0.001 && props.currentTime < props.sourceClip!.endTime - 0.001
+
   function closeMenus() {
     setContextMenu(null)
-    if (editMenuRef.current) editMenuRef.current.open = false
   }
 
   const hasSelection = selectedIds.length > 0
   // These subscriptions repaint the menus when the clipboard changes or the
   // commands finish registering (they register in an effect, after first paint).
   // The values themselves are read live so the render always matches the store.
+  // Subscribe so the browser repaints when the clipboard changes, but read the
+  // value live: a server render (the wiring test) has no subscription, and the
+  // live read is also what the command handlers see at key-press time.
   useTimelineClipboard((state) => state.clipboard)
   useCommandRegistry((state) => state.commands)
   const hasClipboard = useTimelineClipboard.getState().clipboard !== null
@@ -974,23 +1060,22 @@ export function MultiTrackTimeline(props: {
   return <section className="multi-track-editor" aria-label="Multi-track timeline editor">
     <div className="multi-track-toolbar" title="Drag media here · Ctrl/⌘+X C V cut, copy, paste · Ctrl/⌘+B split · Delete to remove">
       <div className="row timeline-toolbar-actions" role="toolbar" aria-label="Timeline editing tools">
-        <details className="timeline-add-track-menu" ref={editMenuRef}>
-          <summary className="btn sm timeline-add-track-summary" aria-label="Edit menu" aria-haspopup="menu"><Scissors size={14} /> Edit <ChevronDown size={12} /></summary>
-          <div className="timeline-add-track-options timeline-edit-menu" role="menu" aria-label="Timeline edit actions">
-            <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={() => void cutSelected()}><span className="timeline-menu-label"><Scissors size={14} /> Cut</span>{menuShortcut('timeline.cut')}</button>
-            <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={() => void copySelected()}><span className="timeline-menu-label"><Copy size={14} /> Copy</span>{menuShortcut('timeline.copy')}</button>
-            <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasClipboard} onClick={() => void pasteCopied()}><span className="timeline-menu-label"><ClipboardPaste size={14} /> Paste at playhead</span>{menuShortcut('timeline.paste')}</button>
-            <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={duplicateSelected}><span className="timeline-menu-label"><CopyPlus size={14} /> Duplicate</span>{menuShortcut('timeline.duplicate')}</button>
-            <span className="menu-sep" aria-hidden="true" />
-            <button type="button" role="menuitem" className="timeline-menu-item" disabled={!canSplit} onClick={splitAtPlayhead}><span className="timeline-menu-label"><Slice size={14} /> Split at playhead</span>{menuShortcut('timeline.split')}</button>
-            <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={() => deleteSelected(false)}><span className="timeline-menu-label"><Trash2 size={14} /> Delete</span>{menuShortcut('timeline.delete')}</button>
-            <button type="button" role="menuitem" className="timeline-menu-item danger" disabled={!hasSelection} onClick={() => deleteSelected(true)}><span className="timeline-menu-label"><Trash2 size={14} /> Ripple delete</span>{menuShortcut('timeline.rippleDelete')}</button>
-            <span className="menu-sep" aria-hidden="true" />
-            <button type="button" role="menuitem" className="timeline-menu-item" onClick={selectAllClips}><span className="timeline-menu-label"><ListChecks size={14} /> Select all clips</span>{menuShortcut('timeline.selectAll')}</button>
-            <button type="button" role="menuitem" className="timeline-menu-item" onClick={setSnap}><span className="timeline-menu-label"><Magnet size={14} /> Snapping {props.timeline.snapEnabled ? 'on' : 'off'}</span>{menuShortcut('timeline.snap')}</button>
-          </div>
-        </details>
-        <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title="Toggle magnetic snapping · Shift+S" aria-label={`Snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
+        {sourceSelected && <>
+          <TimelineAction commandId="editor.markStart" label="Trim in" description="Set the clip start at the playhead" disabledHint="move the playhead inside the clip" icon={<ChevronLeft size={14} />} onClick={trimSourceIn} disabled={!canTrimSource} />
+          <TimelineAction commandId="editor.markEnd" label="Trim out" description="Set the clip end at the playhead" disabledHint="move the playhead inside the clip" icon={<ChevronRight size={14} />} onClick={trimSourceOut} disabled={!canTrimSource} />
+          <span className="timeline-toolbar-divider" aria-hidden="true" />
+        </>}
+        <TimelineAction commandId="timeline.cut" label="Cut" description="Cut selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<Scissors size={14} />} onClick={() => void cutSelected()} disabled={!hasSelection || selectionLocked} />
+        <TimelineAction commandId="timeline.copy" label="Copy" description="Copy selected clips" icon={<Copy size={14} />} onClick={() => void copySelected()} disabled={!hasSelection} />
+        <TimelineAction commandId="timeline.paste" label="Paste" description="Paste clips at the playhead" disabledHint="copy a clip first" icon={<ClipboardPaste size={14} />} onClick={() => void pasteCopied()} disabled={!hasClipboard} />
+        <span className="timeline-toolbar-divider" aria-hidden="true" />
+        <TimelineAction commandId="timeline.split" label="Split" description="Split clips at playhead" disabledHint="move the playhead inside the clip first" icon={<Slice size={14} />} onClick={splitAtPlayhead} disabled={!canSplit} />
+        <TimelineAction commandId="timeline.duplicate" label="Duplicate" description="Duplicate selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<CopyPlus size={14} />} onClick={duplicateSelected} disabled={!hasSelection || selectionLocked} />
+        <span className="timeline-toolbar-divider" aria-hidden="true" />
+        <TimelineAction commandId="timeline.delete" label="Delete" description="Delete selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<Trash2 size={14} />} onClick={() => deleteSelected(false)} disabled={!hasSelection || selectionLocked} />
+        <TimelineAction commandId="timeline.rippleDelete" label="Ripple delete" description="Ripple delete selected clips" disabledHint={selectionLocked ? "the selection is locked" : "select a timeline clip first"} icon={<Trash2 size={14} />} onClick={() => deleteSelected(true)} disabled={!hasSelection || selectionLocked} danger />
+        <span className="timeline-toolbar-divider" aria-hidden="true" />
+        <button type="button" className={`btn sm timeline-snap${props.timeline.snapEnabled ? ' active' : ''}`} onClick={setSnap} title={`Magnetic snapping ${props.timeline.snapEnabled ? 'on' : 'off'} — clips snap to the playhead and to each other · Shift+S`} aria-label={`Magnetic snapping ${props.timeline.snapEnabled ? 'on' : 'off'}`} aria-pressed={props.timeline.snapEnabled}>
           <Magnet size={12} /> Snap <span className="snap-state">{props.timeline.snapEnabled ? 'On' : 'Off'}</span>
         </button>
         <details className="timeline-add-track-menu" ref={trackMenuRef}>
@@ -1002,11 +1087,23 @@ export function MultiTrackTimeline(props: {
           </div>
         </details>
         <span className="timeline-toolbar-divider" aria-hidden="true" />
-        <button type="button" className="btn ghost sm icon" onClick={splitAtPlayhead} disabled={!canSplit} title="Split at the playhead · Ctrl/⌘+B" aria-label="Split clips at playhead"><Slice size={14} /></button>
-        <button type="button" className="btn ghost sm icon" onClick={duplicateSelected} disabled={!hasSelection} title="Duplicate the selection after itself · Ctrl/⌘+D" aria-label="Duplicate selected clips"><CopyPlus size={14} /></button>
-        <button type="button" className="btn ghost sm icon danger" onClick={() => deleteSelected(false)} disabled={!hasSelection} title="Delete the selection · Delete" aria-label="Delete selected clips"><Trash2 size={14} /></button>
+        <button type="button" className="btn ghost sm icon" onClick={props.onUndo} disabled={!props.canUndo} title={`Undo${shortcutLabelFor('editor.undo') ? ` · ${shortcutLabelFor('editor.undo')}` : ''}`} aria-label="Undo timeline edit"><Undo2 size={14} /></button>
+        <button type="button" className="btn ghost sm icon" onClick={props.onRedo} disabled={!props.canRedo} title={`Redo${shortcutLabelFor('editor.redo') ? ` · ${shortcutLabelFor('editor.redo')}` : ''}`} aria-label="Redo timeline edit"><Redo2 size={14} /></button>
       </div>
       <div className="timeline-toolbar-right">
+        <span
+          className={`timeline-selection-status${feedback ? ' is-feedback' : ''}${selectionLocked ? ' is-locked' : ''}`}
+          role={feedback ? 'status' : undefined}
+          aria-live={feedback ? 'polite' : 'off'}
+        >
+          {feedback ?? (props.selectedSource
+            ? 'Main source selected · use Trim in/out or drag its edges'
+            : selectionLocked
+              ? 'Selected clips are locked'
+              : hasSelection
+                ? (canSplit ? `${clipCount(selectedIds.length)} selected` : `${clipCount(selectedIds.length)} selected · move the playhead to split`)
+                : 'Select a clip to edit')}
+        </span>
         <label className="timeline-zoom-control">
           <ZoomOut size={12} aria-hidden="true" />
           <input type="range" aria-label="Timeline zoom" min="0" max="100" step="1" value={timelineZoomSliderValue(pixelsPerSecond)} onChange={(event) => setZoomFromSlider(Number(event.target.value))} />
@@ -1017,11 +1114,11 @@ export function MultiTrackTimeline(props: {
     </div>
     <div className="multi-track-scroll" ref={scrollRef} onPointerMove={updateHoverCursor} onPointerLeave={() => { if (!cursorDraggingRef.current) positionCursor(pinnedTimeRef.current ?? props.currentTime, false) }} onPointerDownCapture={beginCursorDrag}>
       <div className="multi-track-canvas" style={{ width, '--timeline-grid-size': `${pixelsPerSecond * gridStep}px` } as React.CSSProperties}>
-        <div className="multi-track-ruler"><div className="multi-track-label">TRACKS</div><div className="multi-track-ruler-body"><div className="multi-track-played" ref={playedRef} aria-hidden="true" />{ticks.map((time) => <button type="button" key={time} style={{ left: time * pixelsPerSecond }} aria-label={`Seek to ${formatClock(time, true)}`} title={`Seek to ${formatClock(time, true)}`} onClick={() => seekTo(time)}>{formatClock(time, true)}<i /></button>)}</div></div>
+        <div className="multi-track-ruler"><div className="multi-track-label">TRACKS</div><div className="multi-track-ruler-body"><div className="multi-track-played" ref={playedRef} aria-hidden="true" />{ticks.map((time) => <button type="button" key={time} style={{ left: time * pixelsPerSecond }} aria-label={`Seek to ${formatClock(time, true)}`} title={`Seek to ${formatClock(time, true)}`} onClick={() => seekTo(time)}>{formatClock(time, true)}<i /></button>)}<button type="button" ref={playheadGripRef} className="timeline-playhead-grip" style={{ '--grip-x': `${props.currentTime * pixelsPerSecond}px` } as React.CSSProperties} aria-label={`Playhead at ${formatClock(props.currentTime, true)} — drag to move`} title={`Playhead ${formatClock(props.currentTime, true)} · drag to move · arrow keys step one frame`} onPointerDown={(event) => { event.stopPropagation(); beginCursorDrag(event, true) }} /></div></div>
         {props.sourceClip && <div className="multi-track-row source-track-row">
           <div className="multi-track-label"><span className="track-title"><Film size={14} /> Main source</span><small>{props.sourceClip.name}</small></div>
           <div className="multi-track-lane">
-            <button type="button" className={`source-track-clip${props.selectedSource ? ' selected' : ''}`} style={{ left: props.sourceClip.startTime * pixelsPerSecond, width: Math.max(18, (props.sourceClip.endTime - props.sourceClip.startTime) * pixelsPerSecond) }} aria-label={`Main source ${props.sourceClip.name} · ${formatClock(props.sourceClip.startTime, true)} to ${formatClock(props.sourceClip.endTime, true)}`} title="Main source clip · drag its edges to trim; click to select" onClick={() => { seekTo(props.sourceClip!.startTime); props.onSelectSource?.() }}>
+            <button type="button" className={`source-track-clip${props.selectedSource ? ' selected' : ''}`} style={{ left: props.sourceClip.startTime * pixelsPerSecond, width: Math.max(18, (props.sourceClip.endTime - props.sourceClip.startTime) * pixelsPerSecond) }} aria-label={`Main source ${props.sourceClip.name} · ${formatClock(props.sourceClip.startTime, true)} to ${formatClock(props.sourceClip.endTime, true)}`} title="Main source clip · drag its edges to trim; click to select (the playhead stays put)" onClick={() => props.onSelectSource?.()}>
               {props.sourceWaveform && <AudioWaveform peaks={props.sourceWaveform.peaks} duration={props.sourceWaveform.duration} sourceIn={props.sourceClip.startTime} sourceOut={props.sourceClip.endTime} />}
               {sourceFilmstripFrames.length > 0 && <span className="source-filmstrip" aria-hidden="true">{sourceFilmstripFrames.map((frame, index) => <img key={`${frame.t}-${index}`} src={mediaUrl(frame.path)} alt="" draggable={false} style={{ left: `${index / sourceFilmstripFrames.length * 100}%`, width: `${100 / sourceFilmstripFrames.length + 0.5}%` }} />)}</span>}
               <span className="source-clip-title">{props.sourceClip.name}</span><small>{formatClock(props.sourceClip.startTime, true)} – {formatClock(props.sourceClip.endTime, true)}</small>
@@ -1122,7 +1219,7 @@ export function MultiTrackTimeline(props: {
                   <button type="button" role="slider" aria-orientation="horizontal" aria-label={`Trim ${asset?.name ?? 'clip'} source end`} aria-valuemin={item.sourceIn + 0.05} aria-valuemax={asset?.duration ?? item.sourceOut + span * 4} aria-valuenow={item.sourceOut} title="Drag to trim · Arrow keys step one frame; Shift + arrow steps one second" className="timeline-trim right" disabled={track.locked} onKeyDown={(event) => adjustItemByKey(event, item, 'right')} onPointerDown={(event) => beginDrag(event, item, 'right')} />
                   {asset && asset.mediaType !== 'audio' && asset.thumbnailPath && <img className="timeline-item-thumbnail" src={mediaUrl(asset.thumbnailPath)} alt="" draggable={false} />}
                   {asset?.mediaType === 'audio' && props.waveforms[asset.id] && <AudioWaveform peaks={props.waveforms[asset.id].peaks} duration={props.waveforms[asset.id].duration} sourceIn={item.sourceIn} sourceOut={item.sourceOut} />}
-                  <button type="button" className="timeline-item-body" aria-label={`${asset?.name ?? 'Missing media'} clip · drag to move, double-click to seek`} onPointerDown={(event) => beginDrag(event, item, 'move')} onClick={(event) => { if (event.detail !== 0) return; selectOnly(item.id); seekTo(item.startTime) }} onDoubleClick={() => seekTo(item.startTime)}>{asset?.name ?? 'Missing media'} <span>{formatClock(item.startTime, true)}</span></button>
+                  <button type="button" className="timeline-item-body" aria-label={`${asset?.name ?? 'Missing media'} clip · click to select, drag to move`} title={`${asset?.name ?? 'Missing media'} · click to select, drag to move`} onPointerDown={(event) => beginDrag(event, item, 'move')} onClick={(event) => { if (event.detail !== 0) return; selectOnly(item.id) }}>{asset?.name ?? 'Missing media'} <span>{formatClock(item.startTime, true)}</span></button>
                 </div>
               })}
             </div>
@@ -1145,14 +1242,14 @@ export function MultiTrackTimeline(props: {
           onKeyDown={(event) => { if (event.key === 'Escape') setContextMenu(null) }}
           style={{ position: 'fixed', right: 'auto', left: Math.max(8, Math.min(contextMenu.x, window.innerWidth - 240)), top: Math.max(8, Math.min(contextMenu.y, window.innerHeight - 340)) }}
         >
-          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={() => void cutSelected()}>Cut{menuShortcut('timeline.cut')}</button>
+          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection || selectionLocked} onClick={() => void cutSelected()}>Cut{menuShortcut('timeline.cut')}</button>
           <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={() => void copySelected()}>Copy{menuShortcut('timeline.copy')}</button>
           <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasClipboard} onClick={() => void pasteCopied()}>Paste at playhead{menuShortcut('timeline.paste')}</button>
-          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={duplicateSelected}>Duplicate{menuShortcut('timeline.duplicate')}</button>
+          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection || selectionLocked} onClick={duplicateSelected}>Duplicate{menuShortcut('timeline.duplicate')}</button>
           <span className="menu-sep" aria-hidden="true" />
           <button type="button" role="menuitem" className="timeline-menu-item" disabled={!canSplit} onClick={splitAtPlayhead}>Split at playhead{menuShortcut('timeline.split')}</button>
-          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection} onClick={() => deleteSelected(false)}>Delete{menuShortcut('timeline.delete')}</button>
-          <button type="button" role="menuitem" className="timeline-menu-item danger" disabled={!hasSelection} onClick={() => deleteSelected(true)}>Ripple delete{menuShortcut('timeline.rippleDelete')}</button>
+          <button type="button" role="menuitem" className="timeline-menu-item" disabled={!hasSelection || selectionLocked} onClick={() => deleteSelected(false)}>Delete{menuShortcut('timeline.delete')}</button>
+          <button type="button" role="menuitem" className="timeline-menu-item danger" disabled={!hasSelection || selectionLocked} onClick={() => deleteSelected(true)}>Ripple delete{menuShortcut('timeline.rippleDelete')}</button>
           <span className="menu-sep" aria-hidden="true" />
           <button type="button" role="menuitem" className="timeline-menu-item" onClick={selectAllClips}>Select all clips{menuShortcut('timeline.selectAll')}</button>
           <button type="button" role="menuitem" className="timeline-menu-item" onClick={setSnap}>Snapping {props.timeline.snapEnabled ? 'on' : 'off'}</button>
@@ -1224,4 +1321,40 @@ export function TimelineInspector(props: { item: TimelineItem; asset?: ProjectAs
       <label>Scale <input type="number" min="0.1" max="5" step="0.05" value={props.item.scale} onChange={(event) => props.onChange({ scale: Math.max(0.1, Math.min(5, finiteValue(event, props.item.scale))) })} /></label>
     </>}
   </div>
+}
+
+/**
+ * One toolbar button for one registry command.
+ *
+ * The tooltip's shortcut is read from the command registry rather than typed
+ * out again, and the button is disabled from the very state the command checks,
+ * so a visible control and its keyboard shortcut cannot disagree.
+ */
+function TimelineAction(props: {
+  commandId: string
+  label: string
+  description: string
+  /** Why the button is unavailable, shown in the tooltip while it is. */
+  disabledHint?: string
+  icon: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  danger?: boolean
+}) {
+  const shortcut = shortcutLabelFor(props.commandId)
+  const parts = [props.description, props.disabled ? props.disabledHint : null, shortcut]
+    .filter((part): part is string => Boolean(part))
+  return (
+    <button
+      type="button"
+      className={`btn sm timeline-action${props.danger ? ' danger' : ''}`}
+      onClick={props.onClick}
+      disabled={props.disabled}
+      title={parts.join(' · ')}
+      aria-label={props.description}
+    >
+      {props.icon}
+      <span className="timeline-action-label">{props.label}</span>
+    </button>
+  )
 }

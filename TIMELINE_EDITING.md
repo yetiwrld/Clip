@@ -7,7 +7,7 @@ Timeline Operations".
 The short version: cut, copy, paste, duplicate, delete, ripple delete, split,
 trim, move, multi-select, snapping and undo/redo now act on the real
 `ClipTimeline` the project saves. One implementation is shared by the keyboard,
-the Edit menu, the right-click menu and the toolbar.
+the labelled toolbar, the right-click menu and the command palette.
 
 ---
 
@@ -119,21 +119,46 @@ undo/redo are available right now.
 Undo still restores the previous timeline value; it is not a full command
 system. That is the existing design and it is reliable for these operations.
 
-### Menus and feedback
+### Menus, toolbar and feedback
 
-- **Edit menu** in the timeline toolbar: Cut, Copy, Paste, Duplicate, Split,
-  Delete, Ripple delete, Select all, Snapping — each with its shortcut, disabled
-  when it cannot run.
-- **Right-click menu**: same actions for the clip or the empty space under the
-  pointer.
-- **Toolbar**: split, duplicate delete and snapping stay as buttons, with titles
-  that include the shortcut.
+- **Toolbar**: Cut, Copy, Paste, Split, Duplicate, Delete and Ripple delete are
+  visible, labelled buttons next to snapping, Add track, Undo and Redo. Each
+  carries its shortcut in the tooltip and is disabled when it cannot run.
+  A disabled button also says why: "Split clips at playhead · move the playhead
+  inside the clip first · Ctrl+B". Selecting the main source adds Trim in and
+  Trim out, which move the clip's own in/out points to the playhead (I / O do the
+  same thing from the keyboard).
+- **Status line**: names the selection ("2 clips selected"), warns when the
+  playhead still has to move for a split, says when the selection is on a locked
+  track, and shows the result of the last command ("Copied 2 clips", "Pasted 3
+  clips at 0:12.0") without opening a toast.
+- **Right-click menu**: the same actions for the clip or the empty space under
+  the pointer, with the same shortcuts and disabled states.
 - **Command palette**: the same commands, searchable, gated by the same
   `enabled()` checks.
-- Errors explain themselves without interrupting: "Move the playhead inside a
-  selected clip to split it.", "There is no compatible unlocked track to paste
-  onto.", "Pasted 2 of 3 clips — the rest had no compatible track." Copy and cut
-  do not toast; the clips moving is the feedback.
+- Errors still use the toast when they need attention: "Move the playhead inside
+  a selected clip to split it.", "There is no compatible unlocked track to paste
+  onto."
+
+### The playhead is not the clip
+
+Two behaviours made the timeline feel locked to one clip and were fixed here:
+
+- **Selecting a clip does not seek.** Pointer-down only selects (plain, Ctrl/Cmd
+  toggle, Shift range). The old code ran `seekTo(item.startTime)` on every press,
+  so a preview that was playing jumped to the clip's first frame and the Split
+  button was immediately disabled because the playhead sat on the clip's edge.
+  Clicking the main source clip did the same. Now the playhead moves only from
+  the ruler, the new playhead grip, empty timeline space, or the transport keys.
+- **Playback is not forced back into the clip range.** Playback used to jump to
+  `clip.startTime` whenever the playhead passed `clip.endTime`, so pressing play
+  after seeking anywhere else restarted from the beginning. The transport now
+  starts at the playhead, keeps going across the timeline, and stops at the end
+  of the media (the `ended` event releases the play state). Pressing play while
+  already at the end still restarts from the clip's in-point.
+
+The split point is rounded to the project frame grid, and the ruler carries a
+draggable playhead cap so scrubbing does not depend on hitting a hairline.
 
 ### Consistency with preview and saving
 
@@ -173,12 +198,13 @@ other edit. Nothing in the menus edits state directly.
 | Test | What it proves |
 |---|---|
 | `tests/unit/timeline-clipboard.test.ts` (24) | Copy keeps properties and relative timing; cut stores and removes; paste tiles, overwrites and splits; locks are respected; ripple closes gaps; duplicate and split keep source intervals; range select; drop-on-clip resolution. |
-| `tests/unit/timeline-wiring.test.ts` (7) | The menu rows, shortcuts, disabled states and toolbar buttons are rendered from the real commands; the timeline registers in the shared registry and has no keyboard listener of its own; every edit flows through the persisted save path; each operation has one call site. |
+| `tests/unit/timeline-wiring.test.ts` (16) | The labelled toolbar, its order, tooltips, disabled states and disabled hints are rendered from the real commands; tapping a clip or the main source has no seek; the playhead grip exists; undo/redo reflect both histories; the timeline registers in the shared registry and has no keyboard listener of its own; every edit flows through the persisted save path; each operation has one call site. |
 | `tests/unit/commands.test.ts` (23) | Cut/copy/paste/select-all are inert in text fields and unavailable without a selection or clipboard; Escape ordering; no duplicate shortcuts beyond the documented pair. |
 | `tests/unit/timeline-commands.test.ts` (7) | A discrete command is never merged into a surrounding drag; drag values coalesce; undo order and redo branching. |
 | `tests/unit/frame-rate.test.ts` (4) | Frame rounding at 25 fps and 23.976 fps, negative and invalid input. |
+| `tests/unit/playback.test.ts` (4) | Pressing play keeps a playhead outside the clip range where it is, restarts only at the end, clamps to the media, and does not guess before metadata loads. |
 | `tests/integration/timeline-editing.test.ts` (3) | Split, cut and paste saved through the real dispatcher and read back after a restart; ripple delete persisted; a corrupt timeline is rejected; undo/redo round trip. |
-| Full suite | 54 files / 592 tests pass. |
+| Full suite | 55 files / 605 tests pass. |
 | Typecheck | `tsc` clean for the renderer and for main/shared. |
 | Build | `electron-vite build` succeeds. |
 | Preview | Built app served on :8787; `timeline.get`/`timeline.save` round trip through the real backend; new command strings present in the bundle. |
@@ -189,6 +215,7 @@ no Electron binary and no headless browser. The data operations underneath them
 are covered by the tests above.
 
 **Five-minute manual check on Windows:** open a project with media on a video
-track, select a clip, Ctrl+X, move the playhead, Ctrl+V, Ctrl+Z twice, click a
-clip then shift-click another, drag the pair, drop one on the other track,
-Shift+Delete the selection, then close and reopen the project.
+track, press play, click a clip and confirm the picture keeps playing instead of
+jumping; then Ctrl+X, move the playhead, Ctrl+V, Ctrl+Z twice, click a clip then
+shift-click another, drag the pair, drop one on the other track, Shift+Delete
+the selection, then close and reopen the project.

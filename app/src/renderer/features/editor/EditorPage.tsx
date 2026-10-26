@@ -22,6 +22,7 @@ import { applyTrackingToCrop, cameraStateAt, computeCameraCrop, computeCrop } fr
 import { keptSegments, keptDuration } from '@shared/video/segments'
 import { effectiveItemSpeed, sourceTimeAtTimelineTime, timelineItemDuration, timelineItemEnd, timelineOverlayGeometry } from '@shared/video/time-map'
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
+import { playFromTime } from '@shared/video/playback'
 import { clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
 import { discreteTimelineGroup, emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, pruneTimelineHistory, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
 import { textLayerAppearanceAt, textLayerStateAt } from '@shared/video/textLayers'
@@ -321,7 +322,7 @@ export function EditorPage() {
     })
     setHistoryState({
       canUndo: timelineHistoryRef.current.undo.length > 0 || historyRef.current.past.length > 0,
-      canRedo: false
+      canRedo: timelineHistoryRef.current.redo.length > 0 || historyRef.current.future.length > 0
     })
     clipTimelineRef.current = executed
     pendingTimelineClipId.current = targetClipId
@@ -450,7 +451,10 @@ export function EditorPage() {
     }
     h.future = []
     h.lastPush = now
-    setHistoryState({ canUndo: h.past.length > 0, canRedo: false })
+    setHistoryState({
+      canUndo: h.past.length > 0 || timelineHistoryRef.current.undo.length > 0,
+      canRedo: timelineHistoryRef.current.redo.length > 0
+    })
   }, [clipId, projectId])
 
   const dispatchClipCommand = useCallback((command: ClipEditCommand) => {
@@ -718,7 +722,10 @@ export function EditorPage() {
     if (!prevSnap || !cur) return
     h.future.push(snapshotOf(cur))
     h.lastPush = 0
-    setHistoryState({ canUndo: h.past.length > 0, canRedo: h.future.length > 0 })
+    setHistoryState({
+      canUndo: h.past.length > 0 || timelineHistoryRef.current.undo.length > 0,
+      canRedo: h.future.length > 0 || timelineHistoryRef.current.redo.length > 0
+    })
     dispatchClipCommand({ type: 'clip.restore', snapshot: prevSnap, issuedAt: Date.now() })
     markDirty()
     // The restore supersedes pending patches for this clip, but not edits
@@ -737,7 +744,10 @@ export function EditorPage() {
     if (!nextSnap || !cur) return
     h.past.push(snapshotOf(cur))
     h.lastPush = 0
-    setHistoryState({ canUndo: h.past.length > 0, canRedo: h.future.length > 0 })
+    setHistoryState({
+      canUndo: h.past.length > 0 || timelineHistoryRef.current.undo.length > 0,
+      canRedo: h.future.length > 0 || timelineHistoryRef.current.redo.length > 0
+    })
     dispatchClipCommand({ type: 'clip.restore', snapshot: nextSnap, issuedAt: Date.now() })
     markDirty()
     const targetClipId = activeClipIdRef.current
@@ -826,15 +836,21 @@ export function EditorPage() {
     const v = videoRef.current
     if (!v || !clip) return
     if (v.paused) {
-      if (currentTime < clip.startTime || currentTime > clip.endTime) {
-        v.currentTime = clip.startTime
-        setCurrentTime(clip.startTime)
+      // The playhead may sit anywhere on the timeline. Only a playhead already
+      // at the end moves; starting outside the selected clip's in/out used to
+      // jump to its first frame, which made every tap on the timeline restart
+      // the video.
+      const duration = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : data.activeProject?.duration ?? 0
+      const start = playFromTime(v.currentTime, duration, clip.startTime)
+      if (Math.abs(start - v.currentTime) > 0.02) {
+        v.currentTime = start
+        setCurrentTime(start)
       }
       void v.play()
     } else {
       v.pause()
     }
-  }, [clip, currentTime])
+  }, [clip, data.activeProject?.duration])
 
   /** J = rewind (Chromium can't play backwards; we step back at speed). */
   const rewind = useCallback(() => {
@@ -867,15 +883,24 @@ export function EditorPage() {
       setCurrentTime(v.currentTime)
       v.playbackRate = 1
     }
+    // Playback reaches the end of the media now instead of being forced back
+    // into the clip, so the transport must be told when it stops.
+    const onEnded = () => {
+      setPlaying(false)
+      setCurrentTime(v.currentTime)
+      v.playbackRate = 1
+    }
     const onRate = () => {
       if (v.playbackRate === 1) return
     }
     v.addEventListener('play', onPlay)
     v.addEventListener('pause', onPause)
+    v.addEventListener('ended', onEnded)
     v.addEventListener('ratechange', onRate)
     return () => {
       v.removeEventListener('play', onPlay)
       v.removeEventListener('pause', onPause)
+      v.removeEventListener('ended', onEnded)
       v.removeEventListener('ratechange', onRate)
     }
   }, [clip, useProxySrc])
@@ -895,7 +920,10 @@ export function EditorPage() {
     setCurrentTime(v.currentTime)
   }, [])
 
-  // Preview during playback: skip removed silence, loop within the clip range.
+  // Preview during playback: skip removed silence while the playhead is inside
+  // the clip. The timeline continues past the clip's out point — forcing a jump
+  // back to the clip start made the timeline unusable for anything but the
+  // selected clip, and made play restart from the beginning after a seek.
   useEffect(() => {
     const v = videoRef.current
     if (!v || !clip) return
@@ -907,23 +935,14 @@ export function EditorPage() {
         v.pause()
         return
       }
+      if (v.currentTime < clip.startTime || v.currentTime > clip.endTime) return
       const cuts = clip.silenceCuts ?? []
       const inCut = cuts.find((c) => c.status !== 'kept' && v.currentTime >= c.start && v.currentTime < c.end && c.end <= clip.endTime)
-      if (inCut) {
-        v.currentTime = inCut.end
-        return
-      }
-      if (v.currentTime > clip.endTime) {
-        if (playing) {
-          v.currentTime = clip.startTime
-        } else {
-          v.pause()
-        }
-      }
+      if (inCut) v.currentTime = inCut.end
     }
     v.addEventListener('timeupdate', onTime)
     return () => v.removeEventListener('timeupdate', onTime)
-  }, [clip, playing])
+  }, [clip])
 
   const previewSilenceRange = useCallback((from: number, to: number) => {
     const video = videoRef.current
@@ -2409,6 +2428,10 @@ export function EditorPage() {
           currentTime={currentTime}
           onSeek={seekTo}
           onChange={scheduleTimelineSave}
+          canUndo={historyState.canUndo}
+          canRedo={historyState.canRedo}
+          onUndo={undoAction}
+          onRedo={redoAction}
           onNotice={(message) => app.toast({ level: 'info', message })}
           snapTargets={[...(clip.silenceCuts ?? []).flatMap((cut) => [cut.start, cut.end]), ...(clip.cameraKeyframes ?? []).map((keyframe) => keyframe.time)]}
           onDropFiles={(paths, time, track) => void importAssets(paths, { time, track })}
