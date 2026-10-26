@@ -107,7 +107,9 @@ rather than converted into tips.
 sidebar's **Help** row or the palette (`Help and setup`):
 
 1. **Start here** — the three things that produce a clip, then buttons for
-   Projects, the tour, and the shortcut list.
+   Projects, the tour, the shortcut list, and **Welcome screen again** (resets
+   only `general.firstRunCompleted`, so the intro can be re-read without
+   touching projects, clips or dismissed tips).
 2. **Setup check** — the same dependency list Settings shows, with a re-check
    button and a link to Settings → Advanced.
 3. **Common questions** — four `<details>` answers about privacy, AI keys, where
@@ -128,6 +130,7 @@ A test checks every `api[...]` method the page uses against `src/shared/ipc.ts`.
 - `stores/app.ts`: `tourOpen`, `startTour()`, `closeTour()`, `dismissTip(id)`,
   `isTipDismissed(id)`.
 - Restart the tour: Help → **Take the guided tour**, or the palette command.
+- Re-read the intro: Help → **Welcome screen again**.
 - Nothing else re-triggers onboarding: the welcome screen is gated on
   `general.firstRunCompleted` only, exactly as before.
 
@@ -135,7 +138,7 @@ A test checks every `api[...]` method the page uses against `src/shared/ipc.ts`.
 
 ## 3. What was checked
 
-`tests/unit/onboarding.test.ts` (16 tests):
+`tests/unit/onboarding.test.ts` (17 tests):
 
 - help defaults exist, and the schema accepts good help state and rejects an
   empty tip id and more than 100 tips;
@@ -148,6 +151,7 @@ A test checks every `api[...]` method the page uses against `src/shared/ipc.ts`.
   the tour z-index is on the ladder (`--z-tour: 460`, under toasts);
 - the Help page only calls declared IPC methods, and it uses the real
   `startTour` / `openPalette('shortcuts')` actions;
+- replaying the welcome resets the first-run flag and nothing else;
 - the welcome screen offers all four real ways in, has no visible sample
   promise, and marks first run complete before doing anything else;
 - Help is a real view, has a sidebar row, mounts the tour, and is reachable from

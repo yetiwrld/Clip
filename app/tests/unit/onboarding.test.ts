@@ -157,6 +157,12 @@ describe('the help screen has no dead ends', () => {
     expect(page).toContain('startTour')
     expect(page).toContain("openPalette('shortcuts')")
   })
+
+  it('can show the welcome screen again without wiping anything else', () => {
+    // Only the first-run flag is reset; projects, clips and tips are untouched.
+    expect(page).toContain('saveSettings({ general: { firstRunCompleted: false } })')
+    expect(page).not.toContain('help: {')
+  })
 })
 
 describe('the welcome screen offers only real ways in', () => {

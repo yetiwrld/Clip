@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ArrowRight, BookOpen, Compass, Download, FolderOpen, Keyboard, PlayCircle, RefreshCw, ScrollText, Stethoscope } from 'lucide-react'
+import { ArrowRight, BookOpen, Compass, Download, FolderOpen, Keyboard, PlayCircle, RefreshCw, ScrollText, Sparkles, Stethoscope } from 'lucide-react'
 
 import { api, errMessage, isPreview } from '../../api/client'
 import { useAppStore } from '../../stores/app'
@@ -18,6 +18,7 @@ export function HelpPage() {
   const openPalette = useAppStore((state) => state.openPalette)
   const openSettings = useAppStore((state) => state.setSettingsSection)
   const refreshDependencies = useAppStore((state) => state.refreshDependencies)
+  const saveSettings = useAppStore((state) => state.saveSettings)
   const toast = useAppStore((state) => state.toast)
   const dependencies = useAppStore((state) => state.dependencies)
   const appInfo = useAppStore((state) => state.appInfo)
@@ -33,6 +34,13 @@ export function HelpPage() {
     } finally {
       setChecking(false)
     }
+  }
+
+  // Showing the welcome screen again is the only way to re-read the intro; it
+  // closes itself as soon as the user picks a way in.
+  async function replayWelcome(): Promise<void> {
+    const savedOk = await saveSettings({ general: { firstRunCompleted: false } })
+    if (savedOk) toast({ level: 'info', message: 'The welcome screen will show again.' })
   }
 
   async function revealWorkspace(): Promise<void> {
@@ -102,6 +110,9 @@ export function HelpPage() {
             </button>
             <button className="btn ghost" onClick={() => openPalette('shortcuts')}>
               <Keyboard size={14} /> Keyboard shortcuts
+            </button>
+            <button className="btn ghost" onClick={() => void replayWelcome()}>
+              <Sparkles size={14} /> Welcome screen again
             </button>
           </div>
         </section>
