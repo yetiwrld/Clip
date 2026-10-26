@@ -3063,7 +3063,9 @@ details.error-details pre {
 .timeline-keyframe-marker.selected { z-index: var(--z-drag); color:var(--text-1); text-shadow:0 0 8px var(--gizmo); transform:translate(-50%,-50%) scale(1.45); }
 .timeline-keyframe-marker,.timeline-tracking-marker { width:30px; height:34px; display:grid; place-items:center; }
 
-.multi-track-cursor.hovering { z-index: var(--z-drag); background:#fff; box-shadow:0 0 3px var(--accent-soft); }
+/* The hover guide never climbs over the track column: it stays at --z-handle
+   like the playhead, so the names are always the top layer of the timeline. */
+.multi-track-cursor.hovering { background:#fff; box-shadow:0 0 3px var(--accent-soft); }
 .multi-track-cursor span { display: none; position:absolute; top:2px; left:4px; padding: var(--space-1) var(--space-2); border:1px solid rgba(255,255,255,.25); border-radius: var(--radius-xs); background:#171c26; color:#fff; font-family: var(--mono); font-size: var(--fs-micro); white-space:nowrap; }
 .multi-track-cursor.hovering span { display: block; }
 
