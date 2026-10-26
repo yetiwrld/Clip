@@ -3,7 +3,8 @@ import { RotateCcw, X, FolderOpen, ListVideo } from 'lucide-react'
 import { api, errMessage, mediaUrl } from '../../api/client'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
-import { EmptyState, ErrorBox, ProgressBar } from '../../components/ui'
+import { EmptyState, ErrorBox } from '../../components/ui'
+import { JobActivity } from '../motion/JobActivity'
 import { renderStageLabel, renderStatusLabel } from '../../copy/labels'
 import type { RenderJob } from '@shared/types'
 
@@ -64,7 +65,7 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
         <div className="queue-group">
           <div className="queue-group-title">Rendering</div>
           {rendering.map((r) => (
-            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} onCancel={() => void cancel(r.id)} />
+            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} activity={data.activity[r.id]} onCancel={() => void cancel(r.id)} />
           ))}
         </div>
       )}
@@ -73,7 +74,7 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
         <div className="queue-group">
           <div className="queue-group-title">Queued</div>
           {queued.map((r) => (
-            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} onCancel={() => void cancel(r.id)} />
+            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} activity={data.activity[r.id]} onCancel={() => void cancel(r.id)} />
           ))}
         </div>
       )}
@@ -82,7 +83,7 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
         <div className="queue-group">
           <div className="queue-group-title">Completed · {completed.length}</div>
           {completed.map((r) => (
-            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} onRetry={() => void retry(r.id)} />
+            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} activity={data.activity[r.id]} onRetry={() => void retry(r.id)} />
           ))}
         </div>
       )}
@@ -91,7 +92,7 @@ export function RenderList({ scopedToProject }: { scopedToProject?: boolean }) {
         <div className="queue-group">
           <div className="queue-group-title" style={{ color: 'var(--danger)' }}>Failed · {failed.length}</div>
           {failed.map((r) => (
-            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} onRetry={() => void retry(r.id)} />
+            <RenderRow key={r.id} render={r} clipTitle={clipsById.get(r.clipId)?.title} projectName={projectId ? undefined : projectsById.get(r.projectId)} activity={data.activity[r.id]} onRetry={() => void retry(r.id)} />
           ))}
         </div>
       )}
@@ -103,12 +104,14 @@ function RenderRow({
   render,
   clipTitle,
   projectName,
+  activity,
   onCancel,
   onRetry
 }: {
   render: RenderJob
   clipTitle?: string
   projectName?: string
+  activity?: readonly number[]
   onCancel?: () => void
   onRetry?: () => void
 }) {
@@ -129,8 +132,13 @@ function RenderRow({
       <div className="q-meta">
         {busy ? (
           <div className="q-progress">
-            <ProgressBar value={render.progress} />
-            <span className="tiny">{Math.round(render.progress * 100)}% · {renderStageLabel(render.stage) || 'Working'}</span>
+            <JobActivity
+              state={render.status === 'queued' ? 'queued' : 'working'}
+              statusLabel={renderStageLabel(render.stage) || (render.status === 'queued' ? 'Queued' : 'Working')}
+              progress={render.status === 'queued' ? null : render.progress}
+              samples={activity}
+              startedAt={render.status === 'queued' ? null : render.startedAt ?? render.createdAt}
+            />
           </div>
         ) : render.status === 'failed' && render.error ? (
           <div className="tiny" style={{ color: 'var(--danger)' }}>

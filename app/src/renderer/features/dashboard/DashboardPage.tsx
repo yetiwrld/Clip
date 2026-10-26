@@ -188,7 +188,8 @@ export function DashboardPage() {
       )}
 
       {sorted.length === 0 ? (
-        <div className="empty">
+        <div className="empty ambient">
+          <div className="ambient-field" aria-hidden="true" />
           <Clapperboard size={28} className="empty-icon" />
           <div className="empty-title">No projects yet</div>
           <div className="empty-copy">

@@ -59,6 +59,7 @@ export function MultiTrackTimeline(props: {
   onDropFiles: (paths: string[], time: number, track: TimelineTrack) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const playedRef = useRef<HTMLDivElement>(null)
   const trackMenuRef = useRef<HTMLDetailsElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const editDragRef = useRef<EditDragState | null>(null)
@@ -192,6 +193,15 @@ export function MultiTrackTimeline(props: {
   }
 
   function positionCursor(time: number, hovering: boolean) {
+    // The ruler's played strip rides along with the playhead. One custom
+    // property, consumed by a transform, so playback stays compositor work.
+    const played = playedRef.current
+    if (played) {
+      // The ruler spans `span` seconds (padded to 30), so the fraction already
+      // played is simply time / span.
+      const ratio = Math.min(1, Math.max(0, time / span))
+      played.style.setProperty('--played-ratio', ratio.toFixed(4))
+    }
     const cursor = cursorRef.current
     if (!cursor) return
     cursor.style.setProperty('--cursor-x', `${getTrackLabelWidth() + time * pixelsPerSecond}px`)
@@ -644,7 +654,7 @@ export function MultiTrackTimeline(props: {
     </div>
     <div className="multi-track-scroll" ref={scrollRef} onPointerMove={updateHoverCursor} onPointerLeave={() => { if (!cursorDraggingRef.current) positionCursor(pinnedTimeRef.current ?? props.currentTime, false) }} onPointerDownCapture={beginCursorDrag}>
       <div className="multi-track-canvas" style={{ width, '--timeline-grid-size': `${pixelsPerSecond * gridStep}px` } as React.CSSProperties}>
-        <div className="multi-track-ruler"><div className="multi-track-label">TRACKS</div><div className="multi-track-ruler-body">{ticks.map((time) => <button type="button" key={time} style={{ left: time * pixelsPerSecond }} aria-label={`Seek to ${formatClock(time, true)}`} title={`Seek to ${formatClock(time, true)}`} onClick={() => seekTo(time)}>{formatClock(time, true)}<i /></button>)}</div></div>
+        <div className="multi-track-ruler"><div className="multi-track-label">TRACKS</div><div className="multi-track-ruler-body"><div className="multi-track-played" ref={playedRef} aria-hidden="true" />{ticks.map((time) => <button type="button" key={time} style={{ left: time * pixelsPerSecond }} aria-label={`Seek to ${formatClock(time, true)}`} title={`Seek to ${formatClock(time, true)}`} onClick={() => seekTo(time)}>{formatClock(time, true)}<i /></button>)}</div></div>
         {props.sourceClip && <div className="multi-track-row source-track-row">
           <div className="multi-track-label"><span className="track-title"><Film size={14} /> Main source</span><small>{props.sourceClip.name}</small></div>
           <div className="multi-track-lane">

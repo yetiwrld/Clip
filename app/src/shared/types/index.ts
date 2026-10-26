@@ -567,9 +567,21 @@ export interface AdvancedSettings {
   ffprobePath: string
 }
 
+/**
+ * Motion preferences for interface effects.
+ *
+ * Ambient effects are the decorative, continuous ones: the welcome backdrop,
+ * live status pulses, activity graphs. Turning them off leaves every functional
+ * signal in place — progress bars, spinners and status text never stop.
+ */
+export interface AppearanceSettings {
+  ambientEffects: boolean
+}
+
 export interface AppSettings {
   general: GeneralSettings
   help: HelpSettings
+  appearance: AppearanceSettings
   ai: AiSettings
   transcription: TranscriptionSettings
   video: VideoSettings

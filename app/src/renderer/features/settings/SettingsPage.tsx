@@ -844,6 +844,14 @@ function AdvancedSection() {
         </select>
       </Field>
       <div className="divider" />
+      <div className="section-title">Interface</div>
+      <Switch
+        checked={settings.appearance.ambientEffects}
+        onChange={(value) => void app.saveSettings({ appearance: { ambientEffects: value } })}
+        label="Ambient visual effects"
+        hint="Background motion, the live status pulse and activity graphs. Progress bars, spinners and status text always keep working, and your system's reduce-motion setting always wins."
+      />
+      <div className="divider" />
       <div className="section-title">Dependency status</div>
       {deps.map((d) => (
         <div className="dep-row" key={d.id}>

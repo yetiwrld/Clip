@@ -1,6 +1,7 @@
 import React from 'react'
 import { X, AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react'
 import { errMessage } from '../api/client'
+import { progressPercent } from '../lib/motion'
 
 /** Small shared UI primitives — thin, accessible wrappers over the CSS. */
 
@@ -95,11 +96,28 @@ export function ConfirmDialog(props: {
   )
 }
 
-export function ProgressBar(props: { value: number; success?: boolean; danger?: boolean }) {
-  const pct = Math.round(Math.min(1, Math.max(0, props.value)) * 100)
+/**
+ * A bar that never lies about what it knows.
+ *
+ * A number from the backend fills the bar. No number at all — the job is alive
+ * but has not reported an estimate — draws the indeterminate sliver instead, so
+ * "we don't know yet" cannot be mistaken for "0 %" or for a bar that is stuck.
+ * The two shapes differ (solid fill vs. a short travelling segment) and the
+ * indeterminate one is announced as busy with its own text.
+ */
+export function ProgressBar(props: { value: number | null | undefined; success?: boolean; danger?: boolean }) {
+  const pct = progressPercent(props.value)
+  const tone = `${props.success ? 'success' : ''} ${props.danger ? 'danger' : ''}`
+  if (pct == null) {
+    return (
+      <div className="progress-track indeterminate" role="progressbar" aria-busy="true" aria-valuetext="Working, length unknown">
+        <div className={`progress-fill ${tone}`} />
+      </div>
+    )
+  }
   return (
     <div className="progress-track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-      <div className={`progress-fill ${props.success ? 'success' : ''} ${props.danger ? 'danger' : ''}`} style={{ width: `${pct}%` }} />
+      <div className={`progress-fill ${tone}`} style={{ width: `${pct}%` }} />
     </div>
   )
 }
@@ -166,9 +184,17 @@ export function ScoreRing(props: { score: number | null; size?: number; label?: 
   return <ScoreValue score={props.score} label={props.label} />
 }
 
-export function EmptyState(props: { icon: React.ReactNode; title: string; hint?: string; action?: React.ReactNode }) {
+export function EmptyState(props: {
+  icon: React.ReactNode
+  title: string
+  hint?: string
+  action?: React.ReactNode
+  /** Adds the slow ambient wash. Off by default; empty screens that greet a new user opt in. */
+  ambient?: boolean
+}) {
   return (
-    <div className="empty">
+    <div className={props.ambient ? 'empty ambient' : 'empty'}>
+      {props.ambient && <div className="ambient-field" aria-hidden="true" />}
       <div className="empty-icon">{props.icon}</div>
       <div className="empty-title">{props.title}</div>
       {props.hint && <div className="muted text-body" style={{ maxWidth: 400 }}>{props.hint}</div>}

@@ -19,6 +19,7 @@ import { registerCommands } from './commands/registry'
 import { navigationCommands, projectCommands } from './commands/appCommands'
 import { formatShortcut } from './commands/keys'
 import { useGlobalShortcuts } from './commands/useGlobalShortcuts'
+import { useDocumentHidden, useMotionMode } from './features/motion/useMotion'
 
 export function App() {
   // Narrow subscriptions on purpose: this component wraps every screen, so a
@@ -41,6 +42,30 @@ export function App() {
   const refreshProjects = useDataStore((s) => s.refreshProjects)
   const loadRenders = useDataStore((s) => s.loadRenders)
   const loadTasks = useDataStore((s) => s.loadTasks)
+
+  /**
+   * One place decides whether decorative motion runs, and it is written to the
+   * document so CSS can gate on it: `html[data-motion="full"]` enables the
+   * ambient effects, `html[data-hidden="true"]` pauses them while the window is
+   * not visible. Functional motion (spinners, bars) never consults this.
+   */
+  const motionMode = useMotionMode()
+  const ambientEffects = useAppStore((s) => s.settings?.appearance.ambientEffects ?? true)
+  const documentHidden = useDocumentHidden()
+  useEffect(() => {
+    document.documentElement.dataset.ambient = ambientEffects ? 'on' : 'off'
+  }, [ambientEffects])
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.motion = motionMode
+    return () => {
+      delete root.dataset.motion
+    }
+  }, [motionMode])
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.hidden = documentHidden ? 'true' : 'false'
+  }, [documentHidden])
 
   // One listener for the whole renderer, and the two command sets that never
   // change with the screen. Screen-specific commands register themselves.

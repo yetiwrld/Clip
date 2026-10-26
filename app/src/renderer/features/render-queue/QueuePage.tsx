@@ -7,6 +7,7 @@ import { RenderList } from '../project/RendersTab'
 import { renderStageLabel, taskStateLabel, taskTypeLabel } from '../../copy/labels'
 import { EmptyState } from '../../components/ui'
 import { usePoll } from '../../hooks/usePoll'
+import { JobActivity } from '../motion/JobActivity'
 
 /**
  * Global queue view: renders across projects + the task/recovery list.
@@ -90,6 +91,7 @@ export function QueuePage() {
 
       {interrupted.length === 0 && running.length === 0 && history.length === 0 && (
         <EmptyState
+          ambient
           icon={<Clapperboard size={28} />}
           title="Nothing queued"
           hint="Renders you start from a clip appear here, along with transcription and analysis jobs. You can leave this screen while they run."
@@ -135,16 +137,19 @@ export function QueuePage() {
         <div className="queue-group">
           <div className="queue-group-title">Active now</div>
           {running.map((t) => (
-            <div className="queue-row" key={t.id}>
+            <div className="queue-row live" key={t.id}>
               <div className="q-main">
                 <div className="q-title">{taskTypeLabel(t.type)}</div>
                 <div className="tiny">{projectById.get(t.projectId ?? '') ?? '—'}</div>
               </div>
-              <div className="q-meta tiny">
-                <span className="status working"><span className="dot" /> {t.message ?? (renderStageLabel(t.stage) || 'Working…')}</span>
-              </div>
-              <div className="q-value tiny">
-                {t.progress != null ? `${Math.round(t.progress * 100)}%` : ''}
+              <div className="q-meta live">
+                <JobActivity
+                  state={t.state === 'queued' ? 'queued' : 'working'}
+                  statusLabel={t.message ?? (t.state === 'queued' ? 'Queued' : renderStageLabel(t.stage) || 'Working…')}
+                  progress={t.progress}
+                  samples={data.activity[t.id]}
+                  startedAt={t.state === 'running' ? t.createdAt : null}
+                />
               </div>
               <div className="q-actions">
                 <button className="btn sm" onClick={() => void cancel(t.id)}>

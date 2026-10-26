@@ -39,7 +39,8 @@ export function FirstRunModal() {
 
   return (
     <div className="modal-backdrop">
-      <div className="modal wide" data-density="spacious" role="dialog" aria-modal="true" aria-label="Welcome to Clipwright Studio">
+      <div className="modal wide welcome" data-density="spacious" role="dialog" aria-modal="true" aria-label="Welcome to Clipwright Studio">
+        <div className="ambient-field" aria-hidden="true" />
         {page === 'welcome' ? (
           <>
             <div className="modal-head welcome-head">

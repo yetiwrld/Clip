@@ -146,6 +146,7 @@ describe('app settings schema', () => {
     const parsed = appSettingsSchema.safeParse({
       general: { firstRunCompleted: true },
       help: { tourCompleted: false, dismissedTips: [] },
+      appearance: { ambientEffects: true },
       ai: {
         activeProvider: 'none',
         openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 4096, jsonMode: true, supportsAudio: false },

@@ -3,6 +3,7 @@ import type {
   AppEvent, Clip, ClipCandidate, Project, ProjectAsset, ProjectStorage, ProjectSummary, RenderJob, TaskInfo, TranscriptSegment, Speaker
 } from '@shared/types'
 import { api } from '../api/client'
+import { pruneActivity, recordActivity } from '../lib/motion'
 import { useAppStore } from './app'
 
 /**
@@ -89,7 +90,24 @@ interface DataStore {
   assets: ProjectAsset[]
   loadAssets(projectId: string): Promise<void>
 
+  /**
+   * Measured progress history per running job, for the activity graph. A sample
+   * is appended only when a new number arrives, and the history is dropped when
+   * the job stops, so nothing grows on an idle workspace.
+   */
+  activity: Record<string, readonly number[]>
+
   handleEvent(event: AppEvent): void
+}
+
+/** Jobs that can still report progress. Everything else loses its history. */
+function activeJobIds(tasks: TaskInfo[], renders: RenderJob[]): string[] {
+  return [
+    ...tasks.filter((task) => task.state === 'running' || task.state === 'queued').map((task) => task.id),
+    ...renders
+      .filter((render) => render.status === 'rendering' || render.status === 'preparing' || render.status === 'queued')
+      .map((render) => render.id)
+  ]
 }
 
 export const useDataStore = create<DataStore>((set, get) => ({
@@ -174,12 +192,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
     })
   },
 
+  activity: {},
   tasks: [],
   async loadTasks(projectId) {
     return dedupe(`tasks:${projectId ?? 'all'}`, async () => {
       const tasks = await api['tasks.list'](projectId ? { projectId } : {})
       if (sameList(tasks, get().tasks, taskSignature)) return
-      set({ tasks })
+      let activity = get().activity
+      for (const task of tasks) {
+        if (task.state === 'running' || task.state === 'queued') activity = recordActivity(activity, task.id, task.progress)
+      }
+      set({ tasks, activity: pruneActivity(activity, activeJobIds(tasks, get().renders)) })
     })
   },
 
@@ -224,7 +247,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
         set((s) => {
           const existing = s.tasks.findIndex((t) => t.id === task.id)
           const tasks = existing === -1 ? [task, ...s.tasks] : s.tasks.map((t) => (t.id === task.id ? task : t))
-          return { tasks }
+          const activity = task.state === 'running' ? recordActivity(s.activity, task.id, task.progress) : s.activity
+          return { tasks, activity: pruneActivity(activity, activeJobIds(tasks, s.renders)) }
         })
         // B-012: background task failures (e.g. a URL import that needs
         // yt-dlp) were silent — the reason only lived on the task row.
@@ -261,7 +285,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
         set((s) => ({
           renders: s.renders.map((r) =>
             r.id === event.renderId ? { ...r, progress: event.progress, stage: event.stage, status: 'rendering' } : r
-          )
+          ),
+          activity: recordActivity(s.activity, event.renderId, event.progress)
         }))
         break
       }
@@ -270,7 +295,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
         set((s) => {
           const existing = s.renders.findIndex((r) => r.id === render.id)
           const renders = existing === -1 ? [render, ...s.renders] : s.renders.map((r) => (r.id === render.id ? render : r))
-          return { renders }
+          const activity = render.status === 'rendering' ? recordActivity(s.activity, render.id, render.progress) : s.activity
+          return { renders, activity: pruneActivity(activity, activeJobIds(s.tasks, renders)) }
         })
         if (render.status === 'completed') void get().loadRenders(render.projectId)
         break

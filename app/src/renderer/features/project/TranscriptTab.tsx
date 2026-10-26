@@ -5,6 +5,7 @@ import { pickUpload } from '../../api/upload'
 import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { ErrorBox, ProgressBar, Spinner } from '../../components/ui'
+import { progressPercent } from '../../lib/motion'
 import { plural } from '../../copy/labels'
 import { formatClock } from '@shared/utils/time'
 import { usePoll } from '../../hooks/usePoll'
@@ -58,6 +59,7 @@ export function TranscriptTab() {
       : null
   )
   const speakerBusy = Boolean(activeSpeakerTask) || speakerStarting
+  const speakerPercent = progressPercent(activeSpeakerTask?.progress)
   const transcribing = project.status === 'transcribing' || Boolean(activeTask) || transcriptionStarting
   const localTranscription =
     transcribeProviderId === 'faster-whisper-local' ||
@@ -348,10 +350,10 @@ export function TranscriptTab() {
             <div className="row" style={{ gap: 'var(--space-3)' }}>
               <Spinner size={14} />
               <strong>{activeSpeakerTask?.message ?? 'Preparing voice grouping…'}</strong>
-              <span className="tiny" style={{ marginLeft: 'auto' }}>{Math.round((activeSpeakerTask?.progress ?? 0) * 100)}%</span>
+              {speakerPercent != null && <span className="tiny" style={{ marginLeft: 'auto' }}>{speakerPercent}%</span>}
               {activeSpeakerTask && <button className="btn danger sm" onClick={() => void cancelSpeakerIdentification()}><X size={12} /> Cancel</button>}
             </div>
-            <ProgressBar value={activeSpeakerTask?.progress ?? 0} />
+            <ProgressBar value={activeSpeakerTask?.progress} />
             <div className="tiny">Audio stays on this computer. Voice groups are suggestions, not identity recognition.</div>
           </div>
         )}
@@ -465,18 +467,19 @@ function TranscriptionProgress({
   hasTranscript: boolean
   onCancel: () => Promise<void>
 }) {
-  const progress = typeof task?.progress === 'number' && Number.isFinite(task.progress)
-    ? Math.min(1, Math.max(0, task.progress))
-    : 0
-  const percent = Math.round(progress * 100)
-  const preparingModel = task?.stage === 'loading-model' || progress === 0
+  // A task that has not reported a number yet has no percentage. Saying "0 %"
+  // there would be a measurement that does not exist, and the bar below is
+  // indeterminate for the same reason.
+  const progress = typeof task?.progress === 'number' && Number.isFinite(task.progress) ? task.progress : null
+  const percent = progressPercent(progress)
+  const preparingModel = task?.stage === 'loading-model' || (progress ?? 0) < 0.01
 
   return (
     <section
       className={`transcription-progress-card ${hasTranscript ? 'has-transcript' : 'is-empty'}`}
       role="status"
       aria-live="polite"
-      aria-label={`Local transcription ${percent}% complete`}
+      aria-label={percent == null ? 'Local transcription starting' : `Local transcription ${percent}% complete`}
     >
       <div className="transcription-progress-top">
         <div className="transcription-progress-icon" aria-hidden="true">
@@ -487,9 +490,9 @@ function TranscriptionProgress({
           <h2>Transcribing locally</h2>
           <p>Whisper is transcribing your audio on this computer. Your media stays local.</p>
         </div>
-        <div className="transcription-progress-percent" aria-label={`${percent}% complete`}>
-          <strong>{percent}<span>%</span></strong>
-          <small>complete</small>
+        <div className="transcription-progress-percent" aria-label={percent == null ? 'Starting, no estimate yet' : `${percent}% complete`}>
+          {percent == null ? <strong>Starting</strong> : <strong>{percent}<span>%</span></strong>}
+          <small>{percent == null ? 'no estimate yet' : 'complete'}</small>
         </div>
       </div>
       <ProgressBar value={progress} />

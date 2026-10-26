@@ -139,9 +139,45 @@ describe('motion', () => {
     expect(offenders).toEqual([])
   })
 
-  it('reserves infinite animation for the loading spinner', () => {
-    const infinite = (css.match(/animation:[^;]+infinite[^;]*/g) ?? []).filter((decl) => !decl.includes('spin'))
-    expect(infinite).toEqual([])
+  it('allows continuous animation only for the four named effects, each gated', () => {
+    // Every infinite animation must be one of these, and the decorative ones
+    // must sit behind the data-motion gate so they can be switched off.
+    const GATED_BY_MOTION = ['ambient-drift', 'status-live']
+    const FUNCTIONAL = ['spin']
+    const ALLOWED = [...GATED_BY_MOTION, ...FUNCTIONAL, 'progress-sweep']
+
+    const offenders: string[] = []
+    for (const match of css.matchAll(/animation:[^;]+infinite[^;]*/g)) {
+      const decl = match[0]
+      const name = ALLOWED.find((candidate) => decl.includes(candidate))
+      if (!name) {
+        offenders.push(`unnamed: ${decl}`)
+        continue
+      }
+      const open = css.lastIndexOf('{', match.index ?? 0)
+      const close = Math.max(css.lastIndexOf('}', open), 0)
+      const selector = css.slice(close + 1, open).replace(/\s+/g, ' ').trim()
+      if (GATED_BY_MOTION.includes(name) && !selector.includes('[data-motion="full"]')) {
+        offenders.push(`${name} is not gated: ${selector}`)
+      }
+      if (name === 'progress-sweep' && !selector.includes('.progress-track.indeterminate')) {
+        offenders.push(`progress-sweep must belong to the indeterminate bar: ${selector}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('pauses ambient motion while the window is hidden', () => {
+    expect(css).toContain('html[data-hidden="true"] .ambient-field::before')
+    expect(css).toContain('html[data-hidden="true"] .status.working .dot')
+    const paused = css.match(/html\[data-hidden="true"\][^{]*\{[^}]*animation-play-state: paused/g) ?? []
+    expect(paused.length).toBe(2)
+  })
+
+  it('keeps an indeterminate bar readable without motion', () => {
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
+    expect(block).toContain('.progress-track.indeterminate .progress-fill')
+    expect(block).toContain('repeating-linear-gradient')
   })
 
   it('respects the system reduced-motion preference', () => {

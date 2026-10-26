@@ -70,6 +70,11 @@ which also has getting started, the shortcut list, common questions,
 troubleshooting and the app version. The tour can be replayed from Help or from
 the command palette (`Ctrl/⌘ K` → “Take the guided tour”).
 
+Interface effects — the slow backdrop wash, the live status pulse and the job
+activity graph — can be turned off in **Settings → Advanced → Ambient visual
+effects**. Progress bars, spinners and status text are not affected, and the
+operating system's reduce-motion setting always wins.
+
 ## Run on Windows (development version)
 
 The repository ZIP contains the **source code**, not the installer. Developers can run the app on Windows 10/11 x64 with these steps.

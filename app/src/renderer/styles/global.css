@@ -131,6 +131,7 @@
      One ladder, low to high. Nothing below should need a raw number: if a
      layer has to sit above another, pick the role that describes it. */
   --z-base: 0;            /* in flow, behind everything */
+  --z-behind: -1;         /* a decorative wash, behind its own container */
   --z-raised: 1;          /* a row lifted above its siblings */
   --z-clip: 2;            /* timeline clips */
   --z-marker: 3;          /* keyframe dots, trim handles, clip labels */
@@ -1280,6 +1281,8 @@ input[type='checkbox'] {
 }
 
 .modal {
+  position: relative;
+  isolation: isolate;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -1578,6 +1581,9 @@ input[type='checkbox'] {
 /* ===================================================== misc utilities */
 
 .empty {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   text-align: center;
   padding: var(--space-10) var(--space-6);
   color: var(--text-2);
@@ -4318,6 +4324,20 @@ button:disabled {
     animation-iteration-count: infinite !important;
   }
 
+  /* Work with no estimate must not read as a partly filled bar when motion is
+     reduced: draw the whole track as segments instead of a travelling pill. */
+  .progress-track.indeterminate .progress-fill {
+    animation: none !important;
+    transform: none;
+    width: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--accent) 0 6px,
+      transparent 6px 12px
+    );
+    opacity: 0.7;
+  }
+
   .inspector-section::details-content {
     block-size: auto;
   }
@@ -4910,4 +4930,206 @@ button:disabled {
   .tour-spotlight {
     transition: none;
   }
+}
+
+/* ========================================================== LIVE MOTION
+   Continuous motion, and the two gates that keep it out of the way.
+
+   `html[data-motion="full"]` is set by App from the settings toggle and the
+   system's reduce-motion preference; `html[data-hidden="true"]` says the window
+   is not visible. Nothing decorative runs without the first, and nothing keeps
+   running (or keeps a frame budget) with the second.
+
+   Functional motion — the spinner, a determinate bar filling — is NOT gated:
+   it is the only signal that work is happening, so it always runs.
+   ------------------------------------------------------------------------ */
+
+/* Ambient wash: two slow warm glows behind a welcome or empty surface. Purely
+   decorative, never above content, and never interactive. */
+.ambient-field {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-behind);
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.ambient-field::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(42% 44% at 24% 20%, var(--accent-soft), transparent 70%),
+    radial-gradient(38% 42% at 78% 76%, var(--accent-soft), transparent 72%);
+  opacity: 0.9;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: transform;
+}
+
+html[data-ambient="off"] .ambient-field::before {
+  opacity: 0;
+}
+
+html[data-motion="full"] .ambient-field::before {
+  animation: ambient-drift 34s var(--ease) infinite alternate;
+}
+
+html[data-hidden="true"] .ambient-field::before {
+  animation-play-state: paused;
+}
+
+@keyframes ambient-drift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate3d(1.5%, 1.5%, 0) scale(1.06);
+    opacity: 0.9;
+  }
+}
+
+/* The status dot breathes only while something is genuinely running. Text and
+   colour always say the same thing, so the pulse is never the only signal. */
+html[data-motion="full"] .status.working .dot {
+  animation: status-live 1.8s var(--ease) infinite;
+}
+
+html[data-hidden="true"] .status.working .dot {
+  animation-play-state: paused;
+}
+
+@keyframes status-live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-soft);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    opacity: 0.72;
+  }
+}
+
+/* Measurable progress fills; unknown progress travels. The two shapes cannot be
+   confused, and the indeterminate one is announced as busy. */
+.progress-track.indeterminate .progress-fill {
+  width: 34%;
+  animation: progress-sweep 1.5s var(--ease) infinite alternate;
+}
+
+@keyframes progress-sweep {
+  from {
+    transform: translateX(-40%);
+  }
+  to {
+    transform: translateX(235%);
+  }
+}
+
+/* One row, three readings: what it is doing, how far, how long. */
+.job-activity {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.job-activity-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.job-activity-metrics {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.job-activity .progress-track {
+  height: 4px;
+}
+
+/* The measured history of this job. Decorative: the numbers beside it are the
+   real information. */
+.activity-graph {
+  display: block;
+  width: 100%;
+  height: 20px;
+  overflow: visible;
+}
+
+.activity-graph-base {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.activity-graph-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.activity-graph-head {
+  fill: var(--accent);
+}
+
+/* Live rows drop the separate percentage column: the number lives in the
+   activity block, so the row keeps three columns instead of four. */
+.queue-row.live {
+  grid-template-columns: minmax(180px, 1.1fr) minmax(0, 2.4fr) auto;
+  grid-template-areas: 'main meta actions';
+}
+
+.queue-row .q-meta.live {
+  overflow: visible;
+  white-space: normal;
+}
+
+/* A queued job is waiting, not working: muted dot, no pulse, no bar. */
+.status.queued {
+  color: var(--text-3);
+}
+
+.status.queued .dot {
+  background: var(--text-3);
+}
+
+/* Screen entry: a 2px rise as a view mounts. Re-runs only when the view really
+   changes, because each view mounts its own page. */
+.page {
+  animation: view-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The ruler shows how much of the timeline has been played. The width is driven
+   by the same rAF loop that moves the playhead, in one custom property, so this
+   costs a compositor transform instead of a React render. */
+.multi-track-played {
+  position: absolute;
+  z-index: var(--z-base);
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  transform: scaleX(var(--played-ratio, 0));
+  transform-origin: left center;
+  background: var(--accent);
+  opacity: 0.8;
+  pointer-events: none;
 }

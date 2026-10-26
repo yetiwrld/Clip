@@ -719,6 +719,7 @@ export const settingsRepo = {
     return {
       general: { firstRunCompleted: false },
       help: { tourCompleted: false, dismissedTips: [] },
+      appearance: { ambientEffects: true },
       ai: {
         activeProvider: 'none',
         openai: { baseUrl: 'https://api.openai.com/v1', model: '', temperature: 0.4, maxTokens: 4096, jsonMode: false, supportsAudio: false, authStyle: 'bearer' },
