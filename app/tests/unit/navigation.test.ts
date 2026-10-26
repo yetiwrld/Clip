@@ -159,7 +159,7 @@ describe('palette parity with the screens', () => {
   it('uses the same destination names as the sidebar', () => {
     const sidebar = read('App.tsx')
     expect(byId.get('nav.dashboard')?.title).toBe('Go to Projects')
-    expect(sidebar).toContain('> Projects')
+    expect(sidebar).toMatch(/nav-label">\s*Projects/)
     expect(byId.get('nav.queue')?.title).toBe('Go to Render queue')
     expect(sidebar).toContain('Render queue')
     expect(byId.get('nav.settings')?.title).toBe('Go to Settings')

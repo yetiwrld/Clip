@@ -4,6 +4,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
+import { ResizeHandle } from '../../src/renderer/features/workspace/ResizeHandle'
 import {
   ConfirmDialog,
   EmptyState,
@@ -149,6 +150,16 @@ const BASELINED_SELECTORS = [
   '.text-body',
   '.section-hint',
   '.create-bar',
+  // Workspace layout: the remembered panel frame and its dividers.
+  '.pane-resizer',
+  '.sidebar-resizer',
+  '.stage-resizer',
+  '.sidebar-toggle',
+  '.inspector-toolbar',
+  '.inspector-show-toggle',
+  '.editor-panel-toggle',
+  '.app-shell[data-sidebar="collapsed"]',
+  '.editor-shell[data-tools="collapsed"] .editor-body',
   // Help and onboarding: the welcome screen, the tour and contextual help.
   '.welcome-paths',
   '.help-steps',
@@ -316,5 +327,34 @@ describe('visual baseline: component markup', () => {
         )
       )
     ).toMatchSnapshot()
+  })
+})
+
+describe('workspace controls', () => {
+  const divider = renderToStaticMarkup(
+    React.createElement(ResizeHandle, {
+      orientation: 'vertical',
+      label: 'Resize sidebar',
+      value: 198,
+      min: 180,
+      max: 380,
+      defaultValue: 198,
+      onChange: () => {},
+      onCommit: () => {}
+    })
+  )
+
+  it('exposes a divider as a keyboard window splitter', () => {
+    expect(divider).toContain('role="separator"')
+    expect(divider).toContain('aria-orientation="vertical"')
+    expect(divider).toContain('aria-valuenow="198"')
+    expect(divider).toContain('aria-valuemin="180"')
+    expect(divider).toContain('aria-valuemax="380"')
+    expect(divider).toContain('tabindex="0"')
+    expect(divider).toContain('aria-label="Resize sidebar"')
+  })
+
+  it('keeps the divider markup stable', () => {
+    expect(divider).toMatchSnapshot()
   })
 })

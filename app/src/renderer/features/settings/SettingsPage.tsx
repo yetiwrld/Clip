@@ -5,6 +5,8 @@ import {
   RefreshCw, ArrowLeft } from 'lucide-react'
 import { api, errMessage, isElectron } from '../../api/client'
 import { InfoTip } from '../help/InfoTip'
+import { isDefaultWorkspace, layoutSummary } from '../workspace/layout'
+import { WORKSPACE_PRESETS, applyWorkspacePreset, resetWorkspaceLayout, useWorkspaceLayout } from '../workspace/useWorkspaceLayout'
 import { useAppStore } from '../../stores/app'
 import { Field, Switch, formatBytes, Spinner, ErrorBox, Modal } from '../../components/ui'
 import { CAPTION_STYLES, QUALITY_PRESETS, RESOLUTION_PRESETS } from '@shared/constants'
@@ -816,6 +818,7 @@ function AdvancedSection() {
   const app = useAppStore()
   const settings = app.settings!
   const deps = app.dependencies
+  const workspaceLayout = useWorkspaceLayout().layout
   const ffmpeg = deps.find((d) => d.id === 'ffmpeg')
   const ffprobe = deps.find((d) => d.id === 'ffprobe')
 
@@ -851,6 +854,36 @@ function AdvancedSection() {
         label="Ambient visual effects"
         hint="Background motion, the live status pulse and activity graphs. Progress bars, spinners and status text always keep working, and your system's reduce-motion setting always wins."
       />
+      <div className="divider" />
+      <div className="section-title">Workspace layout</div>
+      <div className="field-hint">
+        Drag the dividers to resize the sidebar, the tool panel and the properties panel. Use the collapse buttons to
+        hide a panel; the control that brings it back stays where you left it. Sizes and hidden panels are saved here and
+        restored the next time the app opens.
+      </div>
+      <div className="tiny">
+        {layoutSummary(workspaceLayout)}
+      </div>
+      <div className="row wrap">
+        <button
+          className="btn sm"
+          onClick={() => void resetWorkspaceLayout().then((ok) => ok && app.toast({ level: 'info', message: 'Workspace layout reset.' }))}
+          disabled={isDefaultWorkspace(workspaceLayout)}
+          title="Put every panel back to its default size and show the panels again"
+        >
+          Reset layout
+        </button>
+        {WORKSPACE_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            className="btn ghost sm"
+            onClick={() => void applyWorkspacePreset(preset).then((ok) => ok && app.toast({ level: 'info', message: `Layout set to ${preset.label.toLowerCase()}.` }))}
+            title={preset.hint}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
       <div className="divider" />
       <div className="section-title">Dependency status</div>
       {deps.map((d) => (

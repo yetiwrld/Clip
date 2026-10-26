@@ -147,6 +147,12 @@ describe('app settings schema', () => {
       general: { firstRunCompleted: true },
       help: { tourCompleted: false, dismissedTips: [] },
       appearance: { ambientEffects: true },
+      workspace: {
+        sidebarWidth: 198, sidebarCollapsed: false,
+        editorToolPanelWidth: 268, editorToolPanelCollapsed: false,
+        editorInspectorWidth: 316, editorInspectorCollapsed: false,
+        editorTimelineHeight: null, openInspectorSections: ['trim']
+      },
       ai: {
         activeProvider: 'none',
         openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 4096, jsonMode: true, supportsAudio: false },

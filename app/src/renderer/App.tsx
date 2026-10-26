@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { FolderOpen, ListVideo, Settings as SettingsIcon, X, TriangleAlert, Keyboard, CircleHelp } from 'lucide-react'
+import React, { useEffect, useState, type CSSProperties } from 'react'
+import { FolderOpen, ListVideo, Settings as SettingsIcon, X, TriangleAlert, Keyboard, CircleHelp, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useAppStore } from './stores/app'
 import { useDataStore } from './stores/data'
 import { subscribeEvents, isPreview, mediaUrl, api } from './api/client'
@@ -20,6 +20,9 @@ import { navigationCommands, projectCommands } from './commands/appCommands'
 import { formatShortcut } from './commands/keys'
 import { useGlobalShortcuts } from './commands/useGlobalShortcuts'
 import { useDocumentHidden, useMotionMode } from './features/motion/useMotion'
+import { ResizeHandle } from './features/workspace/ResizeHandle'
+import { SIDEBAR_LIMIT } from './features/workspace/layout'
+import { useWorkspaceLayout } from './features/workspace/useWorkspaceLayout'
 
 export function App() {
   // Narrow subscriptions on purpose: this component wraps every screen, so a
@@ -42,6 +45,16 @@ export function App() {
   const refreshProjects = useDataStore((s) => s.refreshProjects)
   const loadRenders = useDataStore((s) => s.loadRenders)
   const loadTasks = useDataStore((s) => s.loadTasks)
+
+  /**
+   * The sidebar remembers its width and whether it is collapsed. Dragging keeps
+   * the width in local state (one render per pointer move, no writes) and only
+   * saves when the pointer is released.
+   */
+  const { layout, update: updateLayout } = useWorkspaceLayout()
+  const [sidebarWidth, setSidebarWidth] = useState(layout.sidebarWidth)
+  useEffect(() => setSidebarWidth(layout.sidebarWidth), [layout.sidebarWidth])
+  const sidebarCollapsed = layout.sidebarCollapsed
 
   /**
    * One place decides whether decorative motion runs, and it is written to the
@@ -127,16 +140,30 @@ export function App() {
   const interrupted = interruptedCount
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div
+      className="app-shell"
+      data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}
+      style={{ '--sidebar-w': `${sidebarWidth}px` } as CSSProperties}
+    >
+      <aside className="sidebar" id="app-sidebar" aria-label="Sidebar">
         <div className="brand">
           <div className="brand-mark">
             <img src="./clipwright-studio-logo.png" alt="" aria-hidden="true" />
           </div>
-          <div>
+          <div className="brand-text">
             <div className="brand-name">Clipwright</div>
             <div className="brand-sub">Studio</div>
           </div>
+          <button
+            className="btn ghost sm icon sidebar-toggle"
+            onClick={() => updateLayout({ sidebarCollapsed: !sidebarCollapsed })}
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="app-sidebar"
+            aria-label={sidebarCollapsed ? 'Show the sidebar' : 'Hide the sidebar'}
+            title={sidebarCollapsed ? 'Show the sidebar' : 'Hide the sidebar'}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         </div>
 
         <div className="nav-group-label">Workspace</div>
@@ -144,9 +171,10 @@ export function App() {
           className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}
           onClick={() => navigate('dashboard')}
           aria-current={view === 'dashboard' ? 'page' : undefined}
+          title={sidebarCollapsed ? 'Projects' : undefined}
           data-tour="projects"
         >
-          <FolderOpen size={16} /> Projects
+          <FolderOpen size={16} /> <span className="nav-label">Projects</span>
         </button>
         <button
           className={`nav-item ${view === 'queue' ? 'active' : ''}`}
@@ -159,7 +187,7 @@ export function App() {
               : 'Renders and other background jobs'
           }
         >
-          <ListVideo size={16} /> Render queue
+          <ListVideo size={16} /> <span className="nav-label">Render queue</span>
           {activeRenders > 0 && <span className="nav-badge active-count">{activeRenders}</span>}
           {/* The interrupted count used to be its own nav row, which duplicated
               this destination. It is an alert about this screen, so it badges
@@ -182,7 +210,7 @@ export function App() {
             title="Searchable keyboard shortcut reference"
             data-tour="shortcuts"
           >
-            <Keyboard size={16} /> Shortcuts
+            <Keyboard size={16} /> <span className="nav-label">Shortcuts</span>
             <kbd className="nav-kbd">{formatShortcut({ key: '/', mod: true })}</kbd>
           </button>
           <button
@@ -192,15 +220,16 @@ export function App() {
             title="Getting started, shortcuts, setup check and troubleshooting"
             data-tour="help"
           >
-            <CircleHelp size={16} /> Help
+            <CircleHelp size={16} /> <span className="nav-label">Help</span>
           </button>
           <button
             className={`nav-item ${view === 'settings' ? 'active' : ''}`}
             onClick={() => navigate('settings')}
             aria-current={view === 'settings' ? 'page' : undefined}
+            title={sidebarCollapsed ? 'Settings' : undefined}
             data-tour="settings"
           >
-            <SettingsIcon size={16} /> Settings
+            <SettingsIcon size={16} /> <span className="nav-label">Settings</span>
           </button>
 
           <div className="sidebar-footer">
@@ -210,6 +239,19 @@ export function App() {
             <div className="developer-credit">Developed by yetiwrld</div>
           </div>
         </div>
+        {!sidebarCollapsed && (
+          <ResizeHandle
+            orientation="vertical"
+            label="Resize sidebar"
+            value={sidebarWidth}
+            min={SIDEBAR_LIMIT.min}
+            max={SIDEBAR_LIMIT.max}
+            defaultValue={198}
+            onChange={setSidebarWidth}
+            onCommit={(width) => updateLayout({ sidebarWidth: width })}
+            className="sidebar-resizer"
+          />
+        )}
       </aside>
 
       <main className="main-area">

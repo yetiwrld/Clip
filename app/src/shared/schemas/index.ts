@@ -49,6 +49,18 @@ export const appSettingsSchema = z.object({
   appearance: z.object({
     ambientEffects: z.boolean()
   }),
+  // Ranges match the renderer's clamp limits. A value outside them fails this
+  // section on load, and the repository falls back to the defaults above.
+  workspace: z.object({
+    sidebarWidth: z.number().int().min(180).max(380),
+    sidebarCollapsed: z.boolean(),
+    editorToolPanelWidth: z.number().int().min(200).max(360),
+    editorToolPanelCollapsed: z.boolean(),
+    editorInspectorWidth: z.number().int().min(260).max(460),
+    editorInspectorCollapsed: z.boolean(),
+    editorTimelineHeight: z.number().int().min(220).max(900).nullable(),
+    openInspectorSections: z.array(z.string().min(1).max(40)).max(24)
+  }),
   ai: z.object({
     activeProvider: z.enum(['heuristic-local', 'openai-compatible', 'anthropic', 'none']),
     openai: aiProviderRuntimeConfigSchema,

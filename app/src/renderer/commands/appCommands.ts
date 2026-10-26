@@ -8,6 +8,7 @@
 
 import { useAppStore } from '../stores/app'
 import type { ProjectTab, SettingsSection } from '../stores/app'
+import { resetWorkspaceLayout } from '../features/workspace/useWorkspaceLayout'
 import type { Command } from './types'
 
 const app = () => useAppStore.getState()
@@ -53,6 +54,18 @@ export function navigationCommands(): Command[] {
       shortcut: { key: '/', mod: true },
       allowInInput: true,
       run: () => app().openPalette('shortcuts')
+    },
+    {
+      id: 'workspace.resetLayout',
+      title: 'Reset workspace layout',
+      category: 'Settings',
+      keywords: ['panels', 'sidebar', 'width', 'collapse', 'hide', 'default'],
+      hint: 'Puts every panel back to its default size and shows the hidden ones',
+      run: () => {
+        void resetWorkspaceLayout().then((ok) => {
+          if (ok) app().toast({ level: 'info', message: 'Workspace layout reset.' })
+        })
+      }
     },
     {
       id: 'help.open',

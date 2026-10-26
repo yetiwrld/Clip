@@ -578,10 +578,33 @@ export interface AppearanceSettings {
   ambientEffects: boolean
 }
 
+/**
+ * Remembered shape of the workspace: panel sizes, which panels are hidden and
+ * which inspector sections the user left open.
+ *
+ * Sizes are pixels and every one of them has a bounded range in the schema, so
+ * a stale or hand-edited value can never produce an unusable window. The
+ * renderer still clamps per field when it reads, so one odd number degrades to
+ * that panel's limit instead of throwing the whole layout away.
+ */
+export interface WorkspaceSettings {
+  sidebarWidth: number
+  sidebarCollapsed: boolean
+  editorToolPanelWidth: number
+  editorToolPanelCollapsed: boolean
+  editorInspectorWidth: number
+  editorInspectorCollapsed: boolean
+  /** `null` means "fit the window", which adapts to the screen it opens on. */
+  editorTimelineHeight: number | null
+  /** Ids of the inspector sections that are open. */
+  openInspectorSections: string[]
+}
+
 export interface AppSettings {
   general: GeneralSettings
   help: HelpSettings
   appearance: AppearanceSettings
+  workspace: WorkspaceSettings
   ai: AiSettings
   transcription: TranscriptionSettings
   video: VideoSettings

@@ -4,7 +4,7 @@ import {
   ChevronRight, Scissors, Wand2, Save, Undo2, Redo2, AlertTriangle, ShieldCheck,
   Gauge, Film, AudioLines, Eraser, RotateCcw, Zap, Target, X, Trash2, Star, Headphones,
   Library, Music2, Captions, Sparkles, MoveVertical, Maximize2, Search, Hand, MousePointer2, ZoomIn, ZoomOut, SlidersHorizontal,
-  Package, Check, X as CloseIcon
+  Package, Check, X as CloseIcon, PanelLeftClose, PanelLeftOpen, PanelRightClose
 } from 'lucide-react'
 import { api, errMessage, mediaUrl, copyText, isPreview } from '../../api/client'
 import { useAppStore } from '../../stores/app'
@@ -21,7 +21,7 @@ import { applyTrackingToCrop, cameraStateAt, computeCameraCrop, computeCrop } fr
 import { keptSegments, keptDuration } from '@shared/video/segments'
 import { effectiveItemSpeed, sourceTimeAtTimelineTime, timelineItemDuration, timelineItemEnd, timelineOverlayGeometry } from '@shared/video/time-map'
 import { frameDuration, frameTimeTolerance } from '@shared/video/frame-rate'
-import { clampTimelineHeight, initialTimelineHeight } from '@shared/editor/timeline-editing'
+import { clampTimelineHeight, initialTimelineHeight, TIMELINE_HEIGHT_MIN as TIMELINE_MIN_HEIGHT } from '@shared/editor/timeline-editing'
 import { emptyTimelineCommandHistory, executeClipCommand, executeTimelineCommand, recordTimelineCommand, redoTimelineCommand, undoTimelineCommand, type ClipEditCommand, type TimelineCommandHistory } from '@shared/editor/timeline-commands'
 import { textLayerAppearanceAt, textLayerStateAt } from '@shared/video/textLayers'
 import {
@@ -33,6 +33,9 @@ import { formatClock } from '@shared/utils/time'
 import { CaptionPreview } from './CaptionPreview'
 import { MediaLibrary } from './MediaLibrary'
 import { MultiTrackTimeline, TimelineInspector } from './MultiTrackTimeline'
+import { ResizeHandle } from '../workspace/ResizeHandle'
+import { INSPECTOR_LIMIT, TOOL_PANEL_LIMIT } from '../workspace/layout'
+import { useWorkspaceLayout } from '../workspace/useWorkspaceLayout'
 
 /**
  * Clip editor — professional workspace layout:
@@ -64,6 +67,16 @@ function sourceDisplayTransform(sourceW: number, sourceH: number, frameW: number
 export function EditorPage() {
   const app = useAppStore()
   const data = useDataStore()
+  /**
+   * Panel sizes and hidden panels are the same preferences the app shell uses.
+   * The local copies exist so a drag re-renders the grid without writing to
+   * disk on every pointer move; the saved value is written on release.
+   */
+  const { layout: workspaceLayout, update: updateWorkspace } = useWorkspaceLayout()
+  const [toolPanelWidth, setToolPanelWidth] = useState(workspaceLayout.editorToolPanelWidth)
+  const [inspectorWidth, setInspectorWidth] = useState(workspaceLayout.editorInspectorWidth)
+  useEffect(() => setToolPanelWidth(workspaceLayout.editorToolPanelWidth), [workspaceLayout.editorToolPanelWidth])
+  useEffect(() => setInspectorWidth(workspaceLayout.editorInspectorWidth), [workspaceLayout.editorInspectorWidth])
   const clipId = app.editorClipId
   const projectId = app.projectId
   const activeClipIdRef = useRef<string | null>(clipId)
@@ -74,15 +87,18 @@ export function EditorPage() {
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
   const [sourceClipSelected, setSourceClipSelected] = useState(false)
   const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
-  const [timelineHeight, setTimelineHeight] = useState(() => {
-    const stored = Number(localStorage.getItem('clipwright.editor.timelineHeight'))
-    return initialTimelineHeight(window.innerHeight, stored)
-  })
+  // A remembered timeline height is a preference like any other, so it lives in
+  // settings instead of a separate localStorage key.
+  const [timelineHeight, setTimelineHeight] = useState(() =>
+    initialTimelineHeight(window.innerHeight, workspaceLayout.editorTimelineHeight ?? undefined)
+  )
+  useEffect(() => {
+    setTimelineHeight(initialTimelineHeight(window.innerHeight, workspaceLayout.editorTimelineHeight ?? undefined))
+  }, [workspaceLayout.editorTimelineHeight])
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false)
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const inspectorToggleRef = useRef<HTMLButtonElement>(null)
   const inspectorCloseRef = useRef<HTMLButtonElement>(null)
-  const timelineResizeCleanup = useRef<(() => void) | null>(null)
 
   const [clip, setClip] = useState<Clip | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
@@ -1513,23 +1529,6 @@ export function EditorPage() {
     } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) }
   }
 
-  function beginTimelineResize(event: React.PointerEvent<HTMLDivElement>) {
-    event.preventDefault()
-    const originY = event.clientY
-    const originHeight = timelineHeight
-    const onMove = (move: PointerEvent) => setTimelineHeight(clampTimelineHeight(originHeight + originY - move.clientY, window.innerHeight))
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      timelineResizeCleanup.current = null
-      setTimelineHeight((height) => { localStorage.setItem('clipwright.editor.timelineHeight', String(Math.round(height))); return height })
-    }
-    timelineResizeCleanup.current?.()
-    timelineResizeCleanup.current = onUp
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp, { once: true })
-  }
-
   function togglePreviewFullscreen() {
     const element = stageRef.current
     if (!element) return
@@ -1614,8 +1613,37 @@ export function EditorPage() {
     return label ? ` (${label})` : ''
   }
 
+  /**
+   * Which inspector sections are open is remembered. The browser fires `toggle`
+   * for our own `open` prop as well, so the handler ignores the echo rather than
+   * writing settings back on every render.
+   */
+  const openSections: string[] = workspaceLayout.openInspectorSections
+  function sectionProps(id: string) {
+    return {
+      open: openSections.includes(id),
+      onToggle: (event: React.SyntheticEvent<HTMLDetailsElement>) => {
+        const isOpen = event.currentTarget.open
+        const current = new Set(openSections)
+        if (isOpen === current.has(id)) return
+        if (isOpen) current.add(id)
+        else current.delete(id)
+        updateWorkspace({ openInspectorSections: [...current] })
+      }
+    }
+  }
+
   return (
-    <div className="editor-shell" data-density="compact">
+    <div
+      className="editor-shell"
+      data-density="compact"
+      data-tools={workspaceLayout.editorToolPanelCollapsed ? 'collapsed' : 'expanded'}
+      data-inspector={workspaceLayout.editorInspectorCollapsed ? 'collapsed' : 'expanded'}
+      style={{
+        '--editor-tool-w': `${toolPanelWidth}px`,
+        '--editor-inspector-w': `${inspectorWidth}px`
+      } as React.CSSProperties}
+    >
       {/* ------------------------------------------------------- top bar -- */}
       <div className="editor-topbar">
         <div className="topbar-left">
@@ -1681,6 +1709,16 @@ export function EditorPage() {
           >
             {renderQueued ? <Spinner size={14} /> : <Package size={14} />} Render
           </button>
+          <button
+            className="btn ghost sm icon inspector-show-toggle"
+            onClick={() => updateWorkspace({ editorInspectorCollapsed: false })}
+            aria-label="Show properties"
+            title="Show properties"
+            aria-controls="editor-inspector"
+            aria-expanded={false}
+          >
+            <SlidersHorizontal size={14} />
+          </button>
           <button ref={inspectorToggleRef} className="btn ghost sm icon inspector-mobile-toggle" onClick={() => setInspectorOpen(true)} aria-label="Open properties" title="Open properties" aria-controls="editor-inspector" aria-expanded={inspectorOpen}>
             <SlidersHorizontal size={14} />
           </button>
@@ -1726,8 +1764,21 @@ export function EditorPage() {
             ['clip', 'Clip', <Scissors size={16} />]
           ] as const).map(([tool, label, icon]) => <button key={tool} className={`editor-tool-button${activeTool === tool ? ' active' : ''}`}
             onClick={() => { setActiveTool(tool); setSourceClipSelected(tool === 'clip'); setSelectedTimelineItem(null); if (tool === 'clip') { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }} title={label} aria-label={label} aria-pressed={activeTool === tool}>{icon}<span>{label}</span></button>)}
+          {/* The rail is the one part of this column that is always visible, so
+              the control that brings the panel back lives here too. */}
+          <button
+            className="editor-tool-button editor-panel-toggle"
+            onClick={() => updateWorkspace({ editorToolPanelCollapsed: !workspaceLayout.editorToolPanelCollapsed })}
+            title={workspaceLayout.editorToolPanelCollapsed ? 'Show the tool panel' : 'Hide the tool panel'}
+            aria-label={workspaceLayout.editorToolPanelCollapsed ? 'Show the tool panel' : 'Hide the tool panel'}
+            aria-expanded={!workspaceLayout.editorToolPanelCollapsed}
+            aria-controls="editor-tool-panel"
+          >
+            {workspaceLayout.editorToolPanelCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            <span>{workspaceLayout.editorToolPanelCollapsed ? 'Show' : 'Hide'}</span>
+          </button>
         </nav>
-        <aside className="editor-tool-panel" aria-label={`${activeTool} panel`}>
+        <aside className="editor-tool-panel" id="editor-tool-panel" aria-label={`${activeTool} panel`}>
           <div className="editor-panel-heading"><strong>{activeTool === 'media' ? 'Media' : activeTool === 'audio' ? 'Audio' : activeTool === 'moments' ? 'AI moments' : activeTool === 'camera' ? 'Camera & reframe' : 'Clip source'}</strong>
             <span>{activeTool === 'media' ? 'Project assets' : activeTool === 'audio' ? 'Music, effects and voice' : ''}</span>
           </div>
@@ -1755,6 +1806,33 @@ export function EditorPage() {
           </div>}
         </aside>
         <div className="editor-stage" ref={stageRef}>
+          {!workspaceLayout.editorToolPanelCollapsed && (
+            <ResizeHandle
+              orientation="vertical"
+              label="Resize tool panel"
+              value={toolPanelWidth}
+              min={TOOL_PANEL_LIMIT.min}
+              max={TOOL_PANEL_LIMIT.max}
+              defaultValue={268}
+              onChange={setToolPanelWidth}
+              onCommit={(width) => updateWorkspace({ editorToolPanelWidth: width })}
+              className="stage-resizer stage-resizer-left"
+            />
+          )}
+          {!workspaceLayout.editorInspectorCollapsed && (
+            <ResizeHandle
+              orientation="vertical"
+              label="Resize properties panel"
+              value={inspectorWidth}
+              min={INSPECTOR_LIMIT.min}
+              max={INSPECTOR_LIMIT.max}
+              defaultValue={316}
+              invert
+              onChange={setInspectorWidth}
+              onCommit={(width) => updateWorkspace({ editorInspectorWidth: width })}
+              className="stage-resizer stage-resizer-right"
+            />
+          )}
           <div className="stage-head">
             <div className="stage-head-title">
               <strong>Player</strong>
@@ -2012,6 +2090,19 @@ export function EditorPage() {
 
         {inspectorOpen && <button className="editor-inspector-backdrop" aria-label="Close properties" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} />}
         <aside id="editor-inspector" className={`editor-inspector${inspectorOpen ? ' mobile-open' : ''}`} aria-label="Edit properties">
+          <div className="inspector-toolbar">
+            <span className="inspector-toolbar-title">Properties</span>
+            <button
+              className="btn ghost sm icon"
+              onClick={() => updateWorkspace({ editorInspectorCollapsed: true })}
+              aria-label="Hide properties"
+              title="Hide properties"
+              aria-controls="editor-inspector"
+              aria-expanded
+            >
+              <PanelRightClose size={14} />
+            </button>
+          </div>
           <div className="inspector-mobile-heading"><strong>Properties</strong><button ref={inspectorCloseRef} className="btn ghost sm icon" onClick={() => { setInspectorOpen(false); inspectorToggleRef.current?.focus() }} aria-label="Close properties" title="Close properties"><CloseIcon size={16} /></button></div>
           {selectedTimelineItem ? <>
             <div className="inspector-context-heading"><span>{selectedTimelineAsset?.mediaType ?? 'Media'} properties</span><strong>{selectedTimelineAsset?.name ?? 'Missing media'}</strong></div>
@@ -2033,7 +2124,7 @@ export function EditorPage() {
           </> : selectedMoment ? <div className="inspector-moment-details"><div className="inspector-context-heading"><span>AI moment</span><strong>{selectedMoment.title}</strong></div>
             <p>{selectedMoment.reason}</p><p>{selectedMoment.transcriptExcerpt}</p><div className="inspector-moment-meta">{formatClock(selectedMoment.startTime, true)} – {formatClock(selectedMoment.endTime, true)} · Score {Math.round(selectedMoment.overallScore ?? 0)}</div>
           </div> : <div className="inspector-empty"><Film size={28} /><strong>Nothing selected</strong><span>Select a clip, media item, text layer, caption or moment to see its controls.</span></div>}
-          <details className="inspector-section" open>
+          <details className="inspector-section" {...sectionProps('trim')}>
             <summary>
               <Scissors size={12} /> Trim <ChevronRight size={14} className="chev" />
             </summary>
@@ -2050,7 +2141,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section">
+          <details className="inspector-section" {...sectionProps('silence')}>
             <summary>
               <Eraser size={12} /> Silence removal <ChevronRight size={14} className="chev" />
             </summary>
@@ -2065,7 +2156,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section">
+          <details className="inspector-section" {...sectionProps('audio-restoration')}>
             <summary>
               <Headphones size={12} /> Audio restoration <ChevronRight size={14} className="chev" />
             </summary>
@@ -2074,7 +2165,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          {!selectedCueKey && <details className="inspector-section">
+          {!selectedCueKey && <details className="inspector-section" {...sectionProps('captions')}>
             <summary>
               <Captions size={12} /> Captions <ChevronRight size={14} className="chev" />
             </summary>
@@ -2090,7 +2181,7 @@ export function EditorPage() {
             </div>
           </details>}
 
-          <details className="inspector-section">
+          <details className="inspector-section" {...sectionProps('crop')}>
             <summary>
               <Crop size={12} /> Crop &amp; framing <ChevronRight size={14} className="chev" />
             </summary>
@@ -2118,7 +2209,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section">
+          <details className="inspector-section" {...sectionProps('camera')}>
             <summary>
               <Target size={12} /> Camera keyframes <ChevronRight size={14} className="chev" />
             </summary>
@@ -2181,7 +2272,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          {!selectedTextLayerId && <details className="inspector-section">
+          {!selectedTextLayerId && <details className="inspector-section" {...sectionProps('text')}>
             <summary><Type size={12} /> Text / graphics <ChevronRight size={14} className="chev" /></summary>
             <div className="inspector-body">
               <TextLayerInspector layers={clip.textLayers} selectedId={selectedTextLayerId} currentTime={currentTime}
@@ -2190,7 +2281,7 @@ export function EditorPage() {
             </div>
           </details>}
 
-          <details className="inspector-section">
+          <details className="inspector-section" {...sectionProps('output')}>
             <summary>
               <Gauge size={12} /> Output &amp; quality <ChevronRight size={14} className="chev" />
             </summary>
@@ -2206,7 +2297,7 @@ export function EditorPage() {
             </div>
           </details>
 
-          <details className="inspector-section">
+          <details className="inspector-section" {...sectionProps('metadata')}>
             <summary>
               <Tags size={12} /> Metadata <ChevronRight size={14} className="chev" />
             </summary>
@@ -2219,7 +2310,20 @@ export function EditorPage() {
 
       {/* -------------------------------------------------- timeline + tp -- */}
       <div className="editor-bottom" style={{ height: timelineHeight }}>
-        <div className="timeline-resize-handle" role="separator" aria-label="Resize timeline panel" aria-orientation="horizontal" title="Drag to resize timeline" onPointerDown={beginTimelineResize}><MoveVertical size={14} /><span>Drag to resize workspace</span></div>
+        <ResizeHandle
+          orientation="horizontal"
+          label="Resize timeline panel"
+          value={timelineHeight}
+          min={TIMELINE_MIN_HEIGHT}
+          max={Math.max(TIMELINE_MIN_HEIGHT, Math.round(window.innerHeight * 0.68))}
+          defaultValue={initialTimelineHeight(window.innerHeight)}
+          onChange={(height) => setTimelineHeight(clampTimelineHeight(height, window.innerHeight))}
+          onCommit={(height) => updateWorkspace({ editorTimelineHeight: Math.round(height) })}
+          className="timeline-resize-handle"
+        >
+          <MoveVertical size={14} />
+          <span>Drag to resize workspace</span>
+        </ResizeHandle>
 
         <MultiTrackTimeline
           timeline={clipTimeline}

@@ -307,6 +307,8 @@ textarea {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100%;
+  /* The rail keeps the icons reachable; only the labels go away. */
+  --sidebar-collapsed-w: 64px;
 }
 
 .sidebar {
@@ -316,6 +318,8 @@ textarea {
   flex-direction: column;
   padding: var(--space-4) var(--space-3);
   user-select: none;
+  /* Anchors the resize divider to the sidebar's right edge. */
+  position: relative;
 }
 
 .brand {
@@ -3443,7 +3447,43 @@ details.error-details pre {
 
 /* -------------------------------------------------------------- rail ---- */
 
-.editor-body { flex: 1; min-height: 0; display: grid; --editor-rail-w: 68px; grid-template-columns: var(--editor-rail-w) minmax(212px, 268px) minmax(0, 1fr) minmax(276px, 316px); position: relative; }
+.editor-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  --editor-rail-w: 68px;
+  /* Panel widths come from settings; the floors below keep the stage usable
+     when a saved panel is wide and the window is not. */
+  --editor-tool-w: 268px;
+  --editor-inspector-w: 316px;
+  --editor-tool-track: minmax(212px, var(--editor-tool-w));
+  --editor-inspector-track: minmax(276px, var(--editor-inspector-w));
+  grid-template-columns: var(--editor-rail-w) var(--editor-tool-track) minmax(0, 1fr) var(--editor-inspector-track);
+  position: relative;
+}
+
+/* A hidden panel gives its column back instead of leaving an empty gap.
+   Attribute selectors beat the plain `.editor-body` in the breakpoints below,
+   so the same rule holds at every width where the panels are docked. */
+.editor-shell[data-tools="collapsed"] .editor-body {
+  --editor-tool-track: 0px;
+}
+
+.editor-shell[data-inspector="collapsed"] .editor-body {
+  --editor-inspector-track: 0px;
+}
+
+.editor-shell[data-tools="collapsed"] .editor-tool-panel {
+  display: none;
+}
+
+/* Below 721px the properties panel is a drawer that `.mobile-open` brings
+   back, so the docked rule stops there. */
+@media (min-width: 721px) {
+  .editor-shell[data-inspector="collapsed"] .editor-inspector {
+    display: none;
+  }
+}
 
 .editor-tool-rail { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--space-3) var(--space-3); border-right: 1px solid var(--border); background: var(--surface); }
 
@@ -4358,14 +4398,16 @@ button:disabled {
 @media (max-width: 1280px) {
   .editor-body {
     --editor-rail-w: 64px;
-    grid-template-columns: var(--editor-rail-w) minmax(190px, 228px) minmax(0, 1fr) minmax(240px, 276px);
+    --editor-tool-track: minmax(190px, min(var(--editor-tool-w), 228px));
+    --editor-inspector-track: minmax(240px, min(var(--editor-inspector-w), 276px));
   }
 }
 
 @media (max-width: 1180px) {
   .editor-body {
     --editor-rail-w: 60px;
-    grid-template-columns: var(--editor-rail-w) minmax(184px, 212px) minmax(0, 1fr) minmax(232px, 260px);
+    --editor-tool-track: minmax(184px, min(var(--editor-tool-w), 212px));
+    --editor-inspector-track: minmax(232px, min(var(--editor-inspector-w), 260px));
   }
   .editor-topbar-status {
     display: none;
@@ -4375,7 +4417,8 @@ button:disabled {
 @media (max-width: 1100px) {
   .editor-body {
     --editor-rail-w: 56px;
-    grid-template-columns: var(--editor-rail-w) minmax(176px, 200px) minmax(0, 1fr) minmax(224px, 248px);
+    --editor-tool-track: minmax(176px, min(var(--editor-tool-w), 200px));
+    --editor-inspector-track: minmax(224px, min(var(--editor-inspector-w), 248px));
   }
 }
 
@@ -4385,7 +4428,8 @@ button:disabled {
 @media (max-width: 920px) {
   .editor-body {
     --editor-rail-w: 56px;
-    grid-template-columns: var(--editor-rail-w) minmax(0, 1fr) 248px;
+    --editor-inspector-track: 248px;
+    grid-template-columns: var(--editor-rail-w) minmax(0, 1fr) var(--editor-inspector-track);
   }
   .editor-body > .editor-stage {
     grid-column: 2;
@@ -5141,4 +5185,232 @@ html[data-hidden="true"] .status.working .dot {
   background: var(--accent);
   opacity: 0.8;
   pointer-events: none;
+}
+
+/* ========================================================= WORKSPACE LAYOUT
+   Panel sizes are preferences rather than parts of the design: they arrive as
+   custom properties, so the grids above stay the only owners of how the shell
+   is arranged. What is left here is the frame around that — the collapsed
+   rail, the dividers, and the control that brings a hidden panel back.
+   ========================================================= */
+
+/* --------------------------------------------------- collapsed sidebar -- */
+
+.app-shell[data-sidebar="collapsed"] {
+  grid-template-columns: var(--sidebar-collapsed-w) 1fr;
+}
+
+.app-shell[data-sidebar="collapsed"] .sidebar {
+  padding: var(--space-4) var(--space-2);
+}
+
+.app-shell[data-sidebar="collapsed"] .brand {
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-1) 0 var(--space-4);
+}
+
+.app-shell[data-sidebar="collapsed"] .brand-text,
+.app-shell[data-sidebar="collapsed"] .nav-group-label,
+.app-shell[data-sidebar="collapsed"] .nav-kbd,
+.app-shell[data-sidebar="collapsed"] .sidebar-footer {
+  display: none;
+}
+
+/* The label stays the item's accessible name and leaves the rail to the icon,
+   so nothing has to be re-labelled and screen readers still read the words. */
+.app-shell[data-sidebar="collapsed"] .nav-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app-shell[data-sidebar="collapsed"] .nav-item {
+  justify-content: center;
+  padding: 0;
+}
+
+/* Badges become dots: the count is still in the accessibility tree and in the
+   button's tooltip, but a number does not fit a 64px rail. */
+.app-shell[data-sidebar="collapsed"] .nav-item .nav-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  min-width: 0;
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border-radius: var(--radius-round);
+  font-size: 0;
+  line-height: var(--lh-none);
+}
+
+.app-shell[data-sidebar="collapsed"] .nav-item .nav-badge svg {
+  display: none;
+}
+
+.sidebar-toggle {
+  margin-left: auto;
+  flex: none;
+}
+
+.app-shell[data-sidebar="collapsed"] .sidebar-toggle {
+  margin-left: 0;
+}
+
+/* --------------------------------------------------------- dividers ----- */
+
+.pane-resizer {
+  /* A wide invisible band for the mouse; the visible line appears on hover,
+     focus or while dragging, so the chrome stays quiet at rest. */
+  touch-action: none;
+}
+
+.pane-resizer:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: -2px;
+}
+
+.sidebar-resizer,
+.stage-resizer {
+  position: absolute;
+  z-index: var(--z-raised);
+}
+
+.sidebar-resizer {
+  top: 0;
+  bottom: 0;
+  right: calc(-1 * var(--space-1));
+  width: 9px;
+  cursor: col-resize;
+}
+
+.stage-resizer {
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: col-resize;
+}
+
+.stage-resizer-left {
+  left: calc(-1 * var(--space-1));
+}
+
+.stage-resizer-right {
+  right: calc(-1 * var(--space-1));
+}
+
+.sidebar-resizer::after,
+.stage-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border-strong);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.stage-resizer:hover::after,
+.stage-resizer:focus-visible::after,
+body[data-resizing] .sidebar-resizer::after,
+body[data-resizing] .stage-resizer::after {
+  opacity: 1;
+}
+
+body[data-resizing="col"] {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body[data-resizing="row"] {
+  cursor: row-resize;
+  user-select: none;
+}
+
+/* The timeline divider sits in normal flow and keeps its own grip; it only
+   borrows the keyboard focus ring from the shared handle. */
+.timeline-resize-handle {
+  touch-action: none;
+}
+
+.timeline-resize-handle:focus-visible {
+  outline: var(--focus-ring) solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* A divider that cannot change anything is not shown: below these widths the
+   grids use fixed tracks, and a handle that does nothing is worse than none. */
+@media (max-width: 1100px) {
+  .sidebar-resizer {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .stage-resizer {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------- properties header ---- */
+
+.inspector-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.inspector-toolbar-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  letter-spacing: 0.2px;
+}
+
+.inspector-toolbar .btn {
+  margin-left: auto;
+  flex: none;
+}
+
+.inspector-show-toggle {
+  display: none;
+}
+
+.editor-shell[data-inspector="collapsed"] .inspector-show-toggle {
+  display: inline-flex;
+}
+
+/* The tool rail keeps its restore control at the bottom, where the eye already
+   goes for the tool list. */
+.editor-panel-toggle {
+  margin-top: auto;
+}
+
+@media (max-width: 680px) {
+  /* The drawer and its own header own the panel here. */
+  .inspector-toolbar {
+    display: none;
+  }
+
+  .editor-shell[data-inspector="collapsed"] .inspector-show-toggle {
+    display: none;
+  }
 }

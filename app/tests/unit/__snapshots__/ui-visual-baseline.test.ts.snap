@@ -19,6 +19,8 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   height: 100%
 @media (max-width: 1100px)
   grid-template-columns: 176px 1fr",
+  ".app-shell[data-sidebar="collapsed"]": "(base)
+  grid-template-columns: var(--sidebar-collapsed-w) 1fr",
   ".btn": "(base)
   align-items: center
   background: var(--surface-2)
@@ -93,17 +95,17 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   ".editor-body": "(base)
   display: grid
   flex: 1
-  grid-template-columns: var(--editor-rail-w) minmax(212px, 268px) minmax(0, 1fr) minmax(276px, 316px)
+  grid-template-columns: var(--editor-rail-w) var(--editor-tool-track) minmax(0, 1fr) var(--editor-inspector-track)
   min-height: 0
   position: relative
 @media (max-width: 1280px)
-  grid-template-columns: var(--editor-rail-w) minmax(190px, 228px) minmax(0, 1fr) minmax(240px, 276px)
+
 @media (max-width: 1180px)
-  grid-template-columns: var(--editor-rail-w) minmax(184px, 212px) minmax(0, 1fr) minmax(232px, 260px)
+
 @media (max-width: 1100px)
-  grid-template-columns: var(--editor-rail-w) minmax(176px, 200px) minmax(0, 1fr) minmax(224px, 248px)
+
 @media (max-width: 920px)
-  grid-template-columns: var(--editor-rail-w) minmax(0, 1fr) 248px
+  grid-template-columns: var(--editor-rail-w) minmax(0, 1fr) var(--editor-inspector-track)
 @media (max-width: 680px)
   grid-template-columns: var(--editor-rail-w) minmax(0, 1fr)",
   ".editor-inspector": "(base)
@@ -112,6 +114,8 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   min-height: 0
   overflow-y: auto
   padding-bottom: var(--space-4)",
+  ".editor-panel-toggle": "(base)
+  margin-top: auto",
   ".editor-project-link": "(base)
   background: transparent
   border: 0
@@ -125,6 +129,8 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   text-overflow: ellipsis
   transition: color var(--dur-fast) var(--ease)
   white-space: nowrap",
+  ".editor-shell[data-tools="collapsed"] .editor-body": "(base)
+",
   ".editor-stage": "(base)
   align-items: stretch
   background: var(--surface)
@@ -260,6 +266,20 @@ exports[`visual baseline: component contract > keeps the documented box, type an
     border-color var(--dur-fast) var(--ease),
     color var(--dur-fast) var(--ease)
   width: 100%",
+  ".inspector-show-toggle": "(base)
+  display: none",
+  ".inspector-toolbar": "(base)
+  align-items: center
+  background: var(--surface)
+  border-bottom: 1px solid var(--border)
+  display: flex
+  gap: var(--space-3)
+  padding: var(--space-3) var(--space-4)
+  position: sticky
+  top: 0
+  z-index: var(--z-sticky)
+@media (max-width: 680px)
+  display: none",
   ".job-activity": "(base)
   display: grid
   gap: var(--space-2)
@@ -419,6 +439,8 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   gap: var(--space-3)
   height: 46px
   padding: 0 var(--space-4)",
+  ".pane-resizer": "(base)
+",
   ".panel": "(base)
   background: var(--surface)
   border: 1px solid var(--border)
@@ -475,7 +497,30 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   border-right: 1px solid var(--border)
   display: flex
   flex-direction: column
-  padding: var(--space-4) var(--space-3)",
+  padding: var(--space-4) var(--space-3)
+  position: relative",
+  ".sidebar-resizer": "(base)
+  bottom: 0
+  cursor: col-resize
+  position: absolute
+  right: calc(-1 * var(--space-1))
+  top: 0
+  width: 9px
+  z-index: var(--z-raised)
+@media (max-width: 1100px)
+  display: none",
+  ".sidebar-toggle": "(base)
+  flex: none
+  margin-left: auto",
+  ".stage-resizer": "(base)
+  bottom: 0
+  cursor: col-resize
+  position: absolute
+  top: 0
+  width: 9px
+  z-index: var(--z-raised)
+@media (max-width: 1180px)
+  display: none",
   ".status.queued": "(base)
   color: var(--text-3)",
   ".switch": "(base)
@@ -579,6 +624,8 @@ exports[`visual baseline: component contract > keeps the documented box, type an
   gap: var(--space-3)
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))",
   "html[data-motion="full"] .status.working .dot": "(base)
+
+@media (update: slow)
 ",
 }
 `;
@@ -614,3 +661,5 @@ exports[`visual baseline: component markup > renders the switch in both states, 
 exports[`visual baseline: component markup > renders the switch in both states, including disabled > switch-off 1`] = `"<div class="switch-row"><div><div class="text-body" style="font-weight:var(--fw-medium)">Auto-save proxy</div><div class="field-hint">Renders use the small file.</div></div><button class="switch " role="switch" aria-checked="false" aria-label="Auto-save proxy"></button></div>"`;
 
 exports[`visual baseline: component markup > renders the switch in both states, including disabled > switch-on 1`] = `"<div class="switch-row"><div><div class="text-body" style="font-weight:var(--fw-medium)">Auto-save proxy</div><div class="field-hint">Renders use the small file.</div></div><button class="switch on" role="switch" aria-checked="true" aria-label="Auto-save proxy"></button></div>"`;
+
+exports[`workspace controls > keeps the divider markup stable 1`] = `"<div role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-valuenow="198" aria-valuemin="180" aria-valuemax="380" tabindex="0" data-orientation="vertical" class="pane-resizer" title="Resize sidebar. Drag, or use the arrow keys."></div>"`;

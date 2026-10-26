@@ -720,6 +720,16 @@ export const settingsRepo = {
       general: { firstRunCompleted: false },
       help: { tourCompleted: false, dismissedTips: [] },
       appearance: { ambientEffects: true },
+      workspace: {
+        sidebarWidth: 198,
+        sidebarCollapsed: false,
+        editorToolPanelWidth: 268,
+        editorToolPanelCollapsed: false,
+        editorInspectorWidth: 316,
+        editorInspectorCollapsed: false,
+        editorTimelineHeight: null,
+        openInspectorSections: ['trim']
+      },
       ai: {
         activeProvider: 'none',
         openai: { baseUrl: 'https://api.openai.com/v1', model: '', temperature: 0.4, maxTokens: 4096, jsonMode: false, supportsAudio: false, authStyle: 'bearer' },
