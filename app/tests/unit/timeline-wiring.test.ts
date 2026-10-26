@@ -14,10 +14,10 @@ import type { ClipTimeline, TimelineItem } from '../../src/shared/types'
  * Wiring of the timeline's edit controls.
  *
  * The operations themselves are covered by the pure tests and the restart test.
- * This file checks the part those cannot: that the visible controls — Edit menu,
- * toolbar, right-click menu and the shortcut registry — are connected to that
- * same behaviour, and that a control is disabled rather than silently doing
- * nothing when its precondition is missing.
+ * This file checks the part those cannot: that the visible controls — the
+ * labelled toolbar, the right-click menu and the shortcut registry — are
+ * connected to that same behaviour, and that a control is disabled (with a
+ * reason) rather than silently doing nothing when its precondition is missing.
  */
 
 const tracks: ClipTimeline['tracks'] = [
