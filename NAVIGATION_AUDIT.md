@@ -111,6 +111,12 @@ than "&"), and a test now normalises the two so they cannot diverge further.
 purpose: they are different screens with different contents, and renaming either
 would make them collide.
 
+### 9. The render queue had no empty state
+
+With nothing running and no history, the screen was a title and a subtitle over
+blank space. It now uses the shared `EmptyState` ("Nothing queued", what appears
+there, and a way to Projects), like every other destination.
+
 ## What was deliberately left alone
 
 * **The three-destination sidebar.** Every feature is two clicks away; adding
@@ -150,10 +156,11 @@ would make them collide.
 ## Verification
 
 * `tsc --noEmit -p tsconfig.web.json` clean.
-* Unit suite **38 files / 330 tests** pass; the visual baseline gained
-  `.text-link`, `.editor-project-link` and `.nav-item .nav-badge` so the new
-  chrome is covered by the same contract snapshots.
-* `electron-vite build` clean; the preview server serves the rebuilt bundle.
+* Full suite **47 files / 434 tests** pass (18 of them new). The visual baseline
+  gained `.text-link`, `.editor-project-link` and `.nav-item .nav-badge`, so the
+  new chrome is covered by the same contract snapshots.
+* `electron-vite build` clean — `index-iUgn3l65.js` / `index-CuboyHWs.css`; the
+  preview server serves the rebuilt bundle.
 * Not verified visually: this environment has no display, so the Back button
   placement, the warning badge and the clickable crumb were checked by reading
   the markup and by the style contract, not by looking at them.
