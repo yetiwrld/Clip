@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import type { ClipTimeline, TimelineItem } from '../../src/shared/types'
+import { useTimelineClipboard } from '../../src/renderer/features/editor/timeline-clipboard'
 import {
   copyTimelineItems,
   cutTimelineItems,
@@ -258,5 +259,31 @@ describe('dropping a clip onto another clip', () => {
     expect(resolveTimelineOverlaps(clear, ['drop'], ids())).toBe(clear)
     const otherTrack = timeline([item({ id: 'bed', startTime: 0, sourceOut: 6 }), item({ id: 'drop', trackId: 'video-2', startTime: 1, sourceOut: 2 })])
     expect(hasTimelineOverlap(otherTrack, ['drop'])).toBe(false)
+  })
+})
+
+describe('clip clipboard store', () => {
+  afterEach(() => useTimelineClipboard.getState().setClipboard(null))
+
+  it('tiles a repeated paste at the same playhead and follows a moved playhead', () => {
+    const store = useTimelineClipboard.getState()
+    store.setClipboard(copyTimelineItems(timeline([item({ id: 'a' })]), ['a']))
+    expect(useTimelineClipboard.getState().pasteTarget(10)).toBe(10)
+    useTimelineClipboard.getState().rememberPaste(10, 4)
+    // Same spot again: continue after the block that was just pasted.
+    expect(useTimelineClipboard.getState().pasteTarget(10)).toBe(14)
+    // A new playhead position is taken as-is.
+    expect(useTimelineClipboard.getState().pasteTarget(30)).toBe(30)
+  })
+
+  it('forgets the paste position for a new clipboard or a new clip', () => {
+    const store = useTimelineClipboard.getState()
+    store.setClipboard(copyTimelineItems(timeline([item({ id: 'a' })]), ['a'])!)
+    store.rememberPaste(5, 3)
+    useTimelineClipboard.getState().forgetPaste()
+    expect(useTimelineClipboard.getState().pasteTarget(5)).toBe(5)
+    store.rememberPaste(5, 3)
+    store.setClipboard(copyTimelineItems(timeline([item({ id: 'a' })]), ['a']))
+    expect(useTimelineClipboard.getState().pasteTarget(5)).toBe(5)
   })
 })

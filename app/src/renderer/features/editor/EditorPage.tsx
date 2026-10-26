@@ -33,6 +33,7 @@ import type { CameraKeyframe, CaptionOverrides, Clip, ClipCandidate, ClipTimelin
 import { formatClock } from '@shared/utils/time'
 import { CaptionPreview } from './CaptionPreview'
 import { MediaLibrary } from './MediaLibrary'
+import { useTimelineClipboard } from './timeline-clipboard'
 import { MultiTrackTimeline, TimelineInspector } from './MultiTrackTimeline'
 import { ResizeHandle } from '../workspace/ResizeHandle'
 import { INSPECTOR_LIMIT, TOOL_PANEL_LIMIT } from '../workspace/layout'
@@ -227,6 +228,10 @@ export function EditorPage() {
         clipTimelineRef.current = restoredTimeline
         setClipTimeline(restoredTimeline)
         timelineHistoryRef.current = emptyTimelineCommandHistory()
+        // The clip clipboard survives a clip switch (copying a shot into the
+        // next cut is the point), but the remembered paste position does not:
+        // it belongs to the timeline it was used on.
+        useTimelineClipboard.getState().forgetPaste()
         if (!savedTimeline.tracks.length) void api['timeline.save']({ clipId, timeline: restoredTimeline })
         setCurrentTime(found.startTime)
         historyRef.current = { past: [], future: [], lastPush: 0 }
