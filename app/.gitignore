@@ -5,10 +5,12 @@ node_modules/
 out/
 dist/
 
-# Runtime workspaces and user data
-.workspace/
-.test-workspace/
-workspace/
+# Runtime workspaces and user data.
+# Anchored to this folder: an unanchored `workspace/` also ignored
+# src/renderer/features/workspace/, which is source code, not user data.
+/.workspace/
+/.test-workspace/
+/workspace/
 
 # Generated test fixtures (repeatable via `npm run fixtures`)
 tests/fixtures/media/
