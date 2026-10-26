@@ -190,6 +190,14 @@ describe('adding a library asset to the timeline', () => {
     expect(placed.timeline.tracks).toHaveLength(4)
   })
 
+  it('takes the space it covers instead of stacking two clips', () => {
+    const covered = timeline([item({ id: 'a', startTime: 0, sourceOut: 6 })])
+    const placed = addAssetToTimeline(covered, asset({ duration: 4 }), { at: 2, newId: ids() })!
+    const existing = placed.timeline.items.find((entry) => entry.id === 'a')!
+    expect(existing.sourceOut).toBeCloseTo(2)
+    expect(hasTimelineOverlap(placed.timeline, [placed.item.id])).toBe(false)
+  })
+
   it('never lands on a locked track and refuses missing media', () => {
     const locked = { tracks: tracks.map((track) => track.id === 'video-1' ? { ...track, locked: true } : track), items: [], snapEnabled: true }
     const placed = addAssetToTimeline(locked, asset(), { at: 0, newId: ids() })!

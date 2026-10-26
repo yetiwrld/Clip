@@ -61,7 +61,10 @@ export function addAssetToTimeline(
     fadeIn: 0, fadeOut: 0, speed: 1, loop: false,
     x: 0, y: 0, scale: 1, rotation: 0, opacity: 1
   }
-  return { timeline: { ...timeline, tracks, items: [...timeline.items, item] }, item, track, createdTrack }
+  const added: ClipTimeline = { ...timeline, tracks, items: [...timeline.items, item] }
+  // A new clip owns the space it covers: whatever sits underneath is trimmed
+  // or split, exactly as a paste or a drag that landed on it would be.
+  return { timeline: resolveTimelineOverlaps(added, [item.id], options.newId), item, track, createdTrack }
 }
 
 export interface TimelineItemEditResult {

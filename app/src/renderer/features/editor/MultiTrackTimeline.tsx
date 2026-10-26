@@ -691,7 +691,6 @@ export function MultiTrackTimeline(props: {
     dragScrollStartRef.current = scrollRef.current?.scrollLeft ?? 0
     // Selecting is not seeking. Tapping a clip used to put the playhead on its
     // first frame, which made a preview that was already playing restart.
-
     const onMove = (move: PointerEvent) => {
       const state = dragRef.current
       if (!state) return

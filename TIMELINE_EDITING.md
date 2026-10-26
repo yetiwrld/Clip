@@ -218,7 +218,7 @@ other edit. Nothing in the menus edits state directly.
 | `tests/unit/frame-rate.test.ts` (4) | Frame rounding at 25 fps and 23.976 fps, negative and invalid input. |
 | `tests/unit/playback.test.ts` (4) | Pressing play keeps a playhead outside the clip range where it is, restarts only at the end, clamps to the media, and does not guess before metadata loads. |
 | `tests/integration/timeline-editing.test.ts` (3) | Split, cut and paste saved through the real dispatcher and read back after a restart; delete persisted; a corrupt timeline is rejected; undo/redo round trip. |
-| Full suite | 55 files / 606 tests pass. |
+| Full suite | 55 files / 607 tests pass. |
 | Typecheck | `tsc` clean for the renderer and for main/shared. |
 | Build | `electron-vite build` succeeds. |
 | Preview | Built app served on :8787; `timeline.get`/`timeline.save` round trip through the real backend; new command strings present in the bundle. |
