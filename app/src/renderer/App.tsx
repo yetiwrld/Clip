@@ -19,13 +19,26 @@ import { formatShortcut } from './commands/keys'
 import { useGlobalShortcuts } from './commands/useGlobalShortcuts'
 
 export function App() {
-  const { view, navigate, bootstrap, bootstrapped, settings } = useAppStore()
-  const data = useDataStore()
+  // Narrow subscriptions on purpose: this component wraps every screen, so a
+  // whole-store subscription here would re-render the open screen every time a
+  // background task, render or toast changed.
+  const view = useAppStore((s) => s.view)
+  const navigate = useAppStore((s) => s.navigate)
+  const bootstrap = useAppStore((s) => s.bootstrap)
+  const bootstrapped = useAppStore((s) => s.bootstrapped)
+  const settings = useAppStore((s) => s.settings)
   const toasts = useAppStore((s) => s.toasts)
   const toast = useAppStore((s) => s.toast)
   const dismissToast = useAppStore((s) => s.dismissToast)
   const openPalette = useAppStore((s) => s.openPalette)
-  const projects = data.projects
+  const projects = useDataStore((s) => s.projects)
+  const activeRenders = useDataStore(
+    (s) => s.renders.filter((r) => r.status === 'rendering' || r.status === 'preparing' || r.status === 'queued').length
+  )
+  const interruptedCount = useDataStore((s) => s.tasks.filter((t) => t.state === 'interrupted').length)
+  const refreshProjects = useDataStore((s) => s.refreshProjects)
+  const loadRenders = useDataStore((s) => s.loadRenders)
+  const loadTasks = useDataStore((s) => s.loadTasks)
 
   // One listener for the whole renderer, and the two command sets that never
   // change with the screen. Screen-specific commands register themselves.
@@ -38,9 +51,9 @@ export function App() {
 
   useEffect(() => {
     void bootstrap()
-    void data.refreshProjects()
-    void data.loadRenders()
-    void data.loadTasks()
+    void refreshProjects()
+    void loadRenders()
+    void loadTasks()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -84,8 +97,7 @@ export function App() {
     return unsub
   }, [toast])
 
-  const activeRenders = data.renders.filter((r) => r.status === 'rendering' || r.status === 'preparing' || r.status === 'queued').length
-  const interrupted = data.tasks.filter((t) => t.state === 'interrupted').length
+  const interrupted = interruptedCount
 
   return (
     <div className="app-shell">

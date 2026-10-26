@@ -736,7 +736,11 @@ export function EditorPage() {
       const video = videoRef.current
       // Before metadata loads Chromium reports 0 even when the editor has
       // already restored the playhead to the clip's in-point.
-      if (video && video.readyState >= HTMLMediaElement.HAVE_METADATA) setCurrentTime(video.currentTime)
+      if (!video || video.readyState < HTMLMediaElement.HAVE_METADATA) return
+      const next = video.currentTime
+      // A paused player reports the same time every tick. Touching state with
+      // it re-renders the whole editor (stage, inspector, timeline) for nothing.
+      setCurrentTime((previous) => (Math.abs(next - previous) < 0.02 ? previous : next))
     }, 120)
     return () => clearInterval(id)
   }, [])
@@ -1156,12 +1160,45 @@ export function EditorPage() {
       fromTime: clip.startTime,
       toTime: clip.endTime
     })
-  }, [segments, clip, style])
+    // Deliberately narrow: the whole clip object changes identity on every
+    // edit (zoom, crop, title, audio), and rebuilding 15 000 cues for each of
+    // those measured 131 ms at 5000 segments. Only these fields are read.
+  }, [
+    segments,
+    clip?.startTime,
+    clip?.endTime,
+    clip?.captionOverrides,
+    clip?.captionTextEdits,
+    clip?.captionCueSplits,
+    clip?.captionCueMerges,
+    clip?.captionTimingOffsets,
+    clip?.captionCueHidden,
+    clip?.captionCueDuplicates,
+    style
+  ])
+
+  // Built once per cue set, not once per render (the playhead ticks at ~8 Hz).
+  const captionRows = useMemo(
+    () => cues.map((cue) => ({ key: cue.key, startTime: cue.startTime, endTime: cue.endTime, text: cue.text })),
+    [cues]
+  )
+  const projectDuration = project?.duration ?? 0
+  const timelineDuration = useMemo(
+    () => Math.max(projectDuration, ...clipTimeline.items.map(timelineItemEnd), 1),
+    [projectDuration, clipTimeline.items]
+  )
 
   // Mirror of the render plan: crop toward the selected output target so the
   // preview shows exactly what FFmpeg produces (plan.ts buildRenderPlan).
-  const customRatio = clip ? { w: clip.customAspectW ?? 16, h: clip.customAspectH ?? 9 } : undefined
-  const target = clip ? resolutionFor(clip.aspectRatio, clip.outputResolution, customRatio) : { w: 1080, h: 1920 }
+  // Memoised on primitives: a fresh {w,h} object here invalidated the crop
+  // computation on every render, which is 8 times a second during playback.
+  const target = useMemo(
+    () =>
+      clip
+        ? resolutionFor(clip.aspectRatio, clip.outputResolution, { w: clip.customAspectW ?? 16, h: clip.customAspectH ?? 9 })
+        : { w: 1080, h: 1920 },
+    [clip?.aspectRatio, clip?.outputResolution, clip?.customAspectW, clip?.customAspectH]
+  )
   const cameraState = clip ? cameraStateAt(clip.cameraKeyframes ?? [], currentTime) : null
   const crop = useMemo(() => {
     if (!clip || !project?.width || !project?.height) return null
@@ -2179,8 +2216,8 @@ export function EditorPage() {
           timeline={clipTimeline}
           assets={data.assets}
           waveforms={assetWaveforms}
-          duration={Math.max(project.duration ?? 0, ...clipTimeline.items.map(timelineItemEnd), 1)}
-          captions={cues.map((cue) => ({ key: cue.key, startTime: cue.startTime, endTime: cue.endTime, text: cue.text }))}
+          duration={timelineDuration}
+          captions={captionRows}
           captionOffsets={clip.captionTimingOffsets}
           textLayers={clip.textLayers}
           trackingKeyframes={clip.trackingKeyframes}

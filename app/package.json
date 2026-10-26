@@ -22,6 +22,7 @@
     "test:visual:update": "vitest run tests/unit/ui-visual-baseline.test.ts -u",
     "verify": "npm run typecheck && npm test",
     "fixtures": "tsx scripts/make-fixtures.ts",
+    "perf": "tsx --tsconfig tsconfig.node.json scripts/perf-probe.ts",
     "preview:web": "electron-vite build && tsx --tsconfig tsconfig.node.json server/preview.ts",
     "dist:win": "install-electron && electron-vite build && electron-builder --win --x64",
     "dist:dir": "install-electron && electron-vite build && electron-builder --dir"

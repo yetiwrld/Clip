@@ -12,6 +12,48 @@ import { useAppStore } from './app'
  * polling.
  */
 
+/**
+ * Cheap change detection for the two polled lists.
+ *
+ * Both are polled as a safety net next to the event stream, so most polls
+ * return exactly what the store already holds. Writing that value anyway
+ * re-renders every subscribed screen for nothing (the whole renderer appears to
+ * "breathe" once a second on an idle workspace), so compare first.
+ */
+function sameList<T>(next: T[], previous: T[], signature: (item: T) => string): boolean {
+  if (next === previous) return true
+  if (next.length !== previous.length) return false
+  for (let i = 0; i < next.length; i += 1) {
+    if (signature(next[i]) !== signature(previous[i])) return false
+  }
+  return true
+}
+
+/**
+ * Share one in-flight request per key.
+ *
+ * Screens ask for the same list from several places (mount, a project event, a
+ * poll, a retry). Without this, a slow backend gets the same question twice and
+ * the later answer can land after the newer one.
+ */
+const inFlight = new Map<string, Promise<unknown>>()
+
+function dedupe<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inFlight.get(key) as Promise<T> | undefined
+  if (existing) return existing
+  const promise = run().finally(() => {
+    if (inFlight.get(key) === promise) inFlight.delete(key)
+  })
+  inFlight.set(key, promise)
+  return promise
+}
+
+const taskSignature = (task: TaskInfo): string =>
+  `${task.id}:${task.state}:${task.stage ?? ''}:${task.progress ?? ''}:${task.message ?? ''}:${task.updatedAt}`
+
+const renderSignature = (render: RenderJob): string =>
+  `${render.id}:${render.status}:${render.progress}:${render.updatedAt}`
+
 interface DataStore {
   projects: ProjectSummary[]
   projectsLoaded: boolean
@@ -82,12 +124,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
   transcript: [],
   transcriptLoaded: false,
   async loadTranscript(projectId) {
-    try {
-      const transcript = await api['transcript.get']({ projectId })
-      set({ transcript, transcriptLoaded: true })
-    } catch {
-      set({ transcriptLoaded: true })
-    }
+    return dedupe(`transcript:${projectId}`, async () => {
+      try {
+        const transcript = await api['transcript.get']({ projectId })
+        set({ transcript, transcriptLoaded: true })
+      } catch {
+        set({ transcriptLoaded: true })
+      }
+    })
   },
 
   speakers: [],
@@ -113,21 +157,30 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   clips: [],
   async loadClips(projectId) {
-    const clips = await api['clips.list']({ projectId })
-    set({ clips })
+    return dedupe(`clips:${projectId}`, async () => {
+      const clips = await api['clips.list']({ projectId })
+      set({ clips })
+    })
   },
 
   renders: [],
   rendersLoaded: false,
   async loadRenders(projectId) {
-    const renders = await api['renders.list'](projectId ? { projectId } : {})
-    set({ renders, rendersLoaded: true })
+    return dedupe(`renders:${projectId ?? 'all'}`, async () => {
+      const renders = await api['renders.list'](projectId ? { projectId } : {})
+      const { renders: current, rendersLoaded } = get()
+      if (rendersLoaded && sameList(renders, current, renderSignature)) return
+      set({ renders, rendersLoaded: true })
+    })
   },
 
   tasks: [],
   async loadTasks(projectId) {
-    const tasks = await api['tasks.list'](projectId ? { projectId } : {})
-    set({ tasks })
+    return dedupe(`tasks:${projectId ?? 'all'}`, async () => {
+      const tasks = await api['tasks.list'](projectId ? { projectId } : {})
+      if (sameList(tasks, get().tasks, taskSignature)) return
+      set({ tasks })
+    })
   },
 
   storage: null,

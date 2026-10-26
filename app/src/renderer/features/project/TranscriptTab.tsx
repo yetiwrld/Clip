@@ -7,6 +7,7 @@ import { useDataStore } from '../../stores/data'
 import { ErrorBox, ProgressBar, Spinner } from '../../components/ui'
 import { plural } from '../../copy/labels'
 import { formatClock } from '@shared/utils/time'
+import { usePoll } from '../../hooks/usePoll'
 
 /**
  * Synchronized transcript viewer (spec §13): timestamps, click-to-seek,
@@ -67,9 +68,14 @@ export function TranscriptTab() {
 
   useEffect(() => {
     void data.loadTasks(project.id)
-    const id = setInterval(() => void data.loadTasks(project.id), 1500)
-    return () => clearInterval(id)
   }, [data.loadTasks, project.id])
+
+  // Poll the task list only while this project has work in flight; when it is
+  // idle a slow heartbeat is enough, because events carry the real updates.
+  const hasLiveWork = data.tasks.some(
+    (task) => task.projectId === project.id && (task.state === 'running' || task.state === 'queued')
+  )
+  usePoll(() => data.loadTasks(project.id), hasLiveWork ? 1500 : 12000)
 
   useEffect(() => {
     if (!startedSpeakerTask) return
@@ -104,11 +110,16 @@ export function TranscriptTab() {
     return [...byLabel.values()].sort((a, b) => a.id - b.id || a.label.localeCompare(b.label))
   }, [data.speakers, data.transcript, project.id])
 
-  // keep currentTime fresh but re-render friendly (~4x/s)
+  // Keep currentTime fresh but re-render friendly (~4x/s). Playback advances in
+  // small steps between ticks, so only a real change is allowed to touch state:
+  // a paused player re-rendering a 5000-line transcript four times a second is
+  // pure waste.
   useEffect(() => {
     const id = setInterval(() => {
       const player = project.sourceMode === 'audio-first' ? audioRef.current : videoRef.current
-      if (player) setCurrentTime(player.currentTime)
+      if (!player) return
+      const next = player.currentTime
+      setCurrentTime((previous) => (Math.abs(next - previous) < 0.05 ? previous : next))
     }, 250)
     return () => clearInterval(id)
   }, [project.sourceMode])
@@ -531,15 +542,7 @@ function SpeakerNameField({
   )
 }
 
-function TranscriptRow({
-  segment,
-  query,
-  active,
-  onSeek,
-  rowRef,
-  speakers,
-  onSpeakerChange
-}: {
+interface RowProps {
   segment: import('@shared/types').TranscriptSegment
   query: string
   active: boolean
@@ -547,7 +550,34 @@ function TranscriptRow({
   rowRef?: React.RefObject<HTMLDivElement | null>
   speakers: import('@shared/types').Speaker[]
   onSpeakerChange: (label: string | null) => void
-}) {
+}
+
+/**
+ * Rows are compared on what they draw, not on callback identity. Every row gets
+ * fresh closures on each render of the tab, so comparing those would make the
+ * memo a no-op — which is exactly the cost this is here to remove: the playhead
+ * moves four times a second, and only the two rows whose active flag changed
+ * should re-render.
+ */
+function sameRowProps(a: RowProps, b: RowProps): boolean {
+  return (
+    a.segment === b.segment &&
+    a.query === b.query &&
+    a.active === b.active &&
+    a.speakers === b.speakers &&
+    a.rowRef === b.rowRef
+  )
+}
+
+const TranscriptRow = React.memo(function TranscriptRow({
+  segment,
+  query,
+  active,
+  onSeek,
+  rowRef,
+  speakers,
+  onSpeakerChange
+}: RowProps) {
   const [copied, setCopied] = useState(false)
   const text = segment.text
   const marked = query.trim()
@@ -600,4 +630,4 @@ function TranscriptRow({
       )}
     </div>
   )
-}
+}, sameRowProps)

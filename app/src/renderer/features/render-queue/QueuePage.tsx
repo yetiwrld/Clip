@@ -5,6 +5,7 @@ import { useAppStore } from '../../stores/app'
 import { useDataStore } from '../../stores/data'
 import { RenderList } from '../project/RendersTab'
 import { renderStageLabel, taskStateLabel, taskTypeLabel } from '../../copy/labels'
+import { usePoll } from '../../hooks/usePoll'
 
 /**
  * Global queue view: renders across projects + the task/recovery list.
@@ -18,10 +19,12 @@ export function QueuePage() {
   useEffect(() => {
     void data.loadTasks()
     void data.loadRenders()
-    const id = setInterval(() => void data.loadTasks(), 4000)
-    return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Fast poll only while something is running; an idle queue leans on events.
+  const hasLiveWork = data.tasks.some((task) => task.state === 'running' || task.state === 'queued')
+  usePoll(() => data.loadTasks(), hasLiveWork ? 4000 : 15000)
 
   const interrupted = data.tasks.filter((t) => t.state === 'interrupted')
   const running = data.tasks.filter((t) => t.state === 'running' || t.state === 'queued')
