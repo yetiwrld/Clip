@@ -193,7 +193,7 @@ Researched against CapCut Desktop, then applied to this app's own timeline
 | Part | What it does now | Why |
 |---|---|---|
 | Rows | Captions, then text / graphics, then camera markers, then the video tracks, then the audio tracks. The order is what decides who covers whom: a track further down the list is drawn in front of the ones above it. | This is the stacking order of the app's own render path, so the editor and the exported file agree. Captions and text still sit above the picture. |
-| What the timeline shows | Only the clips that are on it. The clip's own source is not drawn as a row or a block; its trimmed range and its detected pauses stay in Properties → Trim and in the silence panel, where they already were. | The first version of this pass drew the source as a row of "parts". It is the same footage twice — once as the clip the render reads, once as blocks that look editable but are not timeline clips, so copy, paste, split and move had to keep explaining why they did not apply. A timeline that shows only real clips is the honest picture. |
+| The main clip | The clip you are editing is drawn **once**, as one block on the first video track, with its name, its trimmed length, a filmstrip texture and a waveform strip. Clicking it selects it and says where the trim lives; it cannot be dragged, trimmed or deleted on the timeline. | One block answers "what am I editing and how long is it" without pretending to be a second clip. An earlier version of this pass drew a block per cut range; that is the same footage twice, and it made copy, paste, split and delete need an exception for blocks that were not clips. |
 | Video naming | Video tracks number from one (`Video 1`, `Video 2`, …), for new tracks as well as projects. | "Video 2" as the first track was a leftover from the old single-clip model. |
 | Track header | Type icon, editable name, mute, hide, lock, and a `⋯` menu with **Move up**, **Move down** and **Delete track**. Delete is only enabled when the track holds nothing. | Reordering is how you decide what covers what; the menu makes it a real edit instead of a display setting, and nothing is deleted out from under a clip. |
 | Ruler | `00:00` / `00:10` timecodes instead of `0:00.0`, with the played part of the ruler tinted. | Matches the reference editor and is easier to scan than a decimal suffix. |
@@ -209,7 +209,8 @@ Researched against CapCut Desktop, then applied to this app's own timeline
 | Ctrl+C/V/X/A are claimed only when a selection or the clip clipboard exists | Outside the editing context those keys keep their native behaviour. Text fields always keep them: the dispatcher checks the focused element first. |
 | Paste overwrites the space it takes | The render path treats clips on one track as a sequence; leaving two clips stacked in the same interval would look correct in the timeline and render unpredictably. |
 | Delete never moves unrelated clips | There is no ripple mode on overlay tracks: a remove leaves a gap, and later edits are never shifted silently. |
-| A finished command is written at once; a drag still waits | Delete, split, paste, duplicate and the end of a drag are complete edits, so they are saved immediately instead of after a 450 ms pause. Only an in-progress drag coalesces, because it reports a new value dozens of times a second. |
+| The main clip has no edit commands of its own | Copy, cut, split, duplicate and delete stay unavailable while it is selected, and the tooltip says "the main clip is trimmed in Properties → Trim". Showing the commands and having them do nothing would be the fake control this pass set out to remove. |
+| A finished command is written at once; a drag still waits | Delete, split, paste, duplicate and the end of a drag are complete edits, so they are saved immediately instead of after a 450 ms pause. Only an in-progress drag coalesces, because it reports a new value dozens of times a second. The timeline calls an explicit "commit" when the pointer is released, so the last value of a drag is never left inside the pause. |
 | A reload hands the last edit to the browser | While a save is still in flight, leaving the page cancels the request. The editor now also posts the pending write as a beacon, which the browser delivers even as the page closes. Same endpoint, same payload — no second write path. |
 | Sound is drawn on the clip that carries it | An audio clip is the sound, so its waveform fills it. A video clip gets a slim strip along the bottom, so the footage stays readable. Both come from the asset's real peaks; a still image has none. |
 | No linkage between clips | CapCut moves attached overlays when the clip under them moves. This model has no linked pairs — an item references one asset on one track — so moving one clip never drags another with it. Adding linkage would invent a relationship the data cannot store. |
@@ -234,13 +235,13 @@ Researched against CapCut Desktop, then applied to this app's own timeline
 | Test | What it proves |
 |---|---|
 | `tests/unit/timeline-clipboard.test.ts` (21) | Copy keeps properties and relative timing; cut stores and removes; paste tiles, overwrites and splits; locks are respected; delete leaves a gap and never touches a locked track; duplicate and split keep source intervals; range select; drop-on-clip resolution. |
-| `tests/unit/timeline-wiring.test.ts` (21) | The labelled toolbar, its order, tooltips, disabled states and disabled hints are rendered from the real commands; tapping a clip has no seek; nothing derived from the source is drawn on the tracks; a clip's sound is drawn as a full waveform for audio and a strip for video; the playhead grip exists; undo/redo reflect both histories; the timeline registers in the shared registry and has no keyboard listener of its own; every edit flows through the persisted save path; each operation has one call site. |
+| `tests/unit/timeline-wiring.test.ts` (24) | The labelled toolbar, its order, tooltips, disabled states and disabled hints are rendered from the real commands; tapping a clip has no seek; the main clip is drawn once with its length and sound and offers no edit commands; nothing derived from the source is drawn on the tracks; a clip's sound is drawn as a full waveform for audio and a strip for video; a finished drag asks for an immediate write; the playhead grip exists; undo/redo reflect both histories; the timeline registers in the shared registry and has no keyboard listener of its own; every edit flows through the persisted save path; each operation has one call site. |
 | `tests/unit/commands.test.ts` (23) | Cut/copy/paste/select-all are inert in text fields and unavailable without a selection or clipboard; Escape ordering; no duplicate shortcuts beyond the documented pair. |
 | `tests/unit/timeline-commands.test.ts` (7) | A discrete command is never merged into a surrounding drag; drag values coalesce; undo order and redo branching. |
 | `tests/unit/frame-rate.test.ts` (4) | Frame rounding at 25 fps and 23.976 fps, negative and invalid input. |
 | `tests/unit/playback.test.ts` (4) | Pressing play keeps a playhead outside the clip range where it is, restarts only at the end, clamps to the media, and does not guess before metadata loads. |
 | `tests/integration/timeline-editing.test.ts` (3) | Split, cut and paste saved through the real dispatcher and read back after a restart; delete persisted; a corrupt timeline is rejected; undo/redo round trip. |
-| Full suite | 55 files / 611 tests pass. |
+| Full suite | 55 files / 613 tests pass. |
 | Typecheck | `tsc` clean for the renderer and for main/shared. |
 | Build | `electron-vite build` succeeds. |
 | Preview | Built app served on :8787; `timeline.get`/`timeline.save` round trip through the real backend; new command strings present in the bundle. |
@@ -256,4 +257,6 @@ jumping; then Ctrl+X, move the playhead, Ctrl+V, Ctrl+Z twice, click a clip then
 shift-click another, drag the pair, drop one on the other track, Delete the
 selection, then reload the page within a second of the last edit and check that
 the edit is still there. Drag the timeline sideways and confirm the track names
-stay solid on top of the clips while the lanes scroll under them.
+stay solid on top of the clips while the lanes scroll under them. Click the main
+clip: it highlights, the picture does not move, and the tooltips point at
+Properties for the trim.

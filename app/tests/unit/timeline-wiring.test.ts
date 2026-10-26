@@ -204,35 +204,54 @@ describe('timeline edit toolbar', () => {
     expect(render({ currentTime: 2 })).toContain('Select a clip to edit')
   })
 
-  it('has no main source row: the first row is the first video track', () => {
+  it('has no separate main-source row: the first row is the first video track', () => {
     const html = render({ currentTime: 5 })
     expect(html).not.toContain('Trim in')
     expect(html).not.toContain('Trim out')
-    // The source strip is gone and nothing derived from the clip is drawn: the
-    // timeline only shows the clips that are actually on it.
+    // There is no second source strip and no part-per-cut row; the clip appears
+    // once, as the main clip block (covered by the next test).
     expect(html).not.toContain('source-track-row')
     expect(html).not.toContain('main-piece')
-    expect(html).not.toContain('Main video')
     const firstRow = html.slice(html.indexOf('data-track-id='))
     expect(firstRow.slice(0, 40)).toContain('data-track-id="video-1"')
   })
 
-  it('draws the sound of a clip: a full waveform for audio, a strip for video', () => {
-    const audioItem = item({ id: 'sound', assetId: 'audio-1' })
+  it('draws the main clip as one block on the first video track, with its sound', () => {
     const html = render({
-      timeline: { ...timeline, items: [item({ id: 'clip' }), audioItem] },
-      assets: [
-        { id: 'asset-1', projectId: 'p', name: 'shot.mp4', originalName: 'shot.mp4', mediaType: 'video', path: '/a.mp4', thumbnailPath: null, duration: 8, width: 1920, height: 1080, audioChannels: 2, sizeBytes: 1, missing: false, createdAt: '2026-01-01T00:00:00.000Z' },
-        { id: 'audio-1', projectId: 'p', name: 'music.mp3', originalName: 'music.mp3', mediaType: 'audio', path: '/a.mp3', thumbnailPath: null, duration: 8, width: null, height: null, audioChannels: 2, sizeBytes: 1, missing: false, createdAt: '2026-01-01T00:00:00.000Z' }
-      ],
-      waveforms: {
-        'asset-1': { peaks: [0, 0.5, 1, 0.2], duration: 8 },
-        'audio-1': { peaks: [0, 0.4, 0.9, 0.1], duration: 8 }
+      mainClip: {
+        trackId: 'video-1',
+        name: 'Timeline Demo',
+        duration: 9.5,
+        thumbnail: null,
+        peaks: { peaks: [0, 0.4, 0.9], duration: 9.5 },
+        selected: false,
+        onSelect: noop
       }
     })
-    expect(html.match(/timeline-wave-canvas/g)).toHaveLength(2)
+    // One block, not a part per cut, and it says what it is and how long it is.
+    expect(html.match(/data-main-clip=/g)).toHaveLength(1)
+    expect(html).toContain('Timeline Demo')
+    expect(html).toContain('0:09.5')
     expect(html).toContain('class="timeline-wave-canvas is-strip"')
-    expect(html).toContain('aria-label="Audio waveform"')
+    // It is a picture of the clip, not a second clip: the edit commands stay
+    // unavailable and say where the trim actually lives.
+    const rows = new Map(toolbarRows(html).map((row) => [row.label, row.disabled]))
+    expect(rows.get('Cut selected clips')).toBe(true)
+    expect(rows.get('Delete selected clips')).toBe(true)
+  })
+
+  it('says the main clip is selected, and points at Properties for the trim', () => {
+    const html = render({
+      mainClip: { trackId: 'video-1', name: 'Timeline Demo', duration: 9.5, selected: true, onSelect: noop }
+    })
+    expect(html).toContain('Main clip · 0:09.5 · trim it in Properties')
+    expect(html).toContain('the main clip is trimmed in Properties → Trim')
+    expect(html).not.toContain('Select a clip to edit')
+  })
+
+  it('writes a finished drag at once instead of waiting for the pause', () => {
+    const source = fs.readFileSync(path.resolve(process.cwd(), 'src/renderer/features/editor/MultiTrackTimeline.tsx'), 'utf8')
+    expect(source).toContain('props.onCommitEdit?.()')
   })
 
   it('labels the ruler like an editor: 00:00, not 0:00.0', () => {

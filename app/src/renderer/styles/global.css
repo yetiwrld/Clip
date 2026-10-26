@@ -2924,6 +2924,23 @@ details.error-details pre {
 .track-tools button:hover { color:var(--text-1); }
 .multi-track-lane { position:relative; isolation: isolate; flex:1; min-width:0; min-height:51px; background-image:linear-gradient(to right,transparent 39px,var(--border) 40px); background-size:40px 100%; }
 
+/* The clip being edited, as one block on the first video track. Same clip shape
+   as any other row, with a solid accent edge so it reads as the source. */
+.main-clip {
+  position: absolute;
+  top: 5px;
+  height: 45px;
+  border: 1px solid #3a434b;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 70%, #3a434b);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: #2a3036;
+  color: #eef2f5;
+  cursor: pointer;
+}
+.main-clip.selected { outline: 2px solid var(--accent); outline-offset: 1px; z-index: var(--z-selected); }
+.main-clip-body { position: absolute; inset: 0; z-index: var(--z-raised); display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); pointer-events: none; }
+
 .multi-track-item.audio { border-color:#638e70; background:#263f30; }
 .multi-track-item.image { border-color:#988052; background:#453a23; }
 .multi-track-item.selected { outline:2px solid var(--accent); outline-offset:1px; z-index: var(--z-selected); }

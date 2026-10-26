@@ -88,6 +88,8 @@ export function EditorPage() {
   const [activeTool, setActiveTool] = useState<'media' | 'audio' | 'moments' | 'camera' | 'clip'>('media')
   const [previewTool, setPreviewTool] = useState<'select' | 'hand'>('select')
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
+  /** The main clip block on Video 1 is selected (not a timeline clip). */
+  const [mainClipSelected, setMainClipSelected] = useState(false)
   const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null)
   // A remembered timeline height is a preference like any other, so it lives in
   // settings instead of a separate localStorage key.
@@ -216,6 +218,7 @@ export function EditorPage() {
         setSelectedCameraKeyframeTime(null)
         setSelectedTextLayerId(null)
         setSelectedTimelineItem(null)
+        setMainClipSelected(false)
         setSegments(document.transcript)
         const initialTracks: TimelineTrack[] = [
           { id: crypto.randomUUID(), name: 'Video 1', type: 'video', order: 0, muted: false, hidden: false, locked: false },
@@ -697,6 +700,16 @@ export function EditorPage() {
     for (const [id, media] of timelineMediaRefs.current) if (!active.has(id)) media.pause()
   }, [clipTimeline, data.assets, currentTime, playing, muted])
 
+  /**
+   * The main clip: the project's own video, drawn once on the first video track.
+   * Its length is the kept part of the clip's trim, which is exactly what the
+   * preview and the render play.
+   */
+  const sourceAsset = useMemo(() => {
+    const sourcePath = data.activeProject?.sourcePath
+    return sourcePath ? data.assets.find((asset) => asset.path === sourcePath) ?? null : null
+  }, [data.assets, data.activeProject?.sourcePath])
+
   useEffect(() => {
     const audioIds = [...new Set(activeTool === 'audio'
       ? data.assets.filter((asset) => asset.mediaType === 'audio').map((asset) => asset.id)
@@ -704,6 +717,8 @@ export function EditorPage() {
           const asset = data.assets.find((candidate) => candidate.id === item.assetId)
           return Boolean(asset && asset.mediaType !== 'image')
         }).map((item) => item.assetId))]
+    // The clip's own video has sound too, so its peaks are needed for the strip.
+    if (sourceAsset && !audioIds.includes(sourceAsset.id)) audioIds.push(sourceAsset.id)
     for (const assetId of audioIds) {
       if (assetWaveforms[assetId] || waveformLoading.current.has(assetId)) continue
       waveformLoading.current.add(assetId)
@@ -711,7 +726,7 @@ export function EditorPage() {
         if (!result.silent) setAssetWaveforms((current) => ({ ...current, [assetId]: { peaks: result.peaks, duration: result.duration } }))
       }).catch(() => undefined).finally(() => waveformLoading.current.delete(assetId))
     }
-  }, [clipTimeline.items, data.assets, assetWaveforms, activeTool])
+  }, [clipTimeline.items, data.assets, assetWaveforms, activeTool, sourceAsset])
 
   async function saveNow(patch: Partial<Clip>, targetClipId: string | null = activeClipIdRef.current): Promise<boolean> {
     if (!targetClipId) return false
@@ -1318,6 +1333,12 @@ export function EditorPage() {
     () => cues.map((cue) => ({ key: cue.key, startTime: cue.startTime, endTime: cue.endTime, text: cue.text })),
     [cues]
   )
+  const mainClipDuration = clip ? keptDuration(keptSegments(clip.startTime, clip.endTime, clip.silenceCuts ?? [])) : 0
+  const mainClipRow = useMemo(
+    () => [...clipTimeline.tracks].sort((a, b) => a.order - b.order).find((track) => track.type === 'video') ?? null,
+    [clipTimeline.tracks]
+  )
+
   const projectDuration = project?.duration ?? 0
   const timelineDuration = useMemo(
     () => Math.max(projectDuration, ...clipTimeline.items.map(timelineItemEnd), 1),
@@ -1883,7 +1904,7 @@ export function EditorPage() {
             ['moments', 'Moments', <Sparkles size={16} />], ['camera', 'Camera', <Target size={16} />],
             ['clip', 'Clip', <Scissors size={16} />]
           ] as const).map(([tool, label, icon]) => <button key={tool} className={`editor-tool-button${activeTool === tool ? ' active' : ''}`}
-            onClick={() => { setActiveTool(tool); setSelectedTimelineItem(null); if (tool === 'clip') { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }} title={label} aria-label={label} aria-pressed={activeTool === tool}>{icon}<span>{label}</span></button>)}
+            onClick={() => { setActiveTool(tool); setSelectedTimelineItem(null); setMainClipSelected(false); if (tool === 'clip') { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }} title={label} aria-label={label} aria-pressed={activeTool === tool}>{icon}<span>{label}</span></button>)}
           {/* The rail is the one part of this column that is always visible, so
               the control that brings the panel back lives here too. */}
           <button
@@ -1910,7 +1931,7 @@ export function EditorPage() {
           {activeTool === 'moments' && <div className="editor-moments-panel">
             {data.candidates.filter((candidate) => candidate.status !== 'rejected').length === 0
               ? <div className="editor-panel-empty"><Sparkles size={20} /><strong>No moments yet</strong><span>Run the analysis to find strong moments in this project.</span><button className="btn sm" onClick={async () => { try { await api['analysis.start']({ projectId: project.id, providerId: 'heuristic-local' }); app.toast({ level: 'info', message: 'Moment analysis started.', hint: 'Results appear here when it finishes.' }) } catch (err) { app.toast({ level: 'error', ...errMessage(err) }) } }}>Analyze now</button></div>
-              : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
+              : data.candidates.filter((candidate) => candidate.status !== 'rejected').map((candidate) => <div key={candidate.id} className={`editor-moment-card${selectedMomentId === candidate.id ? ' selected' : ''}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { setSelectedMomentId(candidate.id); seekTo(candidate.startTime) } }} onClick={() => { setSelectedMomentId(candidate.id); setSelectedTimelineItem(null); setMainClipSelected(false); setSelectedTextLayerId(null); setSelectedCueKey(null); seekTo(candidate.startTime) }}>
                 {filmstrip?.length ? <img className="editor-moment-thumb" src={mediaUrl(filmstrip.reduce((best, frame) => Math.abs(frame.t - candidate.startTime) < Math.abs(best.t - candidate.startTime) ? frame : best).path)} alt="" /> : null}
                 <span className="editor-moment-time">{formatClock(candidate.startTime, true)} – {formatClock(candidate.endTime, true)}</span><strong>{candidate.title}</strong><span>{candidate.reason}</span><small>{Math.round(candidate.overallScore ?? 0)}/100 · {Math.round(candidate.endTime - candidate.startTime)}s</small>
                 <span className="editor-moment-actions" onClick={(event) => event.stopPropagation()}><button className="btn sm" onClick={() => void openMoment(candidate)}>{data.clips.some((item) => item.candidateId === candidate.id) ? 'Edit clip' : 'Create clip'}</button></span>
@@ -2456,6 +2477,19 @@ export function EditorPage() {
           trackingKeyframes={clip.trackingKeyframes}
           cameraKeyframes={clip.cameraKeyframes}
           fps={project.fps}
+          mainClip={mainClipRow && clip ? {
+            trackId: mainClipRow.id,
+            name: sourceAsset?.name ?? project.name ?? 'Main clip',
+            duration: mainClipDuration,
+            thumbnail: sourceAsset?.thumbnailPath ? mediaUrl(sourceAsset.thumbnailPath) : (filmstrip?.[0] ? mediaUrl(filmstrip[0].path) : null),
+            peaks: sourceAsset ? assetWaveforms[sourceAsset.id] ?? null : null,
+            selected: mainClipSelected,
+            onSelect: () => setMainClipSelected((current) => {
+              if (!current) { setSelectedTimelineItem(null); setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) }
+              return !current
+            })
+          } : undefined}
+          onCommitEdit={() => void flushSavesRef.current.timeline()}
           selectedItemId={selectedTimelineItem?.id ?? null}
           selectedCaptionKey={selectedCueKey}
           selectedTextLayerId={selectedTextLayerId}
@@ -2506,8 +2540,8 @@ export function EditorPage() {
           }}
           onSelectTextLayer={(layer) => { setSelectedTextLayerId(layer.id); setSelectedTimelineItem(null); setSelectedCueKey(null); setSelectedMomentId(null) }}
           onChangeTextLayer={updateTextLayer}
-          onSelectItem={(item) => { setSelectedTimelineItem(item); if (item) if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
-          onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
+          onSelectItem={(item) => { setSelectedTimelineItem(item); if (item) setMainClipSelected(false); if (item) if (item) { setSelectedCueKey(null); setSelectedTextLayerId(null); setSelectedMomentId(null) } }}
+          onSelectCaption={(key) => { setSelectedCueKey(key); setSelectedTimelineItem(null); setMainClipSelected(false); setSelectedTextLayerId(null); setSelectedMomentId(null) }}
           onSelectCameraKeyframe={(time) => { const keyframe = clip.cameraKeyframes.find((item) => Math.abs(item.time - time) < frameTimeTolerance(data.activeProject?.fps)); if (keyframe) selectCameraKeyframe(keyframe); setActiveTool('camera') }}
           onMoveCameraKeyframe={(oldTime, requestedTime) => {
             const moving = clip.cameraKeyframes.find((key) => Math.abs(key.time - oldTime) < frameTimeTolerance(data.activeProject?.fps))

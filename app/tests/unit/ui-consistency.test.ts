@@ -91,6 +91,8 @@ function declarations(body: string): Array<{ prop: string; value: string }> {
  */
 const MEDIA_LAYER_PREFIXES = [
   '.multi-track',
+  // The main clip is footage, drawn like any other clip on the timeline.
+  '.main-clip',
   '.timeline-',
   '.tl-',
   '.camera-',
